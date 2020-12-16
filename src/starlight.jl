@@ -1,5 +1,5 @@
 module starlight
 
-# Write your package code here.
+greet() = println("hello, world!")
 
 end
