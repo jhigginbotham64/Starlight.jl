@@ -4,6 +4,7 @@ authors = ["Joshua Higginbotham <jhigginbotham64@gmail.com> and contributors"]
 version = "0.1.0"
 
 [deps]
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 OhMyREPL = "5fb14364-9ced-5910-84b2-373655c76a03"
 Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
 SimpleDirectMediaLayer = "98e33af6-2ee5-5afd-9e75-cbc738b767c4"
