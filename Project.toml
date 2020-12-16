@@ -1,0 +1,13 @@
+name = "starlight"
+uuid = "d1cf4e9a-6cca-406a-9108-c467415791d1"
+authors = ["Joshua Higginbotham <jhigginbotham64@gmail.com> and contributors"]
+version = "0.1.0"
+
+[compat]
+julia = "1"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
