@@ -4,7 +4,7 @@ using Test
 @testset "ray tracer challenge" begin
 
     @testset "ch 1 - tuples, points, and vectors" begin
-        @test starlight.greet() == nothing
+        @test greet() == nothing
     end
 
     @testset "ch 2 - drawing on a canvas" begin
