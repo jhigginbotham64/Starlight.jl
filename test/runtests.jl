@@ -96,6 +96,50 @@ using LinearAlgebra
 
     @testset "ch 2 - drawing on a canvas" begin
 
+        #=
+            ch 2 summary:
+
+            again julia trivializes things that were difficult in python.
+            this time i dispensed even with the "constructors" for colors,
+            because since they're usually 3-tuples instead of 4-tuples it
+            doesn't even make sense to have a shortcut. so i just added more
+            stuff to getproperty and setproperty! and voila, tests pass.
+            except for a couple which i had to adjust to use approx, because
+            computers, but even that's cleaner than what tended to happen in
+            python. can't wait to see what happens when i get to matrix ops.
+            the tests are slightly different from the ones in the book, if i
+            was to do the ones from the book it would be...more smoke-testing...
+
+            
+
+        =#
+        c = [-0.5, 0.4, 1.7]
+        @test c.red == c.r == -0.5
+        @test c.green == c.g == 0.4
+        @test c.blue == c.b == 1.7
+
+        c = [0.9, 0.6, 0.75] + [0.7, 0.1, 0.25]
+        @test c.r == 1.6
+        @test c.g == 0.7
+        @test c.b == 1.0
+
+        c = [0.9, 0.6, 0.75] - [0.7, 0.1, 0.25]
+        @test c.r ≈ 0.2 # never really know where numerical instability will strike
+        @test c.g == 0.5
+        @test c.b == 0.5
+
+        c = 2 * [0.2, 0.3, 0.4]
+        @test c.r == 0.4
+        @test c.g == 0.6
+        @test c.b == 0.8
+
+        # the formula the book gives for color product is the hadamard product,
+        # which is component-wise multiplication. this is so trivial in julia it
+        # doesn't even warrant a separate function.
+        c = [1, 0.2, 0.4] .* [0.9, 1, 0.1]
+        @test c.r == 0.9
+        @test c.g == 0.2
+        @test c.b ≈ 0.04 # again with the instability, and again it's easier to handle in julia than python
     end
 
     @testset "ch 3 - matrices" begin
