@@ -146,6 +146,12 @@ end
     need to look at the GitHub repos for the projects i'm studying, and look
     into julia's discourse and slack. and maybe see if anyone on discord might
     know about this sort of thing.
+
+    ...did a bit more internetting, if it's as simple as RenderDrawPoint then
+    everything is fine and i have nothing to worry about, altho this project
+    at once dives deeply into "toy" territory on account of having to loop over
+    pixels to render them. ...wait a sec, it already was, that was the plan all
+    along...
 =#
 
 end
