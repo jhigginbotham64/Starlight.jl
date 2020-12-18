@@ -110,7 +110,6 @@ using LinearAlgebra
             the tests are slightly different from the ones in the book, if i
             was to do the ones from the book it would be...more smoke-testing...
 
-            
 
         =#
         c = [-0.5, 0.4, 1.7]
@@ -140,6 +139,14 @@ using LinearAlgebra
         @test c.r == 0.9
         @test c.g == 0.2
         @test c.b ≈ 0.04 # again with the instability, and again it's easier to handle in julia than python
+
+        c = canvas(10, 20)
+        @test c.w == c.width == 10
+        @test c.h == c.height == 20
+        @test all(col == color([0,0,0]) for col in c.linear)
+
+        # write_pixel(c, 2, 3, color([1, 0, 0]))
+        # @test pixel_at(c, 2, 3) == color([1, 0, 0])
     end
 
     @testset "ch 3 - matrices" begin
