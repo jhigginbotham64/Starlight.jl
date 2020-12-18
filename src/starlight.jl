@@ -1,5 +1,7 @@
 module starlight
 
+using Colors
+
 #=
     points and vectors are just length-4 arrays with particular values
     in the last index
@@ -8,6 +10,7 @@ module starlight
 export fitn
 export point
 export vector
+export sdl_colors
 
 function fitn(vec::Vector, n::Int = 3)
     """
@@ -62,6 +65,12 @@ function Base.getproperty(vec::Vector{<:Number}, sym::Symbol)
             @warn "property $(String(sym)) is not defined for arrays with fewer than 4 elements"
             return nothing
         end
+    elseif sym === :colorant
+        # it just happens that the point function impelements sensible
+        # defaults if we want to represent a shorter array as a color
+        clamped = clamp.(vec, 0, 1)
+        cols = (length(vec) >= 4) ? clamped : point(clamped)
+        return RGBA(cols...)
     else
         return getfield(vec, sym)
     end
@@ -97,61 +106,11 @@ function Base.setproperty!(vec::Vector{<:Number}, sym::Symbol, val::T where T<:N
     end
 end
 
-#=
-    lifecycle steps for drawing pixel buffers with Surface (vs Texture) in SDL:
-    - Init
-    - CreateWindow
-    - GetWindowSurface
-    - loop:
-        - UpdateWindowSurface
-    - DestroyWindow
-    - Quit
-
-    so after CreateWindow and GetWindowSurface i'm left with a...pointer to
-    an SDL surface, which apparently is exactly the same as Actor.surface in
-    GameZero, but my use case for it is completely different and their code now
-    offers no guidance on what to do next.
-
-    as soon as i can figure out how to work with Ptr{SDL.Surface}, the rest is
-    as simple as SDL.UpdateWindowSurface(w).
-
-    the first step is to figure out how to access the fields of the surface.
-    ...this is strange enough, but further requires writing to a void* array,
-    which appears to be difficult to do in julia. without taking the time to
-    thoroughly understand julia's c interface and whether or not it's even
-    possible to do things that way (let alone easy), i'm inclined to instead
-    go the texture route.
-
-    the flow is:
-    - Init
-    - CreateWindow
-    - CreateRenderer
-    - CreateTexture
-    - initialize canvas
-    - loop:
-        - modify canvas
-        - UpdateTexture
-        - RenderCopy
-        - RenderPresent
-    - DestroyTexture
-    - DestroyRenderer
-    - DestroyWindow
-
-    while more complex on the surface, it only requires reading C memory and
-    figuring out what format to pass julia data in, both of which could be
-    figured out experimentally, rather than having to first overcome the barrier
-    of julia's preference for copying C data.
-
-    i wish there were people i felt comfortable asking about this. tomorrow i
-    need to look at the GitHub repos for the projects i'm studying, and look
-    into julia's discourse and slack. and maybe see if anyone on discord might
-    know about this sort of thing.
-
-    ...did a bit more internetting, if it's as simple as RenderDrawPoint then
-    everything is fine and i have nothing to worry about, altho this project
-    at once dives deeply into "toy" territory on account of having to loop over
-    pixels to render them. ...wait a sec, it already was, that was the plan all
-    along...
-=#
+# first bit of code i've written for this project where i was
+# like "idk if i really like this or not", but whatever
+sdl_colors(c::Vector{<:Number}) = sdl_colors(c.colorant)
+# shamelessly copied from GameZero, hurrah for open source
+sdl_colors(c::Colorant) = sdl_colors(convert(ARGB{Colors.FixedPointNumbers.Normed{UInt8,8}}, c))
+sdl_colors(c::ARGB) = Int.(reinterpret.((red(c), green(c), blue(c), alpha(c))))
 
 end
