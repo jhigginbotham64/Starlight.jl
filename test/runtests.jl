@@ -1,13 +1,16 @@
 using starlight
-sl = starlight
-
 using Test
-using LinearAlgebra
-using Colors
 
 @testset "ray tracer challenge" begin
 
     @testset "ch 1 - tuples, Point4s, and Vector4s" begin
+
+        #=
+            test cases for tuples, points, and vectors turned into
+            smoke tests of julia's native data types and standard library.
+            not super meaningful, but definitely helps me learn julia and
+            get an idea of what to expect later.
+        =#
 
         vals = [4.3, -4.2, 3.1, 1.0]
 
@@ -57,36 +60,42 @@ using Colors
 
     @testset "ch 2 - drawing on a canvas" begin
 
-        c = [-0.5, 0.4, 1.7]
+        #=
+            color definitions from julia's Colors package, color arithmetic
+            from ColorVectorSpace. inclusion of Images and a couple of extra
+            dependencies allows displaying colors in notebooks as well as
+            Juno's Plots pane. so now i'm also learning and smoke-testing
+            julia's package ecosystem.
+        =#
+
+        c = RGB(-0.5, 0.4, 1.7)
         @test red(c) == -0.5
         @test green(c) == 0.4
         @test blue(c) == 1.7
 
-        c = [0.9, 0.6, 0.75] + [0.7, 0.1, 0.25]
+        c = RGB(0.9, 0.6, 0.75) + RGB(0.7, 0.1, 0.25)
         @test red(c) == 1.6
         @test green(c) == 0.7
         @test blue(c) == 1.0
 
-        c = [0.9, 0.6, 0.75] - [0.7, 0.1, 0.25]
+        c = RGB(0.9, 0.6, 0.75) - RGB(0.7, 0.1, 0.25)
         @test red(c) ≈ 0.2 # never really know where numerical instability will strike
         @test green(c) == 0.5
         @test blue(c) == 0.5
 
-        c = 2 * [0.2, 0.3, 0.4]
+        c = 2 * RGB(0.2, 0.3, 0.4)
         @test red(c) == 0.4
         @test green(c) == 0.6
         @test blue(c) == 0.8
 
-        # the formula the book gives for color product is the hadamard product,
-        # which is component-wise multiplication, pretty simple in julia.
-        c = [1, 0.2, 0.4] .* [0.9, 1, 0.1]
+        c = hadamard(RGB(1, 0.2, 0.4), RGB(0.9, 1, 0.1))
         @test red(c) == 0.9
         @test green(c) == 0.2
         @test blue(c) ≈ 0.04 # again with the instability, and again it's easier to handle in julia than python
 
-        c = BlankCanvas(10, 20)
-        @test width(c) == 10
-        @test height(c) == 20
+        c = Canvas(10, 20)
+        @test width(c) == 10 # Images.width
+        @test height(c) == 20 # Images.height
         @test all(col == colorant"black" for col in pixels(c))
 
         pixel!(c, 2, 3, colorant"red")

@@ -1,13 +1,22 @@
 module starlight
 
-using Colors
+using Reexport
+@reexport using Images
+@reexport using ColorVectorSpace
+@reexport using FileIO
+@reexport using LinearAlgebra
+@reexport using SimpleDirectMediaLayer
 
+SDL2 = SimpleDirectMediaLayer
+
+export SDL2
 export fitn
 export F, VectorF, Point4, Vector4
-export BlankCanvas
+export Canvas
 export pixel, pixel!
-export x, x!, y, y!, z, z!, height, width
+export x, x!, y, y!, z, z!, w, w!, height, width
 export pixels, flat
+export hadamard
 
 function fitn(vec = [], n::Int = 3)
     """
@@ -64,12 +73,13 @@ w!(vec::VectorF, val::F) = SetIndexOrWarn!(vec, 4, :w, val)
 
 # height is number of rows, which in julia is the first dimension.
 # width is number of columns, which in julia is the second dimension.
-BlankCanvas(w::Int, h::Int) = fill(colorant"black", (h, w))
-height(mat) = size(mat)[1]
-width(mat) = size(mat)[2]
+Canvas(w::Int, h::Int, c = colorant"black") = fill(c, (h, w))
 pixel(mat, x::Int, y::Int) = mat[x,y]
 pixel!(mat, x::Int, y::Int, c::Colorant) = mat[x,y] = c
 pixels(mat) = flat(mat)
 flat(mat) = reshape(mat, (prod(size(mat)), 1))
+# stopgap solution from https://github.com/JuliaGraphics/ColorVectorSpace.jl/issues/119#issuecomment-573167024
+# while waiting for long-term solution from https://github.com/JuliaGraphics/ColorVectorSpace.jl/issues/126
+hadamard(c1, c2) = mapc(*, c1, c2)
 
 end
