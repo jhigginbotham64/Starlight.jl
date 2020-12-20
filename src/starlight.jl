@@ -10,42 +10,18 @@ using Reexport
 SDL2 = SimpleDirectMediaLayer
 
 export SDL2
-export fitn
-export F, VectorF, point, vector
-export x, x!, y, y!, z, z!, w, w!
-export Canvas, pixel, pixel!, pixels, flat
+export point, vector, x, x!, y, y!, z, z!, w, w!
+export canvas, pixel, pixel!, pixels, flat
 export hadamard
 export submatrix, minor, cofactor, invertible
 export translation, scaling, reflection_x, reflection_y, reflection_z, rotation_x, rotation_y, rotation_z, shearing
 
-function fitn(vec = [], n::Int = 3)
-    """
-        fit vector to n elements, i.e. truncate or pad.
-        defaults to n = 3 because that's my use case.
-    """
-    if length(vec) == 0
-        return [0.0, 0.0, 0.0]
-    else
-        return vcat(vec[1:min(n, length(vec))], repeat([AbstractFloat(0)], max(0, n - length(vec))))
-    end
-end
-
 # point and vector are just length-4 arrays with particular valuesin the last index
 
-point(x, y, z) = point([x, y, z])
-function point(coords = [])
-    return vcat(fitn(coords), [AbstractFloat(1)])
-end
+point(x, y, z) = [x, y, z, 1.0]
+vector(x, y, z) = [x, y, z, 0.0]
 
-vector(x, y, z) = vector([x, y, z])
-function vector(coords = [])
-    return vcat(fitn(coords), [AbstractFloat(0)])
-end
-
-F = T where T<:AbstractFloat
-VectorF = Vector{T} where T<:AbstractFloat
-
-function GetIndexOrWarn(vec::VectorF, i::Int, sym::Symbol)
+function GetIndexOrWarn(vec, i::Int, sym::Symbol)
     if length(vec) >= i
         return vec[i]
     else
@@ -54,12 +30,12 @@ function GetIndexOrWarn(vec::VectorF, i::Int, sym::Symbol)
     end
 end
 
-x(vec::VectorF) = GetIndexOrWarn(vec, 1, :x)
-y(vec::VectorF) = GetIndexOrWarn(vec, 2, :y)
-z(vec::VectorF) = GetIndexOrWarn(vec, 3, :z)
-w(vec::VectorF) = GetIndexOrWarn(vec, 4, :w)
+x(vec) = GetIndexOrWarn(vec, 1, :x)
+y(vec) = GetIndexOrWarn(vec, 2, :y)
+z(vec) = GetIndexOrWarn(vec, 3, :z)
+w(vec) = GetIndexOrWarn(vec, 4, :w)
 
-function SetIndexOrWarn!(vec::VectorF, i::Int, sym::Symbol, val::T where T<:AbstractFloat)
+function SetIndexOrWarn!(vec, i::Int, sym::Symbol, val)
     if length(vec) >= i
         vec[i] = val
     else
@@ -68,14 +44,14 @@ function SetIndexOrWarn!(vec::VectorF, i::Int, sym::Symbol, val::T where T<:Abst
     end
 end
 
-x!(vec::VectorF, val::F) = SetIndexOrWarn!(vec, 1, :x, val)
-y!(vec::VectorF, val::F) = SetIndexOrWarn!(vec, 2, :y, val)
-z!(vec::VectorF, val::F) = SetIndexOrWarn!(vec, 3, :z, val)
-w!(vec::VectorF, val::F) = SetIndexOrWarn!(vec, 4, :w, val)
+x!(vec, val) = SetIndexOrWarn!(vec, 1, :x, val)
+y!(vec, val) = SetIndexOrWarn!(vec, 2, :y, val)
+z!(vec, val) = SetIndexOrWarn!(vec, 3, :z, val)
+w!(vec, val) = SetIndexOrWarn!(vec, 4, :w, val)
 
 # height is number of rows, which in julia is the first dimension.
 # width is number of columns, which in julia is the second dimension.
-Canvas(w::Int, h::Int, c = colorant"black") = fill(c, (h, w))
+canvas(w::Int, h::Int, c = colorant"black") = fill(c, (h, w))
 pixel(mat, x::Int, y::Int) = mat[x,y]
 pixel!(mat, x::Int, y::Int, c::Colorant) = mat[x,y] = c
 pixels(mat) = flat(mat)

@@ -12,23 +12,23 @@ using Test
             get an idea of what to expect later.
         =#
 
-        vals = [4.3, -4.2, 3.1, 1.0]
+        vals = [4.3, -4.2, 3.1]
 
-        a = copy(vals)
+        a = point(vals...)
         @test x(a) == 4.3
         @test y(a) == -4.2
         @test z(a) == 3.1
         @test w(a) == 1.0
-        @test a == point(vals)
-        @test a != vector(vals)
+        @test a == point(vals...)
+        @test a != vector(vals...)
 
-        w!(a, 0.0)
+        a = vector(vals...)
         @test x(a) == 4.3
         @test y(a) == -4.2
         @test z(a) == 3.1
         @test w(a) == 0.0
-        @test a != point(vals)
-        @test a == vector(vals)
+        @test a != point(vals...)
+        @test a == vector(vals...)
 
         @test point(4, -4, 3) == [4, -4, 3, 1]
         @test vector(4, -4, 3) == [4, -4, 3, 0]
@@ -54,8 +54,8 @@ using Test
 
         # i really really really love julia
         @test vector(1, 2, 3) ⋅ vector(2, 3, 4) == 20
-        @test vector([1, 2, 3] × [2, 3, 4]) == vector(-1, 2, -1)
-        @test vector([2, 3, 4] × [1, 2, 3]) == vector(1, -2, 1)
+        @test vector(([1, 2, 3] × [2, 3, 4])...) == vector(-1, 2, -1)
+        @test vector(([2, 3, 4] × [1, 2, 3])...) == vector(1, -2, 1)
     end
 
     @testset "ch 2 - drawing on a canvas" begin
@@ -93,7 +93,7 @@ using Test
         @test green(c) == 0.2
         @test blue(c) ≈ 0.04 # again with the instability, and again it's easier to handle in julia than python
 
-        c = Canvas(10, 20)
+        c = canvas(10, 20)
         @test width(c) == 10 # Images.width
         @test height(c) == 20 # Images.height
         @test all(col == colorant"black" for col in pixels(c))
