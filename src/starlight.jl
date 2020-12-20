@@ -33,10 +33,12 @@ end
 
 # Point4 and Vector4 are just length-4 arrays with particular valuesin the last index
 
+Point4(x, y, z) = Point4([x, y, z])
 function Point4(coords = [])
     return vcat(fitn(coords), [AbstractFloat(1)])
 end
 
+Vector4(x, y, z) = Vector4([x, y, z])
 function Vector4(coords = [])
     return vcat(fitn(coords), [AbstractFloat(0)])
 end

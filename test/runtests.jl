@@ -3,7 +3,7 @@ using Test
 
 @testset "ray tracer challenge" begin
 
-    @testset "ch 1 - tuples, Point4s, and Vector4s" begin
+    @testset "ch 1 - tuples, points, and vectors" begin
 
         #=
             test cases for tuples, points, and vectors turned into
@@ -30,32 +30,32 @@ using Test
         @test a != Point4(vals)
         @test a == Vector4(vals)
 
-        @test Point4([4, -4, 3]) == [4, -4, 3, 1]
-        @test Vector4([4, -4, 3]) == [4, -4, 3, 0]
+        @test Point4(4, -4, 3) == [4, -4, 3, 1]
+        @test Vector4(4, -4, 3) == [4, -4, 3, 0]
         @test [3, -2, 5, 1] + [-2, 3, 1, 0] == [1, 1, 6, 1]
-        @test Point4([3, 2, 1]) - Point4([5, 6, 7]) == Vector4([-2, -4, -6])
-        @test Point4([3, 2, 1]) - Vector4([5, 6, 7]) == Point4([-2, -4, -6])
-        @test Vector4([3, 2, 1]) - Vector4([5, 6, 7]) == Vector4([-2, -4, -6])
-        @test Vector4([0, 0, 0]) - Vector4([1, -2, 3]) == Vector4([-1, 2, -3])
+        @test Point4(3, 2, 1) - Point4(5, 6, 7) == Vector4(-2, -4, -6)
+        @test Point4(3, 2, 1) - Vector4(5, 6, 7) == Point4(-2, -4, -6)
+        @test Vector4(3, 2, 1) - Vector4(5, 6, 7) == Vector4(-2, -4, -6)
+        @test Vector4(0, 0, 0) - Vector4(1, -2, 3) == Vector4(-1, 2, -3)
         @test -[1, -2, 3, -4] == [-1, 2, -3, 4]
         @test 3.5 * [1, -2, 3, -4] == [3.5, -7, 10.5, -14]
         @test 0.5 * [1, -2, 3, -4] == [0.5, -1, 1.5, -2]
         @test [1, -2, 3, -4] / 2 == [0.5, -1, 1.5, -2]
 
-        @test norm(Vector4([1, 0, 0])) == 1
-        @test norm(Vector4([0, 1, 0])) == 1
-        @test norm(Vector4([0, 0, 1])) == 1
-        @test norm(Vector4([1, 2, 3])) == √14 # i love julia
-        @test norm(Vector4([-1, -2, -3])) == √14
+        @test norm(Vector4(1, 0, 0)) == 1
+        @test norm(Vector4(0, 1, 0)) == 1
+        @test norm(Vector4(0, 0, 1)) == 1
+        @test norm(Vector4(1, 2, 3)) == √14 # i love julia
+        @test norm(Vector4(-1, -2, -3)) == √14
 
-        @test normalize(Vector4([4, 0, 0])) == Vector4([1, 0, 0])
-        @test normalize(Vector4([1, 2, 3])) == Vector4([1/√14, 2/√14, 3/√14]) # i really love julia
-        @test norm(normalize(Vector4([1, 2, 3]))) == 1
+        @test normalize(Vector4(4, 0, 0)) == Vector4(1, 0, 0)
+        @test normalize(Vector4(1, 2, 3)) == Vector4(1/√14, 2/√14, 3/√14) # i really love julia
+        @test norm(normalize(Vector4(1, 2, 3))) == 1
 
         # i really really really love julia
-        @test Vector4([1, 2, 3]) ⋅ Vector4([2, 3, 4]) == 20
-        @test Vector4([1, 2, 3] × [2, 3, 4]) == Vector4([-1, 2, -1])
-        @test Vector4([2, 3, 4] × [1, 2, 3]) == Vector4([1, -2, 1])
+        @test Vector4(1, 2, 3) ⋅ Vector4(2, 3, 4) == 20
+        @test Vector4([1, 2, 3] × [2, 3, 4]) == Vector4(-1, 2, -1)
+        @test Vector4([2, 3, 4] × [1, 2, 3]) == Vector4(1, -2, 1)
     end
 
     @testset "ch 2 - drawing on a canvas" begin
@@ -107,7 +107,7 @@ using Test
         #=
             mostly learning and exercising julia's native types again.
         =#
-        
+
         M = [
             1 2 3 4
             5.5 6.5 7.5 8.5
@@ -370,6 +370,17 @@ using Test
 
     @testset "ch 4 - matrix transformations" begin
 
+        #=
+
+        =#
+
+        # transform = translation(5, -3, 2)
+        # p = Point4(-3, 4, 5)
+        # @test transform * p == Point4(2, 1, 7)
+        # @test inv(transform) * p == Point4(-8, 7, 3)
+        #
+        # v = Vector4(-3, 4, 5)
+        # @test transform * v == v
     end
 
     @testset "ch 5 - ray-sphere intersections" begin
