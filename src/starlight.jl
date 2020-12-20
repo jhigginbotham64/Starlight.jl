@@ -17,6 +17,7 @@ export pixel, pixel!
 export x, x!, y, y!, z, z!, w, w!, height, width
 export pixels, flat
 export hadamard
+export submatrix, minor, cofactor, invertible
 
 function fitn(vec = [], n::Int = 3)
     """
@@ -81,5 +82,16 @@ flat(mat) = reshape(mat, (prod(size(mat)), 1))
 # stopgap solution from https://github.com/JuliaGraphics/ColorVectorSpace.jl/issues/119#issuecomment-573167024
 # while waiting for long-term solution from https://github.com/JuliaGraphics/ColorVectorSpace.jl/issues/126
 hadamard(c1, c2) = mapc(*, c1, c2)
+
+function submatrix(mat, r::Int, c::Int)
+    h = height(mat)
+    w = width(mat)
+    mask = [row != r && col != c for row=1:h, col=1:w]
+    return reshape(mat[mask], (h-1,w-1))
+end
+
+minor(mat, r::Int, c::Int) = det(submatrix(mat, r, c))
+cofactor(mat, r::Int, c::Int) = minor(mat, r, c) * (-1)^(r+c)
+invertible(mat) = det(mat) != 0
 
 end
