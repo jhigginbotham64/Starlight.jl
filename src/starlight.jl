@@ -12,10 +12,8 @@ SDL2 = SimpleDirectMediaLayer
 export SDL2
 export fitn
 export F, VectorF, point, vector
-export Canvas
-export pixel, pixel!
-export x, x!, y, y!, z, z!, w, w!, height, width
-export pixels, flat
+export x, x!, y, y!, z, z!, w, w!
+export Canvas, pixel, pixel!, pixels, flat
 export hadamard
 export submatrix, minor, cofactor, invertible
 export translation, scaling, reflection_x, reflection_y, reflection_z, rotation_x, rotation_y, rotation_z, shearing
