@@ -15,7 +15,7 @@ export canvas, pixel, pixel!, pixels, flat
 export hadamard
 export submatrix, minor, cofactor, invertible
 export translation, scaling, reflection_x, reflection_y, reflection_z, rotation_x, rotation_y, rotation_z, shearing
-export ray, sphere, intersection
+export ray, sphere, intersect, intersection, intersections, hit
 
 # point and vector are just length-4 arrays with particular valuesin the last index
 
@@ -120,6 +120,10 @@ shearing(xy, xz, yx, yz, zx, zy) = [
 
 mutable struct ray
     origin::Vector{<:Number}
+    # the book calls this "direction", but in my mind direction
+    # is a unit vector which you combine with a magnitude (speed)
+    # to get velocity, and the book uses direction mathematically
+    # like a velocity, so i'm calling it velocity.
     velocity::Vector{<:Number}
 end
 
@@ -132,6 +136,8 @@ mutable struct intersection
     t::Number
     object
 end
+
+intersections(is::intersection...) = [is...]
 
 Base.position(r::ray, t::Number) = r.origin + r.velocity * t
 
@@ -152,5 +158,7 @@ function Base.intersect(s::sphere, r::ray)
 
     return (intersection(t1, s), intersection(t2, s))
 end
+
+hit(is::Vector{intersection}) = (all(map(i -> i.t < 0, is))) ? nothing : is[argmin(map(i -> (i.t < 0) ? Inf : i.t, is))]
 
 end

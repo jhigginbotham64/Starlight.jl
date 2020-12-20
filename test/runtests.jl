@@ -448,11 +448,6 @@ using Test
         =#
 
         origin = point(1, 2, 3)
-        # the book calls this "direction", but in my mind direction
-        # is a unit vector which you combine with a magnitude (speed)
-        # to get velocity, and the book uses direction mathematically
-        # like a velocity, so i'm calling it velocity. same applies to
-        # the ray struct definition.
         velocity = vector(4, 5, 6)
         r = ray(origin, velocity)
         @test r.origin == origin
@@ -479,31 +474,37 @@ using Test
         @test xs[2].t == 6.0
 
         r = ray(point(0, 1, -5), vector(0, 0, 1))
+        s = sphere()
         xs = intersect(s, r)
         @test length(xs) == 2
         @test xs[1].t == 5.0
         @test xs[2].t == 5.0
 
         r = ray(point(0, 2, -5), vector(0, 0, 1))
+        s = sphere()
         xs = intersect(s, r)
         @test length(xs) == 0
 
         r = ray(point(0, 0, 0), vector(0, 0, 1))
+        s = sphere()
         xs = intersect(s, r)
         @test length(xs) == 2
         @test xs[1].t == -1.0
         @test xs[2].t == 1.0
 
-        r= ray(point(0, 0, 5), vector(0, 0, 1))
+        r = ray(point(0, 0, 5), vector(0, 0, 1))
+        s = sphere()
         xs = intersect(s, r)
         @test length(xs) == 2
         @test xs[1].t == -6.0
         @test xs[2].t == -4.0
 
+        s = sphere()
         i = intersection(3.5, s)
         @test i.t == 3.5
         @test i.object == s
 
+        s = sphere()
         i1 = intersection(1, s)
         i2 = intersection(2, s)
         xs = (i1, i2)
@@ -512,10 +513,41 @@ using Test
         @test xs[2].t == 2
 
         r = ray(point(0, 0, -5), vector(0, 0, 1))
+        s = sphere()
         xs = intersect(s, r)
         @test length(xs) == 2
         @test xs[1].object == s
         @test xs[2].object == s
+
+        s = sphere()
+        i1 = intersection(1, s)
+        i2 = intersection(2, s)
+        xs = intersections(i2, i1)
+        i = hit(xs)
+        @test i == i1
+
+        s = sphere()
+        i1 = intersection(-1, s)
+        i2 = intersection(1, s)
+        xs = intersections(i2, i1)
+        i = hit(xs)
+        @test i == i2
+
+        s = sphere()
+        i1 = intersection(-2, s)
+        i2 = intersection(-1, s)
+        xs = intersections(i2, i1)
+        i = hit(xs)
+        @test isnothing(i)
+
+        s = sphere()
+        i1 = intersection(5, s)
+        i2 = intersection(7, s)
+        i3 = intersection(-3, s)
+        i4 = intersection(2, s)
+        xs = intersections(i1, i2, i3, i4)
+        i = hit(xs)
+        @test i == i4
     end
 
     @testset "ch 6 - light and shading" begin
