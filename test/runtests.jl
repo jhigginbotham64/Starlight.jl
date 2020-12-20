@@ -19,43 +19,43 @@ using Test
         @test y(a) == -4.2
         @test z(a) == 3.1
         @test w(a) == 1.0
-        @test a == Point4(vals)
-        @test a != Vector4(vals)
+        @test a == point(vals)
+        @test a != vector(vals)
 
         w!(a, 0.0)
         @test x(a) == 4.3
         @test y(a) == -4.2
         @test z(a) == 3.1
         @test w(a) == 0.0
-        @test a != Point4(vals)
-        @test a == Vector4(vals)
+        @test a != point(vals)
+        @test a == vector(vals)
 
-        @test Point4(4, -4, 3) == [4, -4, 3, 1]
-        @test Vector4(4, -4, 3) == [4, -4, 3, 0]
+        @test point(4, -4, 3) == [4, -4, 3, 1]
+        @test vector(4, -4, 3) == [4, -4, 3, 0]
         @test [3, -2, 5, 1] + [-2, 3, 1, 0] == [1, 1, 6, 1]
-        @test Point4(3, 2, 1) - Point4(5, 6, 7) == Vector4(-2, -4, -6)
-        @test Point4(3, 2, 1) - Vector4(5, 6, 7) == Point4(-2, -4, -6)
-        @test Vector4(3, 2, 1) - Vector4(5, 6, 7) == Vector4(-2, -4, -6)
-        @test Vector4(0, 0, 0) - Vector4(1, -2, 3) == Vector4(-1, 2, -3)
+        @test point(3, 2, 1) - point(5, 6, 7) == vector(-2, -4, -6)
+        @test point(3, 2, 1) - vector(5, 6, 7) == point(-2, -4, -6)
+        @test vector(3, 2, 1) - vector(5, 6, 7) == vector(-2, -4, -6)
+        @test vector(0, 0, 0) - vector(1, -2, 3) == vector(-1, 2, -3)
         @test -[1, -2, 3, -4] == [-1, 2, -3, 4]
         @test 3.5 * [1, -2, 3, -4] == [3.5, -7, 10.5, -14]
         @test 0.5 * [1, -2, 3, -4] == [0.5, -1, 1.5, -2]
         @test [1, -2, 3, -4] / 2 == [0.5, -1, 1.5, -2]
 
-        @test norm(Vector4(1, 0, 0)) == 1
-        @test norm(Vector4(0, 1, 0)) == 1
-        @test norm(Vector4(0, 0, 1)) == 1
-        @test norm(Vector4(1, 2, 3)) == √14 # i love julia
-        @test norm(Vector4(-1, -2, -3)) == √14
+        @test norm(vector(1, 0, 0)) == 1
+        @test norm(vector(0, 1, 0)) == 1
+        @test norm(vector(0, 0, 1)) == 1
+        @test norm(vector(1, 2, 3)) == √14 # i love julia
+        @test norm(vector(-1, -2, -3)) == √14
 
-        @test normalize(Vector4(4, 0, 0)) == Vector4(1, 0, 0)
-        @test normalize(Vector4(1, 2, 3)) == Vector4(1/√14, 2/√14, 3/√14) # i really love julia
-        @test norm(normalize(Vector4(1, 2, 3))) == 1
+        @test normalize(vector(4, 0, 0)) == vector(1, 0, 0)
+        @test normalize(vector(1, 2, 3)) == vector(1/√14, 2/√14, 3/√14) # i really love julia
+        @test norm(normalize(vector(1, 2, 3))) == 1
 
         # i really really really love julia
-        @test Vector4(1, 2, 3) ⋅ Vector4(2, 3, 4) == 20
-        @test Vector4([1, 2, 3] × [2, 3, 4]) == Vector4(-1, 2, -1)
-        @test Vector4([2, 3, 4] × [1, 2, 3]) == Vector4(1, -2, 1)
+        @test vector(1, 2, 3) ⋅ vector(2, 3, 4) == 20
+        @test vector([1, 2, 3] × [2, 3, 4]) == vector(-1, 2, -1)
+        @test vector([2, 3, 4] × [1, 2, 3]) == vector(1, -2, 1)
     end
 
     @testset "ch 2 - drawing on a canvas" begin
@@ -371,16 +371,74 @@ using Test
     @testset "ch 4 - matrix transformations" begin
 
         #=
-
+            still exercising native types. julia's syntax makes encoding
+            transformation matrices as functions really straightforward.
+            also it's great to be able to type √ and π. also i really
+            cannot get enough of ≈.
         =#
 
-        # transform = translation(5, -3, 2)
-        # p = Point4(-3, 4, 5)
-        # @test transform * p == Point4(2, 1, 7)
-        # @test inv(transform) * p == Point4(-8, 7, 3)
-        #
-        # v = Vector4(-3, 4, 5)
-        # @test transform * v == v
+        transform = translation(5, -3, 2)
+        p = point(-3, 4, 5)
+        @test transform * p == point(2, 1, 7)
+        @test inv(transform) * p == point(-8, 7, 3)
+
+        v = vector(-3, 4, 5)
+        @test transform * v == v
+
+        transform = scaling(2, 3, 4)
+        p = point(-4, 6, 8)
+        @test transform * p == point(-8, 18, 32)
+
+        v = vector(-4, 6, 8)
+        @test transform * v == vector(-8, 18, 32)
+        @test inv(transform) * v == vector(-2, 2, 2)
+
+        p = point(2, 3, 4)
+        @test reflection_x * p == point(-2, 3, 4)
+        @test reflection_y * p == point(2, -3, 4)
+        @test reflection_z * p == point(2, 3, -4)
+
+        p = point(0, 1, 0)
+        half_quarter = rotation_x(π / 4)
+        full_quarter = rotation_x(π / 2)
+        @test half_quarter * p ≈ point(0, √2/2, √2/2)
+        @test full_quarter * p ≈ point(0, 0, 1)
+        @test inv(half_quarter) * p ≈ point(0, √2/2, -√2/2)
+
+        p = point(0, 0, 1)
+        half_quarter = rotation_y(π / 4)
+        full_quarter = rotation_y(π / 2)
+        @test half_quarter * p ≈ point(√2/2, 0, √2/2)
+        @test full_quarter * p ≈ point(1, 0, 0)
+        @test inv(half_quarter) * p ≈ point(-√2/2, 0, √2/2)
+
+        p = point(0, 1, 0)
+        half_quarter = rotation_z(π / 4)
+        full_quarter = rotation_z(π / 2)
+        @test half_quarter * p ≈ point(-√2/2, √2/2, 0)
+        @test full_quarter * p ≈ point(-1, 0, 0)
+        @test inv(half_quarter) * p ≈ point(√2/2, √2/2, 0)
+
+        p = point(2, 3, 4)
+        @test shearing(1, 0, 0, 0, 0, 0) * p == point(5, 3, 4)
+        @test shearing(0, 1, 0, 0, 0, 0) * p == point(6, 3, 4)
+        @test shearing(0, 0, 1, 0, 0, 0) * p == point(2, 5, 4)
+        @test shearing(0, 0, 0, 1, 0, 0) * p == point(2, 7, 4)
+        @test shearing(0, 0, 0, 0, 1, 0) * p == point(2, 3, 6)
+        @test shearing(0, 0, 0, 0, 0, 1) * p == point(2, 3, 7)
+
+        p = point(1, 0, 1)
+        A = rotation_x(π / 2)
+        B = scaling(5, 5, 5)
+        C = translation(10, 5, 7)
+        p2 = A * p
+        p3 = B * p2
+        p4 = C * p3
+        T = C * B * A
+        @test p2 ≈ point(1, -1, 0)
+        @test p3 ≈ point(5, -5, 0)
+        @test p4 ≈ point(15, 0, 7)
+        @test T * p ≈ point(15, 0, 7)
     end
 
     @testset "ch 5 - ray-sphere intersections" begin

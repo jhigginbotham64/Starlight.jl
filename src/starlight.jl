@@ -11,17 +11,18 @@ SDL2 = SimpleDirectMediaLayer
 
 export SDL2
 export fitn
-export F, VectorF, Point4, Vector4
+export F, VectorF, point, vector
 export Canvas
 export pixel, pixel!
 export x, x!, y, y!, z, z!, w, w!, height, width
 export pixels, flat
 export hadamard
 export submatrix, minor, cofactor, invertible
+export translation, scaling, reflection_x, reflection_y, reflection_z, rotation_x, rotation_y, rotation_z, shearing
 
 function fitn(vec = [], n::Int = 3)
     """
-        fit Vector4 to n elements, i.e. truncate or pad.
+        fit vector to n elements, i.e. truncate or pad.
         defaults to n = 3 because that's my use case.
     """
     if length(vec) == 0
@@ -31,15 +32,15 @@ function fitn(vec = [], n::Int = 3)
     end
 end
 
-# Point4 and Vector4 are just length-4 arrays with particular valuesin the last index
+# point and vector are just length-4 arrays with particular valuesin the last index
 
-Point4(x, y, z) = Point4([x, y, z])
-function Point4(coords = [])
+point(x, y, z) = point([x, y, z])
+function point(coords = [])
     return vcat(fitn(coords), [AbstractFloat(1)])
 end
 
-Vector4(x, y, z) = Vector4([x, y, z])
-function Vector4(coords = [])
+vector(x, y, z) = vector([x, y, z])
+function vector(coords = [])
     return vcat(fitn(coords), [AbstractFloat(0)])
 end
 
@@ -95,5 +96,51 @@ end
 minor(mat, r::Int, c::Int) = det(submatrix(mat, r, c))
 cofactor(mat, r::Int, c::Int) = minor(mat, r, c) * (-1)^(r+c)
 invertible(mat) = det(mat) != 0
+
+translation(x, y, z) = [
+    1 0 0 x
+    0 1 0 y
+    0 0 1 z
+    0 0 0 1
+]
+
+scaling(x, y, z) = [
+    x 0 0 0
+    0 y 0 0
+    0 0 z 0
+    0 0 0 1
+]
+
+reflection_x = scaling(-1, 1, 1)
+reflection_y = scaling(1, -1, 1)
+reflection_z = scaling(1, 1, -1)
+
+rotation_x(r) = [
+    1 0 0 0
+    0 cos(r) -sin(r) 0
+    0 sin(r) cos(r) 0
+    0 0 0 1
+]
+
+rotation_y(r) = [
+    cos(r) 0 sin(r) 0
+    0 1 0 0
+    -sin(r) 0 cos(r) 0
+    0 0 0 1
+]
+
+rotation_z(r) = [
+    cos(r) -sin(r) 0 0
+    sin(r) cos(r) 0 0
+    0 0 1 0
+    0 0 0 1
+]
+
+shearing(xy, xz, yx, yz, zx, zy) = [
+    1 xy xz 0
+    yx 1 yz 0
+    zx zy 1 0
+    0 0 0 1
+]
 
 end
