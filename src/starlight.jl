@@ -128,7 +128,6 @@ mutable struct sphere
     sphere(origin = point(0, 0, 0)) = new(origin)
 end
 
-
 mutable struct intersection
     t::Number
     object
