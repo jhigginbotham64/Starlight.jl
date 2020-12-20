@@ -443,6 +443,79 @@ using Test
 
     @testset "ch 5 - ray-sphere intersections" begin
 
+        #=
+
+        =#
+
+        origin = point(1, 2, 3)
+        # the book calls this "direction", but in my mind direction
+        # is a unit vector which you combine with a magnitude (speed)
+        # to get velocity, and the book uses direction mathematically
+        # like a velocity, so i'm calling it velocity. same applies to
+        # the ray struct definition.
+        velocity = vector(4, 5, 6)
+        r = ray(origin, velocity)
+        @test r.origin == origin
+        @test r.velocity == velocity
+
+        r = ray(point(2, 3, 4), vector(1, 0, 0))
+        @test position(r, 0) == point(2, 3, 4)
+        @test position(r, 1) == point(3, 3, 4)
+        @test position(r, -1) == point(1, 3, 4)
+        @test position(r, 2.5) == point(4.5, 3, 4)
+
+        # test again with floats because i'm still learning julia's type system
+        r = ray(point(2.0, 3.0, 4.0), vector(1.0, 0.0, 0.0))
+        @test position(r, 0.0) == point(2.0, 3.0, 4.0)
+        @test position(r, 1.0) == point(3.0, 3.0, 4.0)
+        @test position(r, -1.0) == point(1.0, 3.0, 4.0)
+        @test position(r, 2.5) == point(4.5, 3.0, 4.0)
+
+        r = ray(point(0, 0, -5), vector(0, 0, 1))
+        s = sphere() # default is unit sphere centered at origin
+        xs = intersect(s, r)
+        @test length(xs) == 2
+        @test xs[1].t == 4.0
+        @test xs[2].t == 6.0
+
+        r = ray(point(0, 1, -5), vector(0, 0, 1))
+        xs = intersect(s, r)
+        @test length(xs) == 2
+        @test xs[1].t == 5.0
+        @test xs[2].t == 5.0
+
+        r = ray(point(0, 2, -5), vector(0, 0, 1))
+        xs = intersect(s, r)
+        @test length(xs) == 0
+
+        r = ray(point(0, 0, 0), vector(0, 0, 1))
+        xs = intersect(s, r)
+        @test length(xs) == 2
+        @test xs[1].t == -1.0
+        @test xs[2].t == 1.0
+
+        r= ray(point(0, 0, 5), vector(0, 0, 1))
+        xs = intersect(s, r)
+        @test length(xs) == 2
+        @test xs[1].t == -6.0
+        @test xs[2].t == -4.0
+
+        i = intersection(3.5, s)
+        @test i.t == 3.5
+        @test i.object == s
+
+        i1 = intersection(1, s)
+        i2 = intersection(2, s)
+        xs = (i1, i2)
+        @test length(xs) == 2
+        @test xs[1].t == 1
+        @test xs[2].t == 2
+
+        r = ray(point(0, 0, -5), vector(0, 0, 1))
+        xs = intersect(s, r)
+        @test length(xs) == 2
+        @test xs[1].object == s
+        @test xs[2].object == s
     end
 
     @testset "ch 6 - light and shading" begin

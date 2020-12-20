@@ -15,6 +15,7 @@ export canvas, pixel, pixel!, pixels, flat
 export hadamard
 export submatrix, minor, cofactor, invertible
 export translation, scaling, reflection_x, reflection_y, reflection_z, rotation_x, rotation_y, rotation_z, shearing
+export ray, sphere, intersection
 
 # point and vector are just length-4 arrays with particular valuesin the last index
 
@@ -116,5 +117,41 @@ shearing(xy, xz, yx, yz, zx, zy) = [
     zx zy 1 0
     0 0 0 1
 ]
+
+mutable struct ray
+    origin::Vector{<:Number}
+    velocity::Vector{<:Number}
+end
+
+mutable struct sphere
+    origin::Vector{<:Number}
+    sphere(origin = point(0, 0, 0)) = new(origin)
+end
+
+
+mutable struct intersection
+    t::Number
+    object
+end
+
+Base.position(r::ray, t::Number) = r.origin + r.velocity * t
+
+function Base.intersect(s::sphere, r::ray)
+    sphere_to_ray = r.origin - point(0, 0, 0) # all spheres centered at origin for now
+    a = r.velocity ⋅ r.velocity
+    b = 2 * r.velocity ⋅ sphere_to_ray
+    c = sphere_to_ray ⋅ sphere_to_ray - 1
+
+    discriminant = b^2 - 4 * a * c
+
+    if discriminant < 0
+        return ()
+    end
+
+    t1 = (-b - √discriminant) / 2a
+    t2 = (-b + √discriminant) / 2a
+
+    return (intersection(t1, s), intersection(t2, s))
+end
 
 end
