@@ -103,6 +103,11 @@ using Test
     end
 
     @testset "ch 3 - matrices" begin
+
+        #=
+            mostly learning and exercising julia's native types again.
+        =#
+        
         M = [
             1 2 3 4
             5.5 6.5 7.5 8.5
