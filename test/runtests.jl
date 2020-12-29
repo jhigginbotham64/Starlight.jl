@@ -444,7 +444,8 @@ using Test
     @testset "ch 5 - ray-sphere intersections" begin
 
         #=
-
+            first time drawing and using transforms. exciting. really
+            nothing too fancy outside the intersect function tho.
         =#
 
         origin = point(1, 2, 3)
