@@ -1,23 +1,25 @@
 using starlight
 
 HEIGHT = WIDTH = 100
-
-ray_origin = point(0, 0, -5)
-wz = 10 # wall z
-wall_size = 7.0
-half = wall_size / 2
-pixel_size = wall_size / WIDTH # can't accomodate stretching yet?
-
 canv = canvas(WIDTH, HEIGHT)
-c = colorant"red"
-s = sphere()
 
+# because a lot of these variable names are also used by unit tests
 let
+    c = colorant"red"
+    s = sphere()
+
+    ray_origin = point(0, 0, -5)
+    wz = 10 # wall z
+    wall_size = 7.0
+    half = wall_size / 2
+    pixel_size = wall_size / WIDTH # can't accomodate stretching yet?
+
     for y = 1:HEIGHT
         wy = half - pixel_size * y
         for x = 1:WIDTH
             wx = -half + pixel_size * x
             pos = point(wx, wy, wz)
+            # because
             local r = ray(ray_origin, normalize(pos - ray_origin))
             local xs = intersect(s, r)
             if !isnothing(hit(xs))
