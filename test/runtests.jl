@@ -548,6 +548,41 @@ using Test
         xs = intersections(i1, i2, i3, i4)
         i = hit(xs)
         @test i == i4
+
+        r = ray(point(1, 2, 3), vector(0, 1, 0))
+        m = translation(3, 4, 5)
+        r2 = transform(r, m)
+        @test r2.origin == point(4, 6, 8) # may need to adjust something since point is a 4-vector
+        @test r2.velocity == vector(0, 1, 0) # ditto for vector
+
+        r = ray(point(1, 2, 3), vector(0, 1, 0))
+        m = scaling(2, 3, 4)
+        r2 = transform(r, m)
+        @test r2.origin == point(2, 6, 12)
+        @test r2.velocity == vector(0, 3, 0)
+
+        s = sphere()
+        @test s.transform == I
+
+        s = sphere()
+        t = translation(2, 3, 4)
+        transform!(s, t)
+        @test s.transform == t
+
+        r = ray(point(0, 0, -5), vector(0, 0, 1))
+        s = sphere()
+        transform!(s, scaling(2, 2, 2))
+        xs = intersect(s, r)
+        @test length(xs) == 2
+        @test xs[1].t == 3
+        @test xs[2].t == 7
+
+        r = ray(point(0, 0, -5), vector(0, 0, 1))
+        s = sphere()
+        transform!(s, translation(5, 0, 0))
+        xs = intersect(s, r)
+        @test length(xs) == 0
+
     end
 
     @testset "ch 6 - light and shading" begin

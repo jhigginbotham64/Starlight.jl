@@ -15,7 +15,7 @@ export canvas, pixel, pixel!, pixels, flat
 export hadamard
 export submatrix, minor, cofactor, invertible
 export translation, scaling, reflection_x, reflection_y, reflection_z, rotation_x, rotation_y, rotation_z, shearing
-export ray, sphere, intersect, intersection, intersections, hit
+export ray, sphere, intersect, intersection, intersections, hit, transform, transform!
 
 # point and vector are just length-4 arrays with particular valuesin the last index
 
@@ -129,7 +129,8 @@ end
 
 mutable struct sphere
     origin::Vector{<:Number}
-    sphere(origin = point(0, 0, 0)) = new(origin)
+    transform::Array{<:Number, 2}
+    sphere(origin = point(0, 0, 0), transform = Array{Float64, 2}(I(4))) = new(origin, transform)
 end
 
 mutable struct intersection
@@ -138,10 +139,12 @@ mutable struct intersection
 end
 
 intersections(is::intersection...) = [is...]
-
+transform(r::ray, mat::Array{<:Number, 2}) = ray(mat * r.origin, mat * r.velocity)
+transform!(s::sphere, mat::Array{<:Number, 2}) = s.transform = mat
 Base.position(r::ray, t::Number) = r.origin + r.velocity * t
 
-function Base.intersect(s::sphere, r::ray)
+function Base.intersect(s::sphere, _r::ray)
+    r = transform(_r, inv(s.transform))
     sphere_to_ray = r.origin - point(0, 0, 0) # all spheres centered at origin for now
     a = r.velocity ⋅ r.velocity
     b = 2 * r.velocity ⋅ sphere_to_ray
@@ -150,13 +153,13 @@ function Base.intersect(s::sphere, r::ray)
     discriminant = b^2 - 4 * a * c
 
     if discriminant < 0
-        return ()
+        return Vector{intersection}([])
     end
 
     t1 = (-b - √discriminant) / 2a
     t2 = (-b + √discriminant) / 2a
 
-    return (intersection(t1, s), intersection(t2, s))
+    return intersections(intersection(t1, s), intersection(t2, s))
 end
 
 hit(is::Vector{intersection}) = (all(map(i -> i.t < 0, is))) ? nothing : is[argmin(map(i -> (i.t < 0) ? Inf : i.t, is))]
