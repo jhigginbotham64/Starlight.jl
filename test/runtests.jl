@@ -588,7 +588,11 @@ using Test
     @testset "ch 6 - light and shading" begin
 
         #=
-
+            first implementations of materials and normal calculations,
+            leading up the first version of the all-important lighting
+            function. also made a helper to round colors by component
+            so as to implement unit tests from the book more easily.
+            also first 3D draw.
         =#
 
         s = sphere()

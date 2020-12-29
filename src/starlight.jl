@@ -260,7 +260,7 @@ function lighting(m, l, p, eyev, normalv)
     return ambient + diffuse + specular
 end
 
-round_color(c::Color, ndigits::Int) = RGB(round.([red(c), green(c), blue(c)], digits=ndigits)...)
+round_color(c::Color, ndigits::Int) = mapc(chan -> round(chan, digits=ndigits), c)
 
 #=
     chapter 7
