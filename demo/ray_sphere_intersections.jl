@@ -5,8 +5,8 @@ canv = canvas(WIDTH, HEIGHT)
 
 # because a lot of these variable names are also used by unit tests
 let
-    c = colorant"red"
-    s = sphere()
+    local c = colorant"red"
+    local s = sphere()
 
     ray_origin = point(0, 0, -5)
     wz = 10 # wall z
@@ -18,7 +18,7 @@ let
         wy = half - pixel_size * y
         for x = 1:WIDTH
             wx = -half + pixel_size * x
-            pos = point(wx, wy, wz)
+            local pos = point(wx, wy, wz)
             # because
             local r = ray(ray_origin, normalize(pos - ray_origin))
             local xs = intersect(s, r)
