@@ -8,14 +8,29 @@ using Reexport
 @reexport using SimpleDirectMediaLayer
 
 SDL2 = SimpleDirectMediaLayer
-
 export SDL2
+
+# chapter 1
 export point, vector, x, x!, y, y!, z, z!, w, w!
-export canvas, pixel, pixel!, pixels, flat
-export hadamard
+
+# chapter 2
+export canvas, pixel, pixel!, pixels, flat, hadamard
+
+# chapter 3
 export submatrix, minor, cofactor, invertible
+
+# chapter 4
 export translation, scaling, reflection_x, reflection_y, reflection_z, rotation_x, rotation_y, rotation_z, shearing
+
+# chapter 5
 export ray, sphere, intersect, intersection, intersections, hit, transform, transform!
+
+# chapter 6
+export normal_at, reflect, point_light, material, material!, lighting, round_color
+
+#=
+    chapter 1
+=#
 
 # point and vector are just length-4 arrays with particular valuesin the last index
 
@@ -50,6 +65,10 @@ y!(vec, val) = SetIndexOrWarn!(vec, 2, :y, val)
 z!(vec, val) = SetIndexOrWarn!(vec, 3, :z, val)
 w!(vec, val) = SetIndexOrWarn!(vec, 4, :w, val)
 
+#=
+    chapter 2
+=#
+
 # height is number of rows, which in julia is the first dimension.
 # width is number of columns, which in julia is the second dimension.
 canvas(w::Int, h::Int, c = colorant"black") = fill(c, (h, w))
@@ -61,6 +80,10 @@ flat(mat) = reshape(mat, (prod(size(mat)), 1))
 # while waiting for long-term solution from https://github.com/JuliaGraphics/ColorVectorSpace.jl/issues/126
 hadamard(c1, c2) = mapc(*, c1, c2)
 
+#=
+    chapter 3
+=#
+
 function submatrix(mat, r::Int, c::Int)
     h = height(mat)
     w = width(mat)
@@ -71,6 +94,10 @@ end
 minor(mat, r::Int, c::Int) = det(submatrix(mat, r, c))
 cofactor(mat, r::Int, c::Int) = minor(mat, r, c) * (-1)^(r+c)
 invertible(mat) = det(mat) != 0
+
+#=
+    chapter 4
+=#
 
 translation(x, y, z) = [
     1 0 0 x
@@ -118,6 +145,10 @@ shearing(xy, xz, yx, yz, zx, zy) = [
     0 0 0 1
 ]
 
+#=
+    chapter 5
+=#
+
 mutable struct ray
     origin::Vector{<:Number}
     # the book calls this "direction", but in my mind direction
@@ -127,10 +158,21 @@ mutable struct ray
     velocity::Vector{<:Number}
 end
 
+# material added in chapter 6, put here for compilation
+mutable struct material
+    color::Color
+    ambient::AbstractFloat
+    diffuse::AbstractFloat
+    specular::AbstractFloat
+    shininess::AbstractFloat
+    material(color = colorant"white", ambient = 0.1, diffuse = 0.9, specular = 0.9, shininess = 200.0) = new(color, ambient, diffuse, specular, shininess)
+end
+
 mutable struct sphere
     origin::Vector{<:Number}
     transform::Array{<:Number, 2}
-    sphere(origin = point(0, 0, 0), transform = Array{Float64, 2}(I(4))) = new(origin, transform)
+    material::material
+    sphere(origin = point(0, 0, 0), transform = Array{Float64, 2}(I(4)), material = material()) = new(origin, transform, material)
 end
 
 mutable struct intersection
@@ -141,9 +183,12 @@ end
 intersections(is::intersection...) = [is...]
 transform(r::ray, mat::Array{<:Number, 2}) = ray(mat * r.origin, mat * r.velocity)
 transform!(s::sphere, mat::Array{<:Number, 2}) = s.transform = mat
-Base.position(r::ray, t::Number) = r.origin + r.velocity * t
 
-function Base.intersect(s::sphere, _r::ray)
+import Base.position
+position(r::ray, t::Number) = r.origin + r.velocity * t
+
+import Base.intersect
+function intersect(s::sphere, _r::ray)
     r = transform(_r, inv(s.transform))
     sphere_to_ray = r.origin - point(0, 0, 0) # all spheres centered at origin for now
     a = r.velocity ⋅ r.velocity
@@ -163,5 +208,118 @@ function Base.intersect(s::sphere, _r::ray)
 end
 
 hit(is::Vector{intersection}) = (all(map(i -> i.t < 0, is))) ? nothing : is[argmin(map(i -> (i.t < 0) ? Inf : i.t, is))]
+
+#=
+    chapter 6
+=#
+
+function normal_at(s::sphere, p::Vector{<:Number})
+    op = inv(s.transform) * p
+    on = op - point(0, 0, 0)
+    wn = inv(s.transform)' * on
+    w!(wn, 0)
+    return normalize(wn)
+end
+
+reflect(v::Vector{<:Number}, n::Vector{<:Number}) = v - (n * (2 * (v ⋅ n)))
+
+mutable struct point_light
+    position::Vector{<:Number}
+    intensity::Color
+end
+
+material!(s::sphere, m::material) = s.material = m
+
+import Base.==
+function ==(m1::material, m2::material)
+   return (
+        m1.color == m2.color &&
+        m1.ambient == m2.ambient &&
+        m1.diffuse == m2.diffuse &&
+        m1.specular == m2.specular &&
+        m1.shininess == m2.shininess
+    )
+end
+
+function lighting(m, l, p, eyev, normalv)
+    effective_color = hadamard(m.color, l.intensity)
+    lightv = normalize(l.position - p)
+    ambient = effective_color * m.ambient
+    light_dot_normal = lightv ⋅ normalv
+    diffuse = colorant"black"
+    specular = colorant"black"
+    if light_dot_normal >= 0
+        diffuse = effective_color * m.diffuse * light_dot_normal
+        reflectv = reflect(-lightv, normalv)
+        reflect_dot_eye = reflectv ⋅ eyev
+        if reflect_dot_eye > 0
+            factor = reflect_dot_eye ^ m.shininess
+            specular = l.intensity * m.specular * factor
+        end
+    end
+    return ambient + diffuse + specular
+end
+
+round_color(c::Color, ndigits::Int) = RGB(round.([red(c), green(c), blue(c)], digits=ndigits)...)
+
+#=
+    chapter 7
+=#
+
+
+
+#=
+    chapter 8
+=#
+
+
+
+#=
+    chapter 9
+=#
+
+
+
+#=
+    chapter 10
+=#
+
+
+
+#=
+    chapter 11
+=#
+
+
+
+#=
+    chapter 12
+=#
+
+
+
+#=
+    chapter 13
+=#
+
+
+
+#=
+    chapter 14
+=#
+
+
+
+#=
+    chapter 15
+=#
+
+
+
+#=
+    chapter 16
+=#
+
+
 
 end

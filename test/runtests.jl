@@ -583,11 +583,113 @@ using Test
         transform!(s, translation(5, 0, 0))
         xs = intersect(s, r)
         @test length(xs) == 0
-
     end
 
     @testset "ch 6 - light and shading" begin
 
+        #=
+
+        =#
+
+        s = sphere()
+        n = normal_at(s, point(1, 0, 0))
+        @test n == vector(1, 0, 0)
+
+        s = sphere()
+        n = normal_at(s, point(0, 1, 0))
+        @test n == vector(0, 1, 0)
+
+        s = sphere()
+        n = normal_at(s, point(0, 0, 1))
+        @test n == vector(0, 0, 1)
+
+        s = sphere()
+        n = normal_at(s, point(√3/3, √3/3, √3/3))
+        @test n == vector(√3/3, √3/3, √3/3)
+        @test n == normalize(n)
+
+        s = sphere()
+        transform!(s, translation(0, 1, 0))
+        n = normal_at(s, point(0, 1.70711, -0.70711))
+        @test round.(n, digits=5) == vector(0, 0.70711, -0.70711)
+
+        s = sphere()
+        m = scaling(1, 0.5, 1) * rotation_z(π/5)
+        transform!(s, m)
+        n = normal_at(s, point(0, √2/2, -√2/2))
+        @test round.(n, digits=5) == vector(0, 0.97014, -0.24254)
+
+        v = vector(1, -1, 0)
+        n = vector(0, 1, 0)
+        r = reflect(v, n)
+        @test r == vector(1, 1, 0)
+
+        v = vector(0, -1, 0)
+        n = vector(√2/2, √2/2, 0)
+        r = reflect(v, n)
+        @test r ≈ vector(1, 0, 0)
+
+        intensity = colorant"white"
+        pos = point(0, 0, 0)
+        light = point_light(pos, intensity)
+        @test light.position == pos
+        @test light.intensity == intensity
+
+        m = material()
+        @test m.color == colorant"white"
+        @test m.ambient == 0.1
+        @test m.diffuse == 0.9
+        @test m.specular == 0.9
+        @test m.shininess == 200.0
+
+        s = sphere()
+        @test s.material == material()
+
+        s = sphere()
+        m = material()
+        m.ambient = 1
+        material!(s, m)
+        @test s.material == m
+
+        m = material()
+        pos = point(0, 0, 0)
+        eyev = vector(0, 0, -1)
+        normalv = vector(0, 0, -1)
+        light = point_light(point(0, 0, -10), colorant"white")
+        result = lighting(m, light, pos, eyev, normalv)
+        @test result == RGB(1.9, 1.9, 1.9)
+
+        m = material()
+        pos = point(0, 0, 0)
+        eyev = vector(0, √2/2, -√2/2)
+        normalv = vector(0, 0, -1)
+        light = point_light(point(0, 0, -10), colorant"white")
+        result = lighting(m, light, pos, eyev, normalv)
+        @test result == colorant"white"
+
+        m = material()
+        pos = point(0, 0, 0)
+        eyev == vector(0, 0, -1)
+        normalv == vector(0, 0, -1)
+        light = point_light(point(0, 10, -10), colorant"white")
+        result = lighting(m, light, pos, eyev, normalv)
+        @test round_color(result, 4) == RGB(0.7364, 0.7364, 0.7364)
+
+        m = material()
+        pos = point(0, 0, 0)
+        eyev = vector(0, -√2/2, -√2/2)
+        normalv = vector(0, 0, -1)
+        light = point_light(point(0, 10, -10), colorant"white")
+        result = lighting(m, light, pos, eyev, normalv)
+        @test round_color(result, 4) == RGB(1.6364, 1.6364, 1.6364)
+
+        m = material()
+        pos = point(0, 0, 0)
+        eyev = vector(0, 0, -1)
+        normalv = vector(0, 0, -1)
+        light = point_light(point(0, 0, 10), colorant"white")
+        result = lighting(m, light, pos, eyev, normalv)
+        @test result == RGB(0.1, 0.1, 0.1)
     end
 
     @testset "ch 7 - making a scene" begin
