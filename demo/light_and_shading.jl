@@ -1,42 +1,39 @@
 using starlight
 
-HEIGHT = WIDTH = 100
-canv = canvas(WIDTH, HEIGHT)
+function draw_sphere(height=100, width=100, bg_color=colorant"black", light_color=colorant"white", mat_color=colorant"purple")
+    canv = canvas(width, height, bg_color)
 
-# because a lot of these variable names are also used by unit tests
-let
-    local m = material()
-    m.color = RGB(1, 0.2, 1)
-    local s = sphere()
+    m = material()
+    m.color = mat_color
+    s = sphere()
     material!(s, m)
-    local l = point_light(point(-10, 10, -10), colorant"white")
+    l = point_light(point(-10, 10, -10), light_color)
 
     ray_origin = point(0, 0, -5)
     wz = 10 # wall z
     wall_size = 7.0
     half = wall_size / 2
-    pixel_size = wall_size / WIDTH # can't accomodate stretching yet?
+    pixel_size = wall_size / width # can't accomodate stretching yet?
 
-    for y = 1:HEIGHT
+    for y = 1:height
         wy = half - pixel_size * y
-        for x = 1:WIDTH
+        for x = 1:width
             wx = -half + pixel_size * x
-            local pos = point(wx, wy, wz)
-            # because
-            local r = ray(ray_origin, normalize(pos - ray_origin))
-            local xs = intersect(s, r)
-            local h = hit(xs)
+            pos = point(wx, wy, wz)
+            r = ray(ray_origin, normalize(pos - ray_origin))
+            xs = intersect(s, r)
+            h = hit(xs)
             if !isnothing(h)
-                local pos2 = position(r, h.t)
-                local n = normal_at(h.object, pos2)
-                local eye = -r.velocity
-                local c = lighting(h.object.material, l, pos2, eye, n)
+                pos2 = position(r, h.t)
+                n = normal_at(h.object, pos2)
+                eye = -r.velocity
+                c = lighting(h.object.material, l, pos2, eye, n)
                 pixel!(canv, x, y, mapc(chan -> clamp(chan, 0, 1), c))
             end
         end
     end
+
+    return canv
 end
 
-# if you're running this as a script and want to see the
-# result in a plot, just use canv
-canv
+canv = draw_sphere()
