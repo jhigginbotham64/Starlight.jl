@@ -697,7 +697,11 @@ using Test
     end
 
     @testset "ch 7 - making a scene" begin
+        #=
 
+        =#
+
+        
     end
 
     @testset "ch 8 - shadows" begin
