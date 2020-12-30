@@ -698,7 +698,10 @@ using Test
 
     @testset "ch 7 - making a scene" begin
         #=
-
+            first 3d render. also first time numerical issues
+            presented challenges i felt like i had to avoid
+            rather than solve. also the first time one of those
+            challenges appeared to be a typo in the book.
         =#
 
         wrld = world()
