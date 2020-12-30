@@ -10,6 +10,9 @@ using Reexport
 SDL2 = SimpleDirectMediaLayer
 export SDL2
 
+# demo
+export rsi_demo, light_demo, scene_demo
+
 # chapter 1
 export point, vector, x, x!, y, y!, z, z!, w, w!
 
@@ -27,6 +30,9 @@ export ray, sphere, intersect, intersection, intersections, hit, transform, tran
 
 # chapter 6
 export normal_at, reflect, point_light, material, material!, lighting, round_color
+
+# chapter 7
+export world, default_world, prepare_computations, shade_hit, color_at, view_transform, camera, ray_for_pixel, render
 
 #=
     chapter 1
@@ -158,6 +164,9 @@ mutable struct ray
     velocity::Vector{<:Number}
 end
 
+import Base.==
+==(r1::ray, r2::ray) = r1.origin == r2.origin && r1.velocity == r2.velocity
+
 # material added in chapter 6, put here for compilation
 mutable struct material
     color::Color
@@ -168,6 +177,16 @@ mutable struct material
     material(color = colorant"white", ambient = 0.1, diffuse = 0.9, specular = 0.9, shininess = 200.0) = new(color, ambient, diffuse, specular, shininess)
 end
 
+function ==(m1::material, m2::material)
+   return (
+        m1.color == m2.color &&
+        m1.ambient == m2.ambient &&
+        m1.diffuse == m2.diffuse &&
+        m1.specular == m2.specular &&
+        m1.shininess == m2.shininess
+    )
+end
+
 mutable struct sphere
     origin::Vector{<:Number}
     transform::Array{<:Number, 2}
@@ -175,10 +194,23 @@ mutable struct sphere
     sphere(origin = point(0, 0, 0), transform = Array{Float64, 2}(I(4)), material = material()) = new(origin, transform, material)
 end
 
+function ==(s1::sphere, s2::sphere)
+    return (
+        s1.origin == s2.origin &&
+        s1.transform == s2.transform &&
+        s1.material == s2.material
+    )
+end
+
+material!(s::sphere, m::material) = s.material = m
+
 mutable struct intersection
     t::Number
     object
 end
+
+==(i1::intersection, i2::intersection) = i1.t == i2.t && i1.object == i2.object
+
 
 intersections(is::intersection...) = [is...]
 transform(r::ray, mat::Array{<:Number, 2}) = ray(mat * r.origin, mat * r.velocity)
@@ -209,7 +241,7 @@ end
 
 hit(is::Vector{intersection}) = (all(map(i -> i.t < 0, is))) ? nothing : is[argmin(map(i -> (i.t < 0) ? Inf : i.t, is))]
 
-function draw_circle(height=100, width=100, bg_color=colorant"black", c=colorant"red")
+function rsi_demo(height=100, width=100, bg_color=colorant"black", c=colorant"red")
     canv = canvas(width, height)
 
     s = sphere()
@@ -256,18 +288,7 @@ mutable struct point_light
     intensity::Color
 end
 
-material!(s::sphere, m::material) = s.material = m
-
-import Base.==
-function ==(m1::material, m2::material)
-   return (
-        m1.color == m2.color &&
-        m1.ambient == m2.ambient &&
-        m1.diffuse == m2.diffuse &&
-        m1.specular == m2.specular &&
-        m1.shininess == m2.shininess
-    )
-end
+==(p1::point_light, p2::point_light) = p1.position == p2.position && p1.intensity == p2.intensity
 
 function lighting(m, l, p, eyev, normalv)
     effective_color = hadamard(m.color, l.intensity)
@@ -288,9 +309,9 @@ function lighting(m, l, p, eyev, normalv)
     return ambient + diffuse + specular
 end
 
-round_color(c::Color, ndigits::Int) = mapc(chan -> round(chan, digits=ndigits), c)
+round_color(c::Color, ndigits::Int = 5) = mapc(chan -> round(chan, digits=ndigits), c)
 
-function draw_sphere(height=100, width=100, bg_color=colorant"black", light_color=colorant"white", mat_color=colorant"purple")
+function light_demo(height=100, width=100, bg_color=colorant"black", light_color=colorant"white", mat_color=colorant"purple")
     canv = canvas(width, height, bg_color)
 
     m = material()
@@ -330,7 +351,175 @@ end
     chapter 7
 =#
 
+mutable struct world
+    lights
+    objects
+    world(lights = [], objects = []) = new(lights, objects)
+end
 
+==(w1::world, w2::world) = w1.lights == w2.lights && w1.objects == w2.objects
+
+function default_world()
+    p = point_light(point(-10, 10, -10), colorant"white")
+    m = material()
+    m.color = RGB(0.8, 0.1, 0.6)
+    m.diffuse = 0.7
+    m.specular = 0.2
+    s1 = sphere()
+    material!(s1, m)
+    t = scaling(0.5, 0.5, 0.5)
+    s2 = sphere()
+    transform!(s2, t)
+    wrld = world()
+    wrld.lights = [p]
+    wrld.objects = [s1, s2]
+    return wrld
+end
+
+intersect(w::world, r::ray) = sort([i for o in w.objects for i in intersect(o, r)], by=(i)->i.t)
+
+mutable struct computations
+    t::Number
+    object
+    point::Vector{<:Number}
+    eyev::Vector{<:Number}
+    normalv::Vector{<:Number}
+    inside::Bool
+end
+
+function prepare_computations(i::intersection, r::ray)
+    t = i.t
+    obj = i.object
+    p = position(r, t)
+    eyev = -r.velocity
+    normalv = normal_at(obj, p)
+    inside = false
+    if normalv ⋅ eyev < 0
+        normalv = -normalv
+        inside = true
+    end
+    return computations(t, obj, p, eyev, normalv, inside)
+end
+
+shade_hit(w::world, c::computations) = sum([lighting(c.object.material, l, c.point, c.eyev, c.normalv) for l in w.lights])
+
+function color_at(w::world, r::ray)
+    h = hit(intersect(w, r))
+    c = colorant"black"
+    if !isnothing(h)
+        c = shade_hit(w, prepare_computations(h, r))
+    end
+    return c
+end
+
+function view_transform(from, to, up)
+    forward = normalize(to - from)
+    upn = normalize(up)
+    left = vector((forward[1:3] × upn[1:3])...)
+    true_up = vector((left[1:3] × forward[1:3])...)
+    ornt = [
+        x(left) y(left) z(left) 0
+        x(true_up) y(true_up) z(true_up) 0
+        -x(forward) -y(forward) -z(forward) 0
+        0 0 0 1
+    ]
+    return ornt * translation(-x(from), -y(from), -z(from))
+end
+
+mutable struct camera
+    hsize::Number
+    vsize::Number
+    fov::Number
+    transform::Array{<:Number, 2}
+    half_view::Number
+    aspect::Number
+    half_width::Number
+    half_height::Number
+    pixel_size::Number
+    function camera(hsize = 160, vsize = 120, fov = π / 2)
+        half_view = tan(fov / 2)
+        aspect = hsize / vsize
+        half_width = half_view
+        half_height = half_view
+        if aspect >= 1
+            half_height /= aspect
+        else
+            half_width *= aspect
+        end
+        pixel_size = (half_width * 2) / hsize
+        return new(hsize, vsize, fov, Array{Int}(I(4)), half_view, aspect, half_width, half_height, pixel_size)
+    end
+end
+
+transform!(c::camera, mat::Array{<:Number, 2}) = c.transform = mat
+
+function ray_for_pixel(c::camera, px::Int, py::Int)
+    xoff = (px + 0.5) * c.pixel_size
+    yoff = (py + 0.5) * c.pixel_size
+    wx = c.half_width - xoff
+    wy = c.half_height - yoff
+    pix = inv(c.transform) * point(wx, wy, -1)
+    orgn = inv(c.transform) * point(0, 0, 0)
+    dir = normalize(pix - orgn)
+    return ray(orgn, dir)
+end
+
+function render(c::camera, w::world)
+    img = canvas(c.hsize, c.vsize)
+    for y=1:c.vsize
+        for x=1:c.hsize
+            r = ray_for_pixel(c, x, y)
+            col = color_at(w, r)
+            # idk why i have to swap x and y here, there's probably
+            # a really good mathematical reason for it and i can probably
+            # fix it...but i don't really want to right now...
+            pixel!(img, y, x, mapc(chan -> clamp(chan, 0, 1), col))
+        end
+    end
+    return img
+end
+
+function scene_demo()
+    floor = sphere()
+    transform!(floor, scaling(10, 0.01, 10))
+    floor.material.color = RGB(1, 0.9, 0.9)
+    floor.material.specular = 0
+
+    left_wall = sphere()
+    transform!(left_wall, translation(0, 0, 5) * rotation_y(-π/4) * rotation_x(π/2) * scaling(10, 0.01, 10))
+    material!(left_wall, floor.material)
+
+    right_wall = sphere()
+    transform!(right_wall, translation(0, 0, 5) * rotation_y(π/4) * rotation_x(π/2) * scaling(10, 0.01, 10))
+    material!(right_wall, floor.material)
+
+    middle = sphere()
+    transform!(middle, translation(-0.5, 1, 0.5))
+    middle.material.color = RGB(0.1, 1, 0.5)
+    middle.material.diffuse = 0.7
+    middle.material.specular = 0.3
+
+    right = sphere()
+    transform!(right, translation(1.5, 0.5, -0.5) * scaling(0.5, 0.5, 0.5))
+    right.material.color = RGB(0.5, 1, 0.1)
+    right.material.diffuse = 0.7
+    right.material.specular = 0.3
+
+    left = sphere()
+    transform!(left, translation(-1.5, 0.33, -0.75) * scaling(0.33, 0.33, 0.33))
+    left.material.color = RGB(1, 0.8, 0.1)
+    left.material.diffuse = 0.7
+    left.material.diffuse = 0.3
+
+    wrld = world()
+    wrld.lights = [point_light(point(-10, 10, -10), colorant"white")]
+    wrld.objects = [floor, left_wall, right_wall, middle, right, left]
+
+    cam = camera(100, 50, π/3)
+    transform!(cam, view_transform(point(0, 1.5, -5), point(0, 1, 0), vector(0, 1, 0)))
+
+    return render(cam, wrld)
+end
 
 #=
     chapter 8
