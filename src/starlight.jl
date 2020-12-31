@@ -34,6 +34,9 @@ export normal_at, reflect, point_light, material, material!, lighting, round_col
 # chapter 7
 export world, default_world, prepare_computations, shade_hit, color_at, view_transform, camera, ray_for_pixel, render
 
+# chapter 8
+export is_shadowed
+
 #=
     chapter 1
 =#
@@ -290,7 +293,8 @@ end
 
 ==(p1::point_light, p2::point_light) = p1.position == p2.position && p1.intensity == p2.intensity
 
-function lighting(m, l, p, eyev, normalv)
+function lighting(m, l, p, eyev, normalv, in_shadow = false)
+    if in_shadow return m.color * m.ambient end # chapter 8
     effective_color = hadamard(m.color, l.intensity)
     lightv = normalize(l.position - p)
     ambient = effective_color * m.ambient
@@ -385,6 +389,7 @@ mutable struct computations
     eyev::Vector{<:Number}
     normalv::Vector{<:Number}
     inside::Bool
+    over_point::Vector{<:Number} # chapter 8
 end
 
 function prepare_computations(i::intersection, r::ray)
@@ -398,10 +403,48 @@ function prepare_computations(i::intersection, r::ray)
         normalv = -normalv
         inside = true
     end
-    return computations(t, obj, p, eyev, normalv, inside)
+    #=
+        chapter 8
+
+        the book has us adjusting only by ϵ, but that doesn't appear
+        to be enough for me. so i added zeros until the "fleas" went
+        away, and i'll revisit my approach later if it breaks somehow.
+    =#
+    over_point = p + (normalv * eps() * 100000)
+    return computations(t, obj, p, eyev, normalv, inside, over_point)
 end
 
-shade_hit(w::world, c::computations) = sum([lighting(c.object.material, l, c.point, c.eyev, c.normalv) for l in w.lights])
+function shade_hit(w::world, c::computations)
+    #=
+        chapter 8
+
+        doing shadows with multiple lights is sorta weird.
+        something in shadow from one light may not be in shadow
+        from a different light, but the expected lighting result
+        for a point in shadow is always the ambient color of the
+        object's material, so in a scene with multiple lights an
+        object that is unlit by several of them will have its ambient
+        color added multiple times, which doesn't seem right, and
+        this isn't a case the book tests. nor is it simple to do this
+        inside the lighting function. my solution for this is to do
+        all the shadow calculations before the lighting calculations
+        and either use the results in the sum or straight-up return
+        the object's ambient color.
+        unsure how to handle the object's ambient color being added multiple
+        times from multiple light sources, but for now i'll assume that will
+        be handled by the blending that occurs in the lighting function.
+        i guess for several lit vs unlit sources, i'd need to sum the results
+        from only the lit ones.
+    =#
+    shadows = [is_shadowed(w, c.over_point, i) for i=1:length(w.lights)]
+    if all(shadows) return c.object.material.color * c.object.material.ambient end
+
+    # this minus the shadow stuff is all you need for chapter 7
+    return sum([
+        lighting(c.object.material, l, c.point, c.eyev, c.normalv, shadows[i])
+        for (i, l) in enumerate(w.lights) if !shadows[i]
+    ])
+end
 
 function color_at(w::world, r::ray)
     h = hit(intersect(w, r))
@@ -479,7 +522,7 @@ function render(c::camera, w::world)
     return img
 end
 
-function scene_demo()
+function scene_demo(width = 100, height = 50, fov = π/3)
     floor = sphere()
     transform!(floor, scaling(10, 0.01, 10))
     floor.material.color = RGB(1, 0.9, 0.9)
@@ -515,7 +558,7 @@ function scene_demo()
     wrld.lights = [point_light(point(-10, 10, -10), colorant"white")]
     wrld.objects = [floor, left_wall, right_wall, middle, right, left]
 
-    cam = camera(100, 50, π/3)
+    cam = camera(width, height, π/3)
     transform!(cam, view_transform(point(0, 1.5, -5), point(0, 1, 0), vector(0, 1, 0)))
 
     return render(cam, wrld)
@@ -525,7 +568,15 @@ end
     chapter 8
 =#
 
-
+function is_shadowed(w::world, p::Vector{<:Number}, light_no = 1)
+    v = w.lights[light_no].position - p
+    dist = norm(v)
+    dir = normalize(v)
+    r = ray(p, dir)
+    is = intersect(w, r)
+    h = hit(is)
+    return !isnothing(h) && h.t < dist
+end
 
 #=
     chapter 9

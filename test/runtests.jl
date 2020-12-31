@@ -877,7 +877,59 @@ using Test
     end
 
     @testset "ch 8 - shadows" begin
+        #=
+            wondering if i should have decided to do multiple lights.
+            there are no test cases for them in the book, and it made
+            this chapter a lot trickier. other interesting bits included
+            having to multiply ϵ by 100000 before the fleas would go away,
+            and having to mess with a bunch of stuff from the last chapter
+            rather than just cleanly layering on new functions.
+        =#
 
+        m = material()
+        pos = point(0, 0, 0)
+        eyev = vector(0, 0, -1)
+        normalv = vector(0, 0, -1)
+        light = point_light(point(0, 0, -10), colorant"white")
+        in_shadow = true
+        result = lighting(m, light, pos, eyev, normalv, in_shadow)
+        @test result == RGB(0.1, 0.1, 0.1)
+
+        wrld = default_world()
+        p = point(0, 10, 0)
+        @test !is_shadowed(wrld, p)
+
+        wrld = default_world()
+        p = point(10, -10, 10)
+        @test is_shadowed(wrld, p)
+
+        wrld = default_world()
+        p = point(-20, 20, -20)
+        @test !is_shadowed(wrld, p)
+
+        wrld = default_world()
+        p = point(-2, 2, -2)
+        @test !is_shadowed(wrld, p)
+
+        wrld = world()
+        wrld.lights = [point_light(point(0, 0, -10), colorant"white")]
+        s1 = sphere()
+        s2 = sphere()
+        transform!(s2, translation(0, 0, 10))
+        wrld.objects = [s1, s2]
+        r = ray(point(0, 0, 5), vector(0, 0, 1))
+        i = intersection(4, s2)
+        comps = prepare_computations(i, r)
+        c = shade_hit(wrld, comps)
+        @test c == RGB(0.1, 0.1, 0.1)
+
+        r = ray(point(0, 0, -5), vector(0, 0, 1))
+        shape = sphere()
+        transform!(shape, translation(0, 0, 1))
+        i = intersection(5, shape)
+        comps = prepare_computations(i, r)
+        @test z(comps.over_point) < -eps()/2
+        @test z(comps.point) > z(comps.over_point)
     end
 
     @testset "ch 9 - planes" begin
