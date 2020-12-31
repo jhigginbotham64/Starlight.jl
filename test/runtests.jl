@@ -945,6 +945,16 @@ using Test
 
             was in refactoring mode and removed the x,y,z,w,x!,y!,z!,w! functions,
             they were more trouble than they were worth. replaced wrld with w.
+
+            well it turns out that not only does julia not allow abstract classes
+            to have fields, it doesn't really allow abstract classes at all, only
+            abstract classes, which are more a dispatch tool than a way to not
+            repeat common code. so i'm not going to have an abstract shape class,
+            and will skip the tests related to that because the simple changes i
+            made to ease dispatching with multiple shapes don't break any of the
+            existing tests.
+
+
         =#
 
 

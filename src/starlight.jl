@@ -154,10 +154,9 @@ end
 abstract type shape end # chapter 9
 
 mutable struct sphere <: shape # chapter 9
-    origin::Vector{<:Number}
     transform::Array{<:Number, 2}
     material::material
-    sphere(; origin = point(0, 0, 0), transform = Array{Float64, 2}(I(4)), material = material()) = new(origin, transform, material)
+    sphere(; transform = Array{Float64, 2}(I(4)), material = material()) = new(transform, material)
 end
 
 mutable struct intersection
