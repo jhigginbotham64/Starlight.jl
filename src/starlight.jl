@@ -14,7 +14,7 @@ export SDL2
 export rsi_demo, light_demo, scene_demo
 
 # chapter 1
-export point, vector, x, x!, y, y!, z, z!, w, w!
+export point, vector
 
 # chapter 2
 export canvas, pixel, pixel!, pixels, flat, hadamard
@@ -41,38 +41,12 @@ export is_shadowed
     chapter 1
 =#
 
-# point and vector are just length-4 arrays with particular valuesin the last index
-
+# point and vector are just length-4 arrays with particular valuesin the last
+# index. x, y, z, and w are kept consistently in the same index by convention
+# for now, crowding the namespace with one-letter identifiers is bad and
+# overriding getproperty and setproperty! for Vector is worse.
 point(x, y, z) = [x, y, z, 1.0]
 vector(x, y, z) = [x, y, z, 0.0]
-
-function GetIndexOrWarn(vec, i::Int, sym::Symbol)
-    if length(vec) >= i
-        return vec[i]
-    else
-        @warn "vector must have length at least $(String(i)) to interpret index $(String(i)) as its $(String(sym)) component"
-        return nothing
-    end
-end
-
-x(vec) = GetIndexOrWarn(vec, 1, :x)
-y(vec) = GetIndexOrWarn(vec, 2, :y)
-z(vec) = GetIndexOrWarn(vec, 3, :z)
-w(vec) = GetIndexOrWarn(vec, 4, :w)
-
-function SetIndexOrWarn!(vec, i::Int, sym::Symbol, val)
-    if length(vec) >= i
-        vec[i] = val
-    else
-        @warn "vector must have length at least $(String(i)) to interpret index $(String(i)) as its $(String(sym)) component"
-        return nothing
-    end
-end
-
-x!(vec, val) = SetIndexOrWarn!(vec, 1, :x, val)
-y!(vec, val) = SetIndexOrWarn!(vec, 2, :y, val)
-z!(vec, val) = SetIndexOrWarn!(vec, 3, :z, val)
-w!(vec, val) = SetIndexOrWarn!(vec, 4, :w, val)
 
 #=
     chapter 2
@@ -252,7 +226,7 @@ function normal_at(s::sphere, p::Vector{<:Number})
     op = inv(s.transform) * p
     on = op - point(0, 0, 0)
     wn = inv(s.transform)' * on
-    w!(wn, 0)
+    wn[4] = 0
     return normalize(wn)
 end
 
@@ -331,10 +305,10 @@ end
 function default_world(; light = point_light(point(-10, 10, -10), colorant"white"), t1 = Array{Float64, 2}(I(4)), m1 = material(color = RGB(0.8, 0.1, 0.6), diffuse = 0.7, specular = 0.2), t2 = scaling(0.5, 0.5, 0.5), m2 = material())
     s1 = sphere(transform = t1, material = m1)
     s2 = sphere(transform = t2, material = m2)
-    wrld = world()
-    push!(wrld.lights, light)
-    push!(wrld.objects, s1, s2)
-    return wrld
+    w = world()
+    push!(w.lights, light)
+    push!(w.objects, s1, s2)
+    return w
 end
 
 intersect(w::world, r::ray) = Vector{intersection}(sort([i for o in w.objects for i in intersect(o, r)], by=(i)->i.t))
@@ -418,12 +392,12 @@ function view_transform(from, to, up)
     left = vector((forward[1:3] × upn[1:3])...)
     true_up = vector((left[1:3] × forward[1:3])...)
     ornt = [
-        x(left) y(left) z(left) 0
-        x(true_up) y(true_up) z(true_up) 0
-        -x(forward) -y(forward) -z(forward) 0
+        left[1] left[2] left[3] 0
+        true_up[1] true_up[2] true_up[3] 0
+        -forward[1] -forward[2] -forward[3] 0
         0 0 0 1
     ]
-    return ornt * translation(-x(from), -y(from), -z(from))
+    return ornt * translation(-from[1], -from[2], -from[3])
 end
 
 mutable struct camera
@@ -487,13 +461,13 @@ function scene_demo(width = 100, height = 50, fov = π/3)
     right = sphere(transform = translation(1.5, 0.5, -0.5) * scaling(0.5, 0.5, 0.5), material = material(color = RGB(0.5, 1, 0.1), diffuse = 0.7, specular = 0.3))
     left = sphere(transform = translation(-1.5, 0.33, -0.75) * scaling(0.33, 0.33, 0.33), material = material(color = RGB(1, 0.8, 0.1), diffuse = 0.7, specular = 0.3))
 
-    wrld = world()
-    push!(wrld.lights, point_light(point(-10, 10, -10), colorant"white"))
-    push!(wrld.objects, floor, left_wall, right_wall, middle, right, left)
+    w = world()
+    push!(w.lights, point_light(point(-10, 10, -10), colorant"white"))
+    push!(w.objects, floor, left_wall, right_wall, middle, right, left)
 
     cam = camera(hsize=width, vsize=height, fov=π/3, transform=view_transform(point(0, 1.5, -5), point(0, 1, 0), vector(0, 1, 0)))
 
-    return render(cam, wrld)
+    return render(cam, w)
 end
 
 #=

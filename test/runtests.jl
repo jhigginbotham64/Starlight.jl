@@ -15,18 +15,18 @@ using Test
         vals = [4.3, -4.2, 3.1]
 
         a = point(vals...)
-        @test x(a) == 4.3
-        @test y(a) == -4.2
-        @test z(a) == 3.1
-        @test w(a) == 1.0
+        @test a[1] == 4.3
+        @test a[2] == -4.2
+        @test a[3] == 3.1
+        @test a[4] == 1.0
         @test a == point(vals...)
         @test a != vector(vals...)
 
         a = vector(vals...)
-        @test x(a) == 4.3
-        @test y(a) == -4.2
-        @test z(a) == 3.1
-        @test w(a) == 0.0
+        @test a[1] == 4.3
+        @test a[2] == -4.2
+        @test a[3] == 3.1
+        @test a[4] == 0.0
         @test a != point(vals...)
         @test a == vector(vals...)
 
@@ -700,23 +700,23 @@ using Test
             challenges appeared to be a typo in the book.
         =#
 
-        wrld = world()
-        @test wrld.objects == []
-        @test wrld.lights == []
+        w = world()
+        @test w.objects == []
+        @test w.lights == []
 
-        wrld = default_world()
-        @test length(wrld.lights) == 1
-        @test wrld.lights[1].position == point(-10, 10, -10)
-        @test wrld.lights[1].intensity == colorant"white"
-        @test length(wrld.objects) == 2
-        @test wrld.objects[1].material.color == RGB(0.8, 0.1, 0.6)
-        @test wrld.objects[1].material.diffuse == 0.7
-        @test wrld.objects[1].material.specular == 0.2
-        @test wrld.objects[2].transform == scaling(0.5, 0.5, 0.5)
+        w = default_world()
+        @test length(w.lights) == 1
+        @test w.lights[1].position == point(-10, 10, -10)
+        @test w.lights[1].intensity == colorant"white"
+        @test length(w.objects) == 2
+        @test w.objects[1].material.color == RGB(0.8, 0.1, 0.6)
+        @test w.objects[1].material.diffuse == 0.7
+        @test w.objects[1].material.specular == 0.2
+        @test w.objects[2].transform == scaling(0.5, 0.5, 0.5)
 
-        wrld = default_world()
+        w = default_world()
         r = ray(point(0, 0, -5), vector(0, 0, 1))
-        xs = intersect(wrld, r)
+        xs = intersect(w, r)
         @test length(xs) == 4
         @test xs[1].t == 4
         @test xs[2].t == 4.5
@@ -748,44 +748,43 @@ using Test
         @test comps.inside == true
         @test comps.normalv == vector(0, 0, -1)
 
-        wrld = default_world()
+        w = default_world()
         r = ray(point(0, 0, -5), vector(0, 0, 1))
-        shape = wrld.objects[1]
+        shape = w.objects[1]
         i = intersection(4, shape)
         comps = prepare_computations(i, r)
-        c = shade_hit(wrld, comps)
+        c = shade_hit(w, comps)
         # book has green == 0.47583 for this next test. the other tests
         # pass so i'm assuming that's a typo until proven otherwise, esp
         # since my answer is actually green == 0.0475826, which is off
         # by...only a suspicious-looking factor of 10
         @test round_color(c, 5) == RGB(0.38066, 0.04758, 0.2855)
 
-        wrld = default_world(light = point_light(point(0, 0.25, 0), colorant"white"))
+        w = default_world(light = point_light(point(0, 0.25, 0), colorant"white"))
         r = ray(point(0, 0, 0), vector(0, 0, 1))
-        shape = wrld.objects[2]
+        shape = w.objects[2]
         i = intersection(0.5, shape)
         comps = prepare_computations(i, r)
-        c = shade_hit(wrld, comps)
+        c = shade_hit(w, comps)
         @test round_color(c, 5) == RGB(0.90498, 0.90498, 0.90498)
 
-        # FAIL
-        wrld = default_world()
+        w = default_world()
         r = ray(point(0, 0, -5), vector(0, 1, 0))
-        c = color_at(wrld, r)
+        c = color_at(w, r)
         # in case you were still wondering if the two ways of
         # expressing a color were equivalent (i know i was)
         @test c == colorant"black" == RGB(0, 0, 0)
 
-        wrld = default_world()
+        w = default_world()
         r = ray(point(0, 0, -5), vector(0, 0, 1))
-        c = color_at(wrld, r)
+        c = color_at(w, r)
         # weird that the book would make the same "mistake" twice, but whatever
         @test round_color(c, 5) == RGB(0.38066, 0.04758, 0.2855)
 
-        wrld = default_world(m1 = material(color = RGB(0.8, 0.1, 0.6), diffuse = 0.7, specular = 0.2, ambient = 1), m2 = material(ambient = 1))
+        w = default_world(m1 = material(color = RGB(0.8, 0.1, 0.6), diffuse = 0.7, specular = 0.2, ambient = 1), m2 = material(ambient = 1))
         r = ray(point(0, 0, 0.75), vector(0, 0, -1))
-        c = color_at(wrld, r)
-        @test c == wrld.objects[2].material.color # inner sphere
+        c = color_at(w, r)
+        @test c == w.objects[2].material.color # inner sphere
 
         from = point(0, 0, 0)
         to = point(0, 0, -1)
@@ -843,13 +842,12 @@ using Test
         @test r.origin ≈ point(0, 2, -5)
         @test r.velocity ≈ vector(√2/2, 0, -√2/2)
 
-        # FAIL
-        wrld = default_world()
+        w = default_world()
         from = point(0, 0, -5)
         to = point(0, 0, 0)
         up = vector(0, 1, 0)
         c = camera(hsize=11, vsize=11, fov=π/2, transform=view_transform(from, to, up))
-        img = render(c, wrld)
+        img = render(c, w)
         # same green "mistake" a third time, only now there's
         # also an issue where the numerical accuracy really seems
         # to be insurmountable. thank goodness the results match up
@@ -879,40 +877,39 @@ using Test
         result = lighting(m, light, pos, eyev, normalv, in_shadow)
         @test result == RGB(0.1, 0.1, 0.1)
 
-        # FAIL
-        wrld = default_world()
+        w = default_world()
         p = point(0, 10, 0)
-        @test !is_shadowed(wrld, p)
+        @test !is_shadowed(w, p)
 
-        wrld = default_world()
+        w = default_world()
         p = point(10, -10, 10)
-        @test is_shadowed(wrld, p)
+        @test is_shadowed(w, p)
 
-        wrld = default_world()
+        w = default_world()
         p = point(-20, 20, -20)
-        @test !is_shadowed(wrld, p)
+        @test !is_shadowed(w, p)
 
-        wrld = default_world()
+        w = default_world()
         p = point(-2, 2, -2)
-        @test !is_shadowed(wrld, p)
+        @test !is_shadowed(w, p)
 
-        wrld = world()
-        push!(wrld.lights, point_light(point(0, 0, -10), colorant"white"))
+        w = world()
+        push!(w.lights, point_light(point(0, 0, -10), colorant"white"))
         s1 = sphere()
         s2 = sphere(transform = translation(0, 0, 10))
-        push!(wrld.objects, s1, s2)
+        push!(w.objects, s1, s2)
         r = ray(point(0, 0, 5), vector(0, 0, 1))
         i = intersection(4, s2)
         comps = prepare_computations(i, r)
-        c = shade_hit(wrld, comps)
+        c = shade_hit(w, comps)
         @test c == RGB(0.1, 0.1, 0.1)
 
         r = ray(point(0, 0, -5), vector(0, 0, 1))
         shape = sphere(transform = translation(0, 0, 1))
         i = intersection(5, shape)
         comps = prepare_computations(i, r)
-        @test z(comps.over_point) < -eps()/2
-        @test z(comps.point) > z(comps.over_point)
+        @test comps.over_point[3] < -eps()/2
+        @test comps.point[3] > comps.over_point[3]
     end
 
     @testset "ch 9 - planes" begin
@@ -945,6 +942,9 @@ using Test
             a break and think about this a bit, because julia doesn't allow abstract
             classes to have fields, nor inheriting from concrete classes, so the
             usual approaches won't work.
+
+            was in refactoring mode and removed the x,y,z,w,x!,y!,z!,w! functions,
+            they were more trouble than they were worth. replaced wrld with w.
         =#
 
 
