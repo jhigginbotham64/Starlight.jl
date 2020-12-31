@@ -954,10 +954,47 @@ using Test
             made to ease dispatching with multiple shapes don't break any of the
             existing tests.
 
+            then removed sphere's origin field because it was never used anywhere,
+            and realized that a sphere is just a thing with a transform and a material
+            that has a certain meaning for intersection and normal calculations.
+            dunno if i can clean things up further. probably would be a good
+            question for humans of julia.
 
+            planes were super easy to add after all that was dealt with, but i
+            do want to see about maybe refactoring them later.
         =#
 
+        p = plane()
+        n1 = normal_at(p, point(0, 0, 0))
+        n2 = normal_at(p, point(10, 0, -10))
+        n3 = normal_at(p, point(-5, 0, 150))
+        @test n1 == vector(0, 1, 0)
+        @test n2 == vector(0, 1, 0)
+        @test n3 == vector(0, 1, 0)
 
+        p = plane()
+        r = ray(point(0, 10, 0), vector(0, 0, 1)) # parallel
+        xs = intersect(p, r)
+        @test xs == []
+
+        p = plane()
+        r = ray(point(0, 0, 0), vector(0, 0, 1)) # coplanar
+        xs = intersect(p, r)
+        @test xs == []
+
+        p = plane()
+        r = ray(point(0, 1, 0), vector(0, -1, 0)) # intersect from above
+        xs = intersect(p, r)
+        @test length(xs) == 1
+        @test xs[1].t == 1
+        @test xs[1].object == p
+
+        p = plane()
+        r = ray(point(0, -1, 0), vector(0, 1, 0)) # intersect from below
+        xs = intersect(p, r)
+        @test length(xs) == 1
+        @test xs[1].t == 1
+        @test xs[1].object == p
     end
 
     @testset "ch 10 - patterns" begin

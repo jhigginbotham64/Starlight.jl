@@ -11,7 +11,7 @@ SDL2 = SimpleDirectMediaLayer
 export SDL2
 
 # demo
-export rsi_demo, light_demo, scene_demo
+export rsi_demo, light_demo, scene_demo, plane_demo
 
 # chapter 1
 export point, vector
@@ -36,6 +36,9 @@ export world, default_world, prepare_computations, shade_hit, color_at, view_tra
 
 # chapter 8
 export is_shadowed
+
+# chapter 9
+export plane
 
 #=
     chapter 1
@@ -175,7 +178,7 @@ intersect(s::shape, r::ray) = _intersect(s, transform(r, inv(s.transform))) # ch
 
 hit(is::Vector{intersection}) = (all(map(i -> i.t < 0, is))) ? nothing : is[argmin(map(i -> (i.t < 0) ? Inf : i.t, is))]
 
-function rsi_demo(height=100, width=100, bg_color=colorant"black", c=colorant"red")
+function rsi_demo(; height=100, width=100, bg_color=colorant"black", c=colorant"red")
     canv = canvas(width, height)
 
     s = sphere()
@@ -243,7 +246,7 @@ end
 
 round_color(c::Color, ndigits::Int = 5) = mapc(chan -> round(chan, digits=ndigits), c)
 
-function light_demo(height=100, width=100, bg_color=colorant"black", light_color=colorant"white", mat_color=colorant"purple")
+function light_demo(; height=100, width=100, bg_color=colorant"black", light_color=colorant"white", mat_color=colorant"purple")
     canv = canvas(width, height, bg_color)
 
     s = sphere(material = material(color = mat_color))
@@ -435,7 +438,7 @@ function render(c::camera, w::world)
     return img
 end
 
-function scene_demo(width = 100, height = 50, fov = π/3)
+function scene_demo(; width = 100, height = 50, fov = π/3)
     wmat = material(color = RGB(1, 0.9, 0.9), specular = 0)
 
     floor = sphere(transform = scaling(10, 0.01, 10), material = wmat)
@@ -493,6 +496,41 @@ end
 
 # algorithm written in chapter 6 and refactored to here in chapter 9
 _normal_at(s::sphere, op::Vector{<:Number}) = op - point(0, 0, 0)
+
+# this is literally exactly the same as sphere,
+# the only purpose of this struct is to facilitate
+# dispatch. unsure how to refactor though.
+mutable struct plane <: shape
+    transform::Array{<:Number, 2}
+    material::material
+    plane(; transform = Array{Float64, 2}(I(4)), material = material()) = new(transform, material)
+end
+
+function _intersect(p::plane, r::ray)
+    if abs(r.velocity[2]) < eps()
+        return Vector{intersection}([])
+    end
+
+    t = -r.origin[2] / r.velocity[2]
+    return intersections(intersection(t, p))
+end
+
+_normal_at(p::plane, op::Vector{<:Number}) = vector(0, 1, 0) # we're in object space, and the normal is the same everywhere...
+
+function plane_demo(; width = 100, height = 50, fov = π/3)
+    floor = plane(transform = scaling(10, 0.01, 10), material = material(color = RGB(1, 0.9, 0.9), specular = 0))
+    middle = sphere(transform = translation(-0.5, 1, 0.5), material = material(color = RGB(0.1, 1, 0.5), diffuse = 0.7, specular = 0.3))
+    right = sphere(transform = translation(1.5, 0.5, -0.5) * scaling(0.5, 0.5, 0.5), material = material(color = RGB(0.5, 1, 0.1), diffuse = 0.7, specular = 0.3))
+    left = sphere(transform = translation(-1.5, 0.33, -0.75) * scaling(0.33, 0.33, 0.33), material = material(color = RGB(1, 0.8, 0.1), diffuse = 0.7, specular = 0.3))
+
+    w = world()
+    push!(w.lights, point_light(point(-10, 10, -10), colorant"white"))
+    push!(w.objects, floor, middle, right, left)
+
+    cam = camera(hsize=width, vsize=height, fov=π/3, transform=view_transform(point(0, 1.5, -5), point(0, 1, 0), vector(0, 1, 0)))
+
+    return render(cam, w)
+end
 
 #=
     chapter 10
