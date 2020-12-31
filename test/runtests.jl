@@ -565,22 +565,19 @@ using Test
         s = sphere()
         @test s.transform == I
 
-        s = sphere()
         t = translation(2, 3, 4)
-        transform!(s, t)
+        s = sphere(transform = t)
         @test s.transform == t
 
         r = ray(point(0, 0, -5), vector(0, 0, 1))
-        s = sphere()
-        transform!(s, scaling(2, 2, 2))
+        s = sphere(transform = scaling(2, 2, 2))
         xs = intersect(s, r)
         @test length(xs) == 2
         @test xs[1].t == 3
         @test xs[2].t == 7
 
         r = ray(point(0, 0, -5), vector(0, 0, 1))
-        s = sphere()
-        transform!(s, translation(5, 0, 0))
+        s = sphere(transform = translation(5, 0, 0))
         xs = intersect(s, r)
         @test length(xs) == 0
     end
@@ -612,14 +609,11 @@ using Test
         @test n == vector(√3/3, √3/3, √3/3)
         @test n == normalize(n)
 
-        s = sphere()
-        transform!(s, translation(0, 1, 0))
+        s = sphere(transform = translation(0, 1, 0))
         n = normal_at(s, point(0, 1.70711, -0.70711))
         @test round.(n, digits=5) == vector(0, 0.70711, -0.70711)
 
-        s = sphere()
-        m = scaling(1, 0.5, 1) * rotation_z(π/5)
-        transform!(s, m)
+        s = sphere(transform = scaling(1, 0.5, 1) * rotation_z(π/5))
         n = normal_at(s, point(0, √2/2, -√2/2))
         @test round.(n, digits=5) == vector(0, 0.97014, -0.24254)
 
@@ -647,12 +641,14 @@ using Test
         @test m.shininess == 200.0
 
         s = sphere()
-        @test s.material == material()
+        @test s.material.color == colorant"white"
+        @test s.material.ambient == 0.1
+        @test s.material.diffuse == 0.9
+        @test s.material.specular == 0.9
+        @test s.material.shininess == 200.0
 
-        s = sphere()
-        m = material()
-        m.ambient = 1
-        material!(s, m)
+        m = material(ambient = 1)
+        s = sphere(material = m)
         @test s.material == m
 
         m = material()
@@ -708,21 +704,17 @@ using Test
         @test wrld.objects == []
         @test wrld.lights == []
 
-        p = point_light(point(-10, 10, -10), colorant"white")
-        m = material()
-        m.color = RGB(0.8, 0.1, 0.6)
-        m.diffuse = 0.7
-        m.specular = 0.2
-        s1 = sphere()
-        material!(s1, m)
-        t = scaling(0.5, 0.5, 0.5)
-        s2 = sphere()
-        transform!(s2, t)
         wrld = default_world()
-        @test wrld.lights == [p]
-        @test wrld.objects == [s1, s2]
+        @test length(wrld.lights) == 1
+        @test wrld.lights[1].position == point(-10, 10, -10)
+        @test wrld.lights[1].intensity == colorant"white"
+        @test length(wrld.objects) == 2
+        @test wrld.objects[1].material.color == RGB(0.8, 0.1, 0.6)
+        @test wrld.objects[1].material.diffuse == 0.7
+        @test wrld.objects[1].material.specular == 0.2
+        @test wrld.objects[2].transform == scaling(0.5, 0.5, 0.5)
 
-        wlrd = default_world()
+        wrld = default_world()
         r = ray(point(0, 0, -5), vector(0, 0, 1))
         xs = intersect(wrld, r)
         @test length(xs) == 4
@@ -768,8 +760,7 @@ using Test
         # by...only a suspicious-looking factor of 10
         @test round_color(c, 5) == RGB(0.38066, 0.04758, 0.2855)
 
-        wrld = default_world()
-        wrld.lights[1] = point_light(point(0, 0.25, 0), colorant"white")
+        wrld = default_world(light = point_light(point(0, 0.25, 0), colorant"white"))
         r = ray(point(0, 0, 0), vector(0, 0, 1))
         shape = wrld.objects[2]
         i = intersection(0.5, shape)
@@ -777,6 +768,7 @@ using Test
         c = shade_hit(wrld, comps)
         @test round_color(c, 5) == RGB(0.90498, 0.90498, 0.90498)
 
+        # FAIL
         wrld = default_world()
         r = ray(point(0, 0, -5), vector(0, 1, 0))
         c = color_at(wrld, r)
@@ -790,14 +782,10 @@ using Test
         # weird that the book would make the same "mistake" twice, but whatever
         @test round_color(c, 5) == RGB(0.38066, 0.04758, 0.2855)
 
-        wrld = default_world()
-        outer = wrld.objects[1]
-        outer.material.ambient = 1
-        inner = wrld.objects[2]
-        inner.material.ambient = 1
+        wrld = default_world(m1 = material(color = RGB(0.8, 0.1, 0.6), diffuse = 0.7, specular = 0.2, ambient = 1), m2 = material(ambient = 1))
         r = ray(point(0, 0, 0.75), vector(0, 0, -1))
         c = color_at(wrld, r)
-        @test c == inner.material.color
+        @test c == wrld.objects[2].material.color # inner sphere
 
         from = point(0, 0, 0)
         to = point(0, 0, -1)
@@ -828,43 +816,39 @@ using Test
             0 0 0 1
         ]
 
-        hsize = 160
-        vsize = 120
-        fov = π / 2
-        c = camera(hsize, vsize, fov)
+        c = camera(hsize=160, vsize=120, fov=π/2)
         @test c.hsize == 160
         @test c.vsize == 120
-        @test fov == π / 2
+        @test c.fov == π / 2
         @test c.transform == I
 
-        c = camera(200, 125, π / 2)
+        c = camera(hsize=200, vsize=125, fov=π/2)
         @test c.pixel_size ≈ 0.01
 
-        c = camera(125, 200, π / 2)
+        c = camera(hsize=125, vsize=200, fov=π/2)
         @test c.pixel_size ≈ 0.01
 
-        c = camera(201, 101, π / 2)
+        c = camera(hsize=201, vsize=101, fov=π/2)
         r = ray_for_pixel(c, 100, 50)
         @test r.origin ≈ point(0, 0, 0)
         @test r.velocity ≈ vector(0, 0, -1)
 
-        c = camera(201, 101, π / 2)
+        c = camera(hsize=201, vsize=101, fov=π/2)
         r = ray_for_pixel(c, 0, 0)
         @test r.origin ≈ point(0, 0, 0)
         @test round.(r.velocity, digits=5) == vector(0.66519, 0.33259, -0.66851)
 
-        c = camera(201, 101, π / 2)
-        transform!(c, rotation_y(π / 4) * translation(0, -2, 5))
+        c = camera(hsize=201, vsize=101, fov=π/2, transform=rotation_y(π / 4) * translation(0, -2, 5))
         r = ray_for_pixel(c, 100, 50)
         @test r.origin ≈ point(0, 2, -5)
         @test r.velocity ≈ vector(√2/2, 0, -√2/2)
 
+        # FAIL
         wrld = default_world()
-        c = camera(11, 11, π / 2)
         from = point(0, 0, -5)
         to = point(0, 0, 0)
         up = vector(0, 1, 0)
-        transform!(c, view_transform(from, to, up))
+        c = camera(hsize=11, vsize=11, fov=π/2, transform=view_transform(from, to, up))
         img = render(c, wrld)
         # same green "mistake" a third time, only now there's
         # also an issue where the numerical accuracy really seems
@@ -895,6 +879,7 @@ using Test
         result = lighting(m, light, pos, eyev, normalv, in_shadow)
         @test result == RGB(0.1, 0.1, 0.1)
 
+        # FAIL
         wrld = default_world()
         p = point(0, 10, 0)
         @test !is_shadowed(wrld, p)
@@ -912,11 +897,10 @@ using Test
         @test !is_shadowed(wrld, p)
 
         wrld = world()
-        wrld.lights = [point_light(point(0, 0, -10), colorant"white")]
+        push!(wrld.lights, point_light(point(0, 0, -10), colorant"white"))
         s1 = sphere()
-        s2 = sphere()
-        transform!(s2, translation(0, 0, 10))
-        wrld.objects = [s1, s2]
+        s2 = sphere(transform = translation(0, 0, 10))
+        push!(wrld.objects, s1, s2)
         r = ray(point(0, 0, 5), vector(0, 0, 1))
         i = intersection(4, s2)
         comps = prepare_computations(i, r)
@@ -924,8 +908,7 @@ using Test
         @test c == RGB(0.1, 0.1, 0.1)
 
         r = ray(point(0, 0, -5), vector(0, 0, 1))
-        shape = sphere()
-        transform!(shape, translation(0, 0, 1))
+        shape = sphere(transform = translation(0, 0, 1))
         i = intersection(5, shape)
         comps = prepare_computations(i, r)
         @test z(comps.over_point) < -eps()/2
@@ -933,6 +916,37 @@ using Test
     end
 
     @testset "ch 9 - planes" begin
+        #=
+            this chapter involves refactoring sphere so you can accomodate
+            it and the new plan class more easily via an abstract shape class.
+            that's half or more of the chapter, or at least of the work
+            involved, since the plane is a really simple primitive.
+
+            the affected functions are ==, transform!, material!, intersect,
+            and normal_at, and those are the *only* affected functions (i.e.
+            the only places where changing sphere changes other code
+            requirements).
+
+            another change worth investigating is how many of my mutable structs
+            could be made immutable with some refactoring.
+
+            ...ok going by the docs, probably none of these should be immutable,
+            or at least it probably won't hurt anything if they're all mutable.
+            however, material! and transform! don't really help anyone do anything,
+            so i removed them and refactored a bunch of the constructors to use
+            keyword arguments. also i stopped hard-assigning world array fields
+            in favor of push!ing. then i refactored the test to remove the == operator
+            in favor of testing all the interesting fields individually, and removed
+            those overloads from the module. not going to miss them, they were a
+            hassle.
+
+            that means the only things i'll need to truly refactor for this chapter
+            will be intersect, normal_at, and perhaps constructors. going to take
+            a break and think about this a bit, because julia doesn't allow abstract
+            classes to have fields, nor inheriting from concrete classes, so the
+            usual approaches won't work.
+        =#
+
 
     end
 
