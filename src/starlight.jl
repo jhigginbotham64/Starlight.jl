@@ -151,7 +151,9 @@ mutable struct material
     material(; color = colorant"white", ambient = 0.1, diffuse = 0.9, specular = 0.9, shininess = 200.0) = new(color, ambient, diffuse, specular, shininess)
 end
 
-mutable struct sphere
+abstract type shape end # chapter 9
+
+mutable struct sphere <: shape # chapter 9
     origin::Vector{<:Number}
     transform::Array{<:Number, 2}
     material::material
@@ -163,31 +165,14 @@ mutable struct intersection
     object
 end
 
-intersections(is::intersection...) = [is...]
+intersections(is::intersection...) = Vector{intersection}([is...])
 transform(r::ray, mat::Array{<:Number, 2}) = ray(mat * r.origin, mat * r.velocity)
 
 import Base.position
 position(r::ray, t::Number) = r.origin + r.velocity * t
 
 import Base.intersect
-function intersect(s::sphere, _r::ray)
-    r = transform(_r, inv(s.transform))
-    sphere_to_ray = r.origin - point(0, 0, 0) # all spheres centered at origin for now
-    a = r.velocity ⋅ r.velocity
-    b = 2 * r.velocity ⋅ sphere_to_ray
-    c = sphere_to_ray ⋅ sphere_to_ray - 1
-
-    discriminant = b^2 - 4 * a * c
-
-    if discriminant < 0
-        return Vector{intersection}([])
-    end
-
-    t1 = (-b - √discriminant) / 2a
-    t2 = (-b + √discriminant) / 2a
-
-    return intersections(intersection(t1, s), intersection(t2, s))
-end
+intersect(s::shape, r::ray) = _intersect(s, transform(r, inv(s.transform))) # chapter 9
 
 hit(is::Vector{intersection}) = (all(map(i -> i.t < 0, is))) ? nothing : is[argmin(map(i -> (i.t < 0) ? Inf : i.t, is))]
 
@@ -222,9 +207,9 @@ end
     chapter 6
 =#
 
-function normal_at(s::sphere, p::Vector{<:Number})
+function normal_at(s::shape, p::Vector{<:Number})
     op = inv(s.transform) * p
-    on = op - point(0, 0, 0)
+    on = _normal_at(s, op) # chapter 9
     wn = inv(s.transform)' * on
     wn[4] = 0
     return normalize(wn)
@@ -488,7 +473,27 @@ end
     chapter 9
 =#
 
+# algorithm written in chapter 5 and refactored to here in chapter 9
+function _intersect(s::sphere, r::ray)
+    sphere_to_ray = r.origin - point(0, 0, 0) # all spheres centered at origin for now
+    a = r.velocity ⋅ r.velocity
+    b = 2 * r.velocity ⋅ sphere_to_ray
+    c = sphere_to_ray ⋅ sphere_to_ray - 1
 
+    discriminant = b^2 - 4 * a * c
+
+    if discriminant < 0
+        return Vector{intersection}([])
+    end
+
+    t1 = (-b - √discriminant) / 2a
+    t2 = (-b + √discriminant) / 2a
+
+    return intersections(intersection(t1, s), intersection(t2, s))
+end
+
+# algorithm written in chapter 6 and refactored to here in chapter 9
+_normal_at(s::sphere, op::Vector{<:Number}) = op - point(0, 0, 0)
 
 #=
     chapter 10
