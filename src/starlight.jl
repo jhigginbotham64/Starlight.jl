@@ -13,6 +13,14 @@ export SDL2
 # demo
 export rsi_demo, light_demo, scene_demo, plane_demo
 
+# helper
+DEFAULT_TRANSFORM = Array{AbstractFloat, 2}(I(4))
+export DEFAULT_TRANSFORM
+Transform = Array{<:Number, 2}
+export Transform
+VectorN = Vector{<:Number}
+export VectorN
+
 # chapter 1
 export point, vector
 
@@ -26,7 +34,7 @@ export submatrix, minor, cofactor, invertible
 export translation, scaling, reflection_x, reflection_y, reflection_z, rotation_x, rotation_y, rotation_z, shearing
 
 # chapter 5
-export ray, sphere, intersect, intersection, intersections, hit, transform
+export ray, sphere, intersect, intersection, intersections, Intersections, hit, transform
 
 # chapter 6
 export normal_at, reflect, point_light, material, lighting, round_color
@@ -39,6 +47,9 @@ export is_shadowed
 
 # chapter 9
 export plane
+
+# chapter 10
+export stripe_pattern, stripe_at, stripe_at_object
 
 #=
     chapter 1
@@ -136,12 +147,20 @@ shearing(xy, xz, yx, yz, zx, zy) = [
 =#
 
 mutable struct ray
-    origin::Vector{<:Number}
+    origin::VectorN
     # the book calls this field "direction", but in my mind direction
     # is a unit vector which you combine with a magnitude (speed)
     # to get velocity, and the book uses direction mathematically
     # like a velocity, so i'm calling it velocity.
-    velocity::Vector{<:Number}
+    velocity::VectorN
+end
+
+# patterns added in chapter 10, put here for compilation
+mutable struct stripe_pattern
+    a::Color
+    b::Color
+    transform::Transform
+    stripe_pattern(; a = colorant"white", b = colorant"black", transform = DEFAULT_TRANSFORM) = new(a, b, transform)
 end
 
 # material added in chapter 6, put here for compilation
@@ -151,15 +170,16 @@ mutable struct material
     diffuse::AbstractFloat
     specular::AbstractFloat
     shininess::AbstractFloat
-    material(; color = colorant"white", ambient = 0.1, diffuse = 0.9, specular = 0.9, shininess = 200.0) = new(color, ambient, diffuse, specular, shininess)
+    pattern::Union{Nothing, stripe_pattern}
+    material(; color = colorant"white", ambient = 0.1, diffuse = 0.9, specular = 0.9, shininess = 200.0, pattern = nothing) = new(color, ambient, diffuse, specular, shininess, pattern)
 end
 
 abstract type shape end # chapter 9
 
 mutable struct sphere <: shape # chapter 9
-    transform::Array{<:Number, 2}
+    transform::Transform
     material::material
-    sphere(; transform = Array{Float64, 2}(I(4)), material = material()) = new(transform, material)
+    sphere(; transform = DEFAULT_TRANSFORM, material = material()) = new(transform, material)
 end
 
 mutable struct intersection
@@ -167,8 +187,10 @@ mutable struct intersection
     object
 end
 
-intersections(is::intersection...) = Vector{intersection}([is...])
-transform(r::ray, mat::Array{<:Number, 2}) = ray(mat * r.origin, mat * r.velocity)
+Intersections = Vector{intersection}
+
+intersections(is::intersection...) = Intersections([is...])
+transform(r::ray, mat::Transform) = ray(mat * r.origin, mat * r.velocity)
 
 import Base.position
 position(r::ray, t::Number) = r.origin + r.velocity * t
@@ -176,7 +198,7 @@ position(r::ray, t::Number) = r.origin + r.velocity * t
 import Base.intersect
 intersect(s::shape, r::ray) = _intersect(s, transform(r, inv(s.transform))) # chapter 9
 
-hit(is::Vector{intersection}) = (all(map(i -> i.t < 0, is))) ? nothing : is[argmin(map(i -> (i.t < 0) ? Inf : i.t, is))]
+hit(is::Intersections) = (all(map(i -> i.t < 0, is))) ? nothing : is[argmin(map(i -> (i.t < 0) ? Inf : i.t, is))]
 
 function rsi_demo(; height=100, width=100, bg_color=colorant"black", c=colorant"red")
     canv = canvas(width, height)
@@ -209,7 +231,7 @@ end
     chapter 6
 =#
 
-function normal_at(s::shape, p::Vector{<:Number})
+function normal_at(s::shape, p::VectorN)
     op = inv(s.transform) * p
     on = _normal_at(s, op) # chapter 9
     wn = inv(s.transform)' * on
@@ -217,16 +239,17 @@ function normal_at(s::shape, p::Vector{<:Number})
     return normalize(wn)
 end
 
-reflect(v::Vector{<:Number}, n::Vector{<:Number}) = v - (n * (2 * (v ⋅ n)))
+reflect(v::VectorN, n::VectorN) = v - (n * (2 * (v ⋅ n)))
 
 mutable struct point_light
-    position::Vector{<:Number}
+    position::VectorN
     intensity::Color
 end
 
-function lighting(m, l, p, eyev, normalv, in_shadow = false)
-    if in_shadow return m.color * m.ambient end # chapter 8
-    effective_color = hadamard(m.color, l.intensity)
+function lighting(m, l, p, eyev, normalv, in_shadow = false; obj::Union{Nothing, shape} = nothing)
+    c = (!isnothing(m.pattern)) ? stripe_at_object(m.pattern, obj, p) : m.color # chapter 10
+    if in_shadow return c * m.ambient end # chapter 8
+    effective_color = hadamard(c, l.intensity)
     lightv = normalize(l.position - p)
     ambient = effective_color * m.ambient
     light_dot_normal = lightv ⋅ normalv
@@ -289,7 +312,7 @@ mutable struct world
     world(; lights = [], objects = []) = new(lights, objects)
 end
 
-function default_world(; light = point_light(point(-10, 10, -10), colorant"white"), t1 = Array{Float64, 2}(I(4)), m1 = material(color = RGB(0.8, 0.1, 0.6), diffuse = 0.7, specular = 0.2), t2 = scaling(0.5, 0.5, 0.5), m2 = material())
+function default_world(; light = point_light(point(-10, 10, -10), colorant"white"), t1 = DEFAULT_TRANSFORM, m1 = material(color = RGB(0.8, 0.1, 0.6), diffuse = 0.7, specular = 0.2), t2 = scaling(0.5, 0.5, 0.5), m2 = material())
     s1 = sphere(transform = t1, material = m1)
     s2 = sphere(transform = t2, material = m2)
     w = world()
@@ -298,16 +321,16 @@ function default_world(; light = point_light(point(-10, 10, -10), colorant"white
     return w
 end
 
-intersect(w::world, r::ray) = Vector{intersection}(sort([i for o in w.objects for i in intersect(o, r)], by=(i)->i.t))
+intersect(w::world, r::ray) = Intersections(sort([i for o in w.objects for i in intersect(o, r)], by=(i)->i.t))
 
 mutable struct computations
     t::Number
     object
-    point::Vector{<:Number}
-    eyev::Vector{<:Number}
-    normalv::Vector{<:Number}
+    point::VectorN
+    eyev::VectorN
+    normalv::VectorN
     inside::Bool
-    over_point::Vector{<:Number} # chapter 8
+    over_point::VectorN # chapter 8
 end
 
 function prepare_computations(i::intersection, r::ray)
@@ -332,7 +355,7 @@ function prepare_computations(i::intersection, r::ray)
     return computations(t, obj, p, eyev, normalv, inside, over_point)
 end
 
-function shade_hit(w::world, c::computations)
+function shade_hit(w::world, c::computations; obj::Union{Nothing, shape} = nothing)
     #=
         chapter 8
 
@@ -359,7 +382,7 @@ function shade_hit(w::world, c::computations)
 
     # this minus the shadow stuff is all you need for chapter 7
     return sum([
-        lighting(c.object.material, l, c.point, c.eyev, c.normalv, shadows[i])
+        lighting(c.object.material, l, c.point, c.eyev, c.normalv, shadows[i], obj = c.object) # obj added in chapter 10
         for (i, l) in enumerate(w.lights) if !shadows[i]
     ])
 end
@@ -391,13 +414,13 @@ mutable struct camera
     hsize::Number
     vsize::Number
     fov::Number
-    transform::Array{<:Number, 2}
+    transform::Transform
     half_view::Number
     aspect::Number
     half_width::Number
     half_height::Number
     pixel_size::Number
-    function camera(; hsize = 160, vsize = 120, fov = π / 2, transform = Array{Float64, 2}(I(4)))
+    function camera(; hsize = 160, vsize = 120, fov = π / 2, transform = DEFAULT_TRANSFORM)
         half_view = tan(fov / 2)
         aspect = hsize / vsize
         half_width = half_view
@@ -461,7 +484,7 @@ end
     chapter 8
 =#
 
-function is_shadowed(w::world, p::Vector{<:Number}, light_no = 1)
+function is_shadowed(w::world, p::VectorN, light_no = 1)
     v = w.lights[light_no].position - p
     dist = norm(v)
     dir = normalize(v)
@@ -485,7 +508,7 @@ function _intersect(s::sphere, r::ray)
     discriminant = b^2 - 4 * a * c
 
     if discriminant < 0
-        return Vector{intersection}([])
+        return Intersections([])
     end
 
     t1 = (-b - √discriminant) / 2a
@@ -495,27 +518,27 @@ function _intersect(s::sphere, r::ray)
 end
 
 # algorithm written in chapter 6 and refactored to here in chapter 9
-_normal_at(s::sphere, op::Vector{<:Number}) = op - point(0, 0, 0)
+_normal_at(s::sphere, op::VectorN) = op - point(0, 0, 0)
 
 # this is literally exactly the same as sphere,
 # the only purpose of this struct is to facilitate
 # dispatch. unsure how to refactor though.
 mutable struct plane <: shape
-    transform::Array{<:Number, 2}
+    transform::Transform
     material::material
-    plane(; transform = Array{Float64, 2}(I(4)), material = material()) = new(transform, material)
+    plane(; transform = DEFAULT_TRANSFORM, material = material()) = new(transform, material)
 end
 
 function _intersect(p::plane, r::ray)
     if abs(r.velocity[2]) < eps()
-        return Vector{intersection}([])
+        return Intersections([])
     end
 
     t = -r.origin[2] / r.velocity[2]
     return intersections(intersection(t, p))
 end
 
-_normal_at(p::plane, op::Vector{<:Number}) = vector(0, 1, 0) # we're in object space, and the normal is the same everywhere...
+_normal_at(p::plane, op::VectorN) = vector(0, 1, 0) # we're in object space, and the normal is the same everywhere...
 
 function plane_demo(; width = 100, height = 50, fov = π/3)
     floor = plane(transform = scaling(10, 0.01, 10), material = material(color = RGB(1, 0.9, 0.9), specular = 0))
@@ -536,7 +559,8 @@ end
     chapter 10
 =#
 
-
+stripe_at(pat::stripe_pattern, p::VectorN) = (floor(p[1]) % 2 == 0) ? pat.a : pat.b
+stripe_at_object(pat::stripe_pattern, obj::Union{Nothing, shape}, wp::VectorN) = (!isnothing(obj)) ? stripe_at(pat, inv(pat.transform) * inv(obj.transform) * wp) : stripe_at(pat, wp)
 
 #=
     chapter 11
