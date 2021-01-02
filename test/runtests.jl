@@ -1002,29 +1002,29 @@ using Test
 
         =#
 
-        p = stripe_pattern()
+        p = stripes()
         @test p.a == colorant"white"
         @test p.b == colorant"black"
 
-        p = stripe_pattern()
-        @test stripe_at(p, point(0, 0, 0)) == colorant"white"
-        @test stripe_at(p, point(0, 1, 0)) == colorant"white"
-        @test stripe_at(p, point(0, 2, 0)) == colorant"white"
+        p = stripes()
+        @test pattern_at(p, point(0, 0, 0)) == colorant"white"
+        @test pattern_at(p, point(0, 1, 0)) == colorant"white"
+        @test pattern_at(p, point(0, 2, 0)) == colorant"white"
 
-        p = stripe_pattern()
-        @test stripe_at(p, point(0, 0, 0)) == colorant"white"
-        @test stripe_at(p, point(0, 0, 1)) == colorant"white"
-        @test stripe_at(p, point(0, 0, 2)) == colorant"white"
+        p = stripes()
+        @test pattern_at(p, point(0, 0, 0)) == colorant"white"
+        @test pattern_at(p, point(0, 0, 1)) == colorant"white"
+        @test pattern_at(p, point(0, 0, 2)) == colorant"white"
 
-        p = stripe_pattern()
-        @test stripe_at(p, point(0, 0, 0)) == colorant"white"
-        @test stripe_at(p, point(0.9, 0, 0)) == colorant"white"
-        @test stripe_at(p, point(1, 0, 0)) == colorant"black"
-        @test stripe_at(p, point(-0.1, 0, 0)) == colorant"black"
-        @test stripe_at(p, point(-1, 0, 0)) == colorant"black"
-        @test stripe_at(p, point(-1.1, 0, 0)) == colorant"white"
+        p = stripes()
+        @test pattern_at(p, point(0, 0, 0)) == colorant"white"
+        @test pattern_at(p, point(0.9, 0, 0)) == colorant"white"
+        @test pattern_at(p, point(1, 0, 0)) == colorant"black"
+        @test pattern_at(p, point(-0.1, 0, 0)) == colorant"black"
+        @test pattern_at(p, point(-1, 0, 0)) == colorant"black"
+        @test pattern_at(p, point(-1.1, 0, 0)) == colorant"white"
 
-        m = material(pattern = stripe_pattern(), ambient = 1, diffuse = 0, specular = 0)
+        m = material(pattern = stripes(), ambient = 1, diffuse = 0, specular = 0)
         eyev = vector(0, 0, -1)
         normalv = vector(0, 0, -1)
         light = point_light(point(0, 0, -10), colorant"white")
@@ -1034,18 +1034,18 @@ using Test
         @test c2 == m.pattern.b
 
         obj = sphere(transform = scaling(2, 2, 2))
-        pat = stripe_pattern()
-        c = stripe_at_object(pat, obj, point(1.5, 0, 0))
+        pat = stripes()
+        c = pattern_at_object(pat, obj, point(1.5, 0, 0))
         @test c == colorant"white"
 
         obj = sphere()
-        pat = stripe_pattern(transform = scaling(2, 2, 2))
-        c = stripe_at_object(pat, obj, point(1.5, 0, 0))
+        pat = stripes(transform = scaling(2, 2, 2))
+        c = pattern_at_object(pat, obj, point(1.5, 0, 0))
         @test c == colorant"white"
 
         obj = sphere(transform = scaling(2, 2, 2))
-        pat = stripe_pattern(transform = translation(0.5, 0, 0))
-        c = stripe_at_object(pat, obj, point(2.5, 0, 0))
+        pat = stripes(transform = translation(0.5, 0, 0))
+        c = pattern_at_object(pat, obj, point(2.5, 0, 0))
         @test c == colorant"white"
     end
 

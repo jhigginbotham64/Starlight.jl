@@ -49,7 +49,7 @@ export is_shadowed
 export plane
 
 # chapter 10
-export stripe_pattern, stripe_at, stripe_at_object
+export pattern, pattern_at, pattern_at_object, stripes
 
 #=
     chapter 1
@@ -155,13 +155,7 @@ mutable struct ray
     velocity::VectorN
 end
 
-# patterns added in chapter 10, put here for compilation
-mutable struct stripe_pattern
-    a::Color
-    b::Color
-    transform::Transform
-    stripe_pattern(; a = colorant"white", b = colorant"black", transform = DEFAULT_TRANSFORM) = new(a, b, transform)
-end
+abstract type pattern end # chapter 10
 
 # material added in chapter 6, put here for compilation
 mutable struct material
@@ -170,7 +164,7 @@ mutable struct material
     diffuse::AbstractFloat
     specular::AbstractFloat
     shininess::AbstractFloat
-    pattern::Union{Nothing, stripe_pattern}
+    pattern::Union{Nothing, pattern}
     material(; color = colorant"white", ambient = 0.1, diffuse = 0.9, specular = 0.9, shininess = 200.0, pattern = nothing) = new(color, ambient, diffuse, specular, shininess, pattern)
 end
 
@@ -247,7 +241,7 @@ mutable struct point_light
 end
 
 function lighting(m, l, p, eyev, normalv, in_shadow = false; obj::Union{Nothing, shape} = nothing)
-    c = (!isnothing(m.pattern)) ? stripe_at_object(m.pattern, obj, p) : m.color # chapter 10
+    c = (!isnothing(m.pattern)) ? pattern_at_object(m.pattern, obj, p) : m.color # chapter 10
     if in_shadow return c * m.ambient end # chapter 8
     effective_color = hadamard(c, l.intensity)
     lightv = normalize(l.position - p)
@@ -559,8 +553,15 @@ end
     chapter 10
 =#
 
-stripe_at(pat::stripe_pattern, p::VectorN) = (floor(p[1]) % 2 == 0) ? pat.a : pat.b
-stripe_at_object(pat::stripe_pattern, obj::Union{Nothing, shape}, wp::VectorN) = (!isnothing(obj)) ? stripe_at(pat, inv(pat.transform) * inv(obj.transform) * wp) : stripe_at(pat, wp)
+mutable struct stripes <: pattern
+    a::Color
+    b::Color
+    transform::Transform
+    stripes(; a = colorant"white", b = colorant"black", transform = DEFAULT_TRANSFORM) = new(a, b, transform)
+end
+
+pattern_at(pat::stripes, p::VectorN) = (floor(p[1]) % 2 == 0) ? pat.a : pat.b
+pattern_at_object(pat::pattern, obj::Union{Nothing, shape}, wp::VectorN) = (!isnothing(obj)) ? pattern_at(pat, inv(pat.transform) * inv(obj.transform) * wp) : pattern_at(pat, wp)
 
 #=
     chapter 11
