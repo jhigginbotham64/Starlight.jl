@@ -999,7 +999,24 @@ using Test
 
     @testset "ch 10 - patterns" begin
         #=
+            more "abstract class" shenanigans, altho i'm beginning to think
+            that this is actually yet another place where julia outdoes more
+            object-oriented languages.
 
+            stripes was the first pattern implemented, so it serves to exercise
+            the "abstract" pattern functionality, including the integration with
+            lighting and shade_hit.
+
+            wondering if macros or code generation are the answer to "how to
+            refactor my repetitive mutable structs", that issue is more glaring
+            with patterns than with shapes.
+
+            may want to clean up the gradient implementation some time,
+            FixedPointNumbers were a little hairy to work with when trying
+            to go from white to black, since that meant finding the per-channel
+            direction associated with the difference of two colors, i.e.
+            "negative colors", and the default color difference return a color,
+            which can't have negative channel values.
         =#
 
         p = stripes()
@@ -1047,6 +1064,34 @@ using Test
         pat = stripes(transform = translation(0.5, 0, 0))
         c = pattern_at_object(pat, obj, point(2.5, 0, 0))
         @test c == colorant"white"
+
+        pat = gradient()
+        @test pattern_at(pat, point(0, 0, 0)) == colorant"white"
+        @test pattern_at(pat, point(0.25, 0, 0)) == RGB(0.75, 0.75, 0.75)
+        @test pattern_at(pat, point(0.5, 0, 0)) == RGB(0.5, 0.5, 0.5)
+        @test pattern_at(pat, point(0.75, 0, 0)) == RGB(0.25, 0.25, 0.25)
+
+        pat = rings()
+        @test pattern_at(pat, point(0, 0, 0)) == colorant"white"
+        @test pattern_at(pat, point(1, 0, 0)) == colorant"black"
+        @test pattern_at(pat, point(0, 0, 1)) == colorant"black"
+        # 0.708 is just a tiny bit greater than √2/2
+        @test pattern_at(pat, point(0.708, 0, 0.708)) == colorant"black"
+
+        pat = checkers()
+        @test pattern_at(pat, point(0, 0, 0)) == colorant"white"
+        @test pattern_at(pat, point(0.99, 0, 0)) == colorant"white"
+        @test pattern_at(pat, point(1.01, 0, 0)) == colorant"black"
+
+        pat = checkers()
+        @test pattern_at(pat, point(0, 0, 0)) == colorant"white"
+        @test pattern_at(pat, point(0, 0.99, 0)) == colorant"white"
+        @test pattern_at(pat, point(0, 1.01, 0)) == colorant"black"
+
+        pat = checkers()
+        @test pattern_at(pat, point(0, 0, 0)) == colorant"white"
+        @test pattern_at(pat, point(0, 0, 0.99)) == colorant"white"
+        @test pattern_at(pat, point(0, 0, 1.01)) == colorant"black"
     end
 
     @testset "ch 11 - reflection and refraction" begin

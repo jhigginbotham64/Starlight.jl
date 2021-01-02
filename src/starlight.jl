@@ -13,7 +13,7 @@ export SDL2
 # demo
 export rsi_demo, light_demo, scene_demo, plane_demo
 
-# helper
+# helpers
 DEFAULT_TRANSFORM = Array{AbstractFloat, 2}(I(4))
 export DEFAULT_TRANSFORM
 Transform = Array{<:Number, 2}
@@ -49,7 +49,7 @@ export is_shadowed
 export plane
 
 # chapter 10
-export pattern, pattern_at, pattern_at_object, stripes
+export pattern, pattern_at, pattern_at_object, stripes, gradient, rings, checkers, OptionalShape
 
 #=
     chapter 1
@@ -240,7 +240,9 @@ mutable struct point_light
     intensity::Color
 end
 
-function lighting(m, l, p, eyev, normalv, in_shadow = false; obj::Union{Nothing, shape} = nothing)
+OptionalShape = Union{Nothing, shape} # chapter 10
+
+function lighting(m, l, p, eyev, normalv, in_shadow = false; obj::OptionalShape = nothing)
     c = (!isnothing(m.pattern)) ? pattern_at_object(m.pattern, obj, p) : m.color # chapter 10
     if in_shadow return c * m.ambient end # chapter 8
     effective_color = hadamard(c, l.intensity)
@@ -349,7 +351,7 @@ function prepare_computations(i::intersection, r::ray)
     return computations(t, obj, p, eyev, normalv, inside, over_point)
 end
 
-function shade_hit(w::world, c::computations; obj::Union{Nothing, shape} = nothing)
+function shade_hit(w::world, c::computations; obj::OptionalShape = nothing)
     #=
         chapter 8
 
@@ -560,8 +562,39 @@ mutable struct stripes <: pattern
     stripes(; a = colorant"white", b = colorant"black", transform = DEFAULT_TRANSFORM) = new(a, b, transform)
 end
 
+mutable struct gradient <: pattern
+    a::Color
+    b::Color
+    transform::Transform
+    gradient(; a = colorant"white", b = colorant"black", transform = DEFAULT_TRANSFORM) = new(a, b, transform)
+end
+
+mutable struct rings <: pattern
+    a::Color
+    b::Color
+    transform::Transform
+    rings(; a = colorant"white", b = colorant"black", transform = DEFAULT_TRANSFORM) = new(a, b, transform)
+end
+
+mutable struct checkers <: pattern
+    a::Color
+    b::Color
+    transform::Transform
+    checkers(; a = colorant"white", b = colorant"black", transform = DEFAULT_TRANSFORM) = new(a, b, transform)
+end
+
 pattern_at(pat::stripes, p::VectorN) = (floor(p[1]) % 2 == 0) ? pat.a : pat.b
-pattern_at_object(pat::pattern, obj::Union{Nothing, shape}, wp::VectorN) = (!isnothing(obj)) ? pattern_at(pat, inv(pat.transform) * inv(obj.transform) * wp) : pattern_at(pat, wp)
+function pattern_at(pat::gradient, p::VectorN)
+    # when you want to handle "negative colors" differently than your library
+    a, b = pat.a, pat.b
+    ar, ag, ab = AbstractFloat.([red(a), green(a), blue(a)])
+    br, bg, bb = AbstractFloat.([red(b), green(b), blue(b)])
+    dr, dg, db = [br - ar, bg - ag, bb - ab] * (p[1] - floor(p[1]))
+    return RGB(red(pat.a) + dr, green(pat.a) + dg, blue(pat.a) + db)
+end
+pattern_at(pat::rings, p::VectorN) = (floor(√(p[1]^2 + p[3]^2)) % 2 == 0) ? pat.a : pat.b
+pattern_at(pat::checkers, p::VectorN) = (sum(floor.(p[1:3])) % 2 == 0) ? pat.a : pat.b
+pattern_at_object(pat::pattern, obj::OptionalShape, wp::VectorN) = (!isnothing(obj)) ? pattern_at(pat, inv(pat.transform) * inv(obj.transform) * wp) : pattern_at(pat, wp)
 
 #=
     chapter 11
