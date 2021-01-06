@@ -49,7 +49,12 @@ export is_shadowed
 export plane
 
 # chapter 10
-export pattern, pattern_at, pattern_at_object, stripes, gradient, rings, checkers, OptionalShape
+export pattern, pattern_at, pattern_at_object, test_pattern, stripes, gradient, rings, checkers, OptionalShape
+
+# chapter 11
+export glass_sphere, reflected_color, refracted_color, schlick
+DEFAULT_RECURSION_LIMIT = 5
+export DEFAULT_RECURSION_LIMIT
 
 #=
     chapter 1
@@ -165,7 +170,10 @@ mutable struct material
     specular::AbstractFloat
     shininess::AbstractFloat
     pattern::Union{Nothing, pattern}
-    material(; color = colorant"white", ambient = 0.1, diffuse = 0.9, specular = 0.9, shininess = 200.0, pattern = nothing) = new(color, ambient, diffuse, specular, shininess, pattern)
+    reflective::AbstractFloat # chapter 11
+    transparency::AbstractFloat # chapter 11
+    refractive_index::AbstractFloat # chapter 11
+    material(; color = colorant"white", ambient = 0.1, diffuse = 0.9, specular = 0.9, shininess = 200.0, pattern = nothing, reflective = 0.0, transparency = 0.0, refractive_index = 1.0) = new(color, ambient, diffuse, specular, shininess, pattern, reflective, transparency, refractive_index)
 end
 
 abstract type shape end # chapter 9
@@ -263,7 +271,7 @@ function lighting(m, l, p, eyev, normalv, in_shadow = false; obj::OptionalShape 
     return ambient + diffuse + specular
 end
 
-round_color(c::Color, ndigits::Int = 5) = mapc(chan -> round(chan, digits=ndigits), c)
+round_color(c::Color, digits::Int = 5) = mapc(chan -> round(chan, digits=digits), c)
 
 function light_demo(; height=100, width=100, bg_color=colorant"black", light_color=colorant"white", mat_color=colorant"purple")
     canv = canvas(width, height, bg_color)
@@ -327,9 +335,13 @@ mutable struct computations
     normalv::VectorN
     inside::Bool
     over_point::VectorN # chapter 8
+    under_point::VectorN # chapter 11
+    reflectv::VectorN # chapter 11
+    n1::AbstractFloat
+    n2::AbstractFloat
 end
 
-function prepare_computations(i::intersection, r::ray)
+function prepare_computations(i::intersection, r::ray, xs::Union{Nothing, Intersections} = nothing)
     t = i.t
     obj = i.object
     p = position(r, t)
@@ -347,11 +359,51 @@ function prepare_computations(i::intersection, r::ray)
         to be enough for me. so i added zeros until the "fleas" went
         away, and i'll revisit my approach later if it breaks somehow.
     =#
-    over_point = p + (normalv * eps() * 100000)
-    return computations(t, obj, p, eyev, normalv, inside, over_point)
+    shift_factor = eps() * 100000
+    over_point = p + (normalv * shift_factor)
+
+    #=
+        chapter 11
+    =#
+
+    under_point = p - (normalv * shift_factor)
+
+    reflectv = reflect(r.velocity, normalv)
+    n1 = 1.0
+    n2 = 1.0
+    if !isnothing(xs)
+        containers = []
+
+        for x in xs
+            if x == i
+                if isempty(containers)
+                    n1 = 1.0
+                else
+                    n1 = last(containers).material.refractive_index
+                end
+            end
+
+            if x.object ∈ containers
+                filter!(s -> s != x.object, containers)
+            else
+                push!(containers, x.object)
+            end
+
+            if x == i
+                if isempty(containers)
+                    n2 = 1.0
+                else
+                    n2 = last(containers).material.refractive_index
+                end
+                break
+            end
+        end
+    end
+
+    return computations(t, obj, p, eyev, normalv, inside, over_point, under_point, reflectv, n1, n2)
 end
 
-function shade_hit(w::world, c::computations; obj::OptionalShape = nothing)
+function shade_hit(w::world, c::computations, remaining::Int = DEFAULT_RECURSION_LIMIT; obj::OptionalShape = nothing)
     #=
         chapter 8
 
@@ -377,17 +429,28 @@ function shade_hit(w::world, c::computations; obj::OptionalShape = nothing)
     if all(shadows) return c.object.material.color * c.object.material.ambient end
 
     # this minus the shadow stuff is all you need for chapter 7
-    return sum([
-        lighting(c.object.material, l, c.point, c.eyev, c.normalv, shadows[i], obj = c.object) # obj added in chapter 10
+    surface = sum([
+        lighting(c.object.material, l, c.point, c.eyev, c.normalv, shadows[i], obj = obj) # obj added in chapter 10
         for (i, l) in enumerate(w.lights) if !shadows[i]
     ])
+
+    # chapter 11
+    reflected = reflected_color(w, c, remaining)
+    refracted = refracted_color(w, c, remaining)
+    m = c.object.material
+    if m.reflective > 0 && m.transparency > 0
+        reflectance = schlick(c)
+        return surface + reflected * reflectance + refracted * (1 - reflectance)
+    else
+        return surface + reflected + refracted
+    end
 end
 
-function color_at(w::world, r::ray)
+function color_at(w::world, r::ray, remaining::Int = DEFAULT_RECURSION_LIMIT)
     h = hit(intersect(w, r))
     c = colorant"black"
     if !isnothing(h)
-        c = shade_hit(w, prepare_computations(h, r))
+        c = shade_hit(w, prepare_computations(h, r), remaining)
     end
     return c
 end
@@ -460,7 +523,7 @@ end
 function scene_demo(; width = 100, height = 50, fov = π/3)
     wmat = material(color = RGB(1, 0.9, 0.9), specular = 0)
 
-    floor = sphere(transform = scaling(10, 0.01, 10), material = wmat)
+    flr = sphere(transform = scaling(10, 0.01, 10), material = wmat)
     left_wall = sphere(transform = translation(0, 0, 5) * rotation_y(-π/4) * rotation_x(π/2) * scaling(10, 0.01, 10), material = wmat)
     right_wall = sphere(transform = translation(0, 0, 5) * rotation_y(π/4) * rotation_x(π/2) * scaling(10, 0.01, 10), material = wmat)
     middle = sphere(transform = translation(-0.5, 1, 0.5), material = material(color = RGB(0.1, 1, 0.5), diffuse = 0.7, specular = 0.3))
@@ -469,7 +532,7 @@ function scene_demo(; width = 100, height = 50, fov = π/3)
 
     w = world()
     push!(w.lights, point_light(point(-10, 10, -10), colorant"white"))
-    push!(w.objects, floor, left_wall, right_wall, middle, right, left)
+    push!(w.objects, flr, left_wall, right_wall, middle, right, left)
 
     cam = camera(hsize=width, vsize=height, fov=π/3, transform=view_transform(point(0, 1.5, -5), point(0, 1, 0), vector(0, 1, 0)))
 
@@ -537,14 +600,14 @@ end
 _normal_at(p::plane, op::VectorN) = vector(0, 1, 0) # we're in object space, and the normal is the same everywhere...
 
 function plane_demo(; width = 100, height = 50, fov = π/3)
-    floor = plane(transform = scaling(10, 0.01, 10), material = material(color = RGB(1, 0.9, 0.9), specular = 0))
+    flr = plane(transform = scaling(10, 0.01, 10), material = material(color = RGB(1, 0.9, 0.9), specular = 0))
     middle = sphere(transform = translation(-0.5, 1, 0.5), material = material(color = RGB(0.1, 1, 0.5), diffuse = 0.7, specular = 0.3))
     right = sphere(transform = translation(1.5, 0.5, -0.5) * scaling(0.5, 0.5, 0.5), material = material(color = RGB(0.5, 1, 0.1), diffuse = 0.7, specular = 0.3))
     left = sphere(transform = translation(-1.5, 0.33, -0.75) * scaling(0.33, 0.33, 0.33), material = material(color = RGB(1, 0.8, 0.1), diffuse = 0.7, specular = 0.3))
 
     w = world()
     push!(w.lights, point_light(point(-10, 10, -10), colorant"white"))
-    push!(w.objects, floor, middle, right, left)
+    push!(w.objects, flr, middle, right, left)
 
     cam = camera(hsize=width, vsize=height, fov=π/3, transform=view_transform(point(0, 1.5, -5), point(0, 1, 0), vector(0, 1, 0)))
 
@@ -553,7 +616,15 @@ end
 
 #=
     chapter 10
+
+    TODO: look into refactoring these pattern structs with macros or something
 =#
+
+# chapter 11
+mutable struct test_pattern <: pattern
+    transform::Transform
+    test_pattern(; a = colorant"white", b = colorant"black", transform = DEFAULT_TRANSFORM) = new(transform)
+end
 
 mutable struct stripes <: pattern
     a::Color
@@ -583,6 +654,7 @@ mutable struct checkers <: pattern
     checkers(; a = colorant"white", b = colorant"black", transform = DEFAULT_TRANSFORM) = new(a, b, transform)
 end
 
+pattern_at(pat::test_pattern, p::VectorN) = RGB(AbstractFloat.(p[1:3])...)
 pattern_at(pat::stripes, p::VectorN) = (floor(p[1]) % 2 == 0) ? pat.a : pat.b
 function pattern_at(pat::gradient, p::VectorN)
     # when you want to handle "negative colors" differently than your library
@@ -600,7 +672,48 @@ pattern_at_object(pat::pattern, obj::OptionalShape, wp::VectorN) = (!isnothing(o
     chapter 11
 =#
 
+# a helper the book uses, without which some test cases are confusing to transcribe
+glass_sphere() = sphere(material = material(transparency = 1.0, refractive_index = 1.5))
 
+function reflected_color(w::world, comps::computations, remaining::Int = DEFAULT_RECURSION_LIMIT)
+    if comps.object.material.reflective == 0 || remaining <= 0 return colorant"black" end
+    reflect_ray = ray(comps.over_point, comps.reflectv)
+    c = color_at(w, reflect_ray, remaining - 1)
+    return c * comps.object.material.reflective
+end
+
+function refracted_color(w::world, comps::computations, remaining::Int = DEFAULT_RECURSION_LIMIT)
+    if comps.object.material.transparency == 0 || remaining <= 0 return colorant"black" end
+
+    n_ratio = comps.n1 / comps.n2
+    cos_i = comps.eyev ⋅ comps.normalv
+    sin2_t = n_ratio^2 * (1 - cos_i^2)
+
+    if sin2_t > 1 return colorant"black" end # snell's law
+
+    cos_t = √(1.0 - sin2_t)
+    dir = comps.normalv * (n_ratio * cos_i - cos_t) - comps.eyev * n_ratio
+    refract_ray = ray(comps.under_point, dir)
+
+    return color_at(w, refract_ray, remaining - 1) * comps.object.material.transparency
+end
+
+function schlick(c::computations)
+    _cos = c.eyev ⋅ c.normalv
+
+    if c.n1 > c.n2
+        n = c.n1 / c.n2
+        sin2_t = n^2 * (1.0 - _cos^2)
+        if sin2_t > 1.0 return 1.0 end
+
+        cos_t = √(1.0 - sin2_t)
+        _cos = cos_t
+    end
+
+    r0 = ((c.n1 - c.n2) / (c.n1 + c.n2))^2
+
+    return r0 + (1 - r0) * (1 - _cos)^5
+end
 
 #=
     chapter 12
