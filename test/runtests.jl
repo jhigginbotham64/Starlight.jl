@@ -1359,7 +1359,128 @@ using Test
     end
 
     @testset "ch 12 - cubes" begin
+        #=
+            cubes were a nice break after the last chapter.
+        =#
 
+        c = cube()
+        r = ray(point(5, 0.5, 0), vector(-1, 0, 0))
+        xs = intersect(c, r)
+        @test length(xs) == 2
+        @test xs[1].t == 4
+        @test xs[2].t == 6
+
+        c = cube()
+        r = ray(point(-5, 0.5, 0), vector(1, 0, 0))
+        xs = intersect(c, r)
+        @test length(xs) == 2
+        @test xs[1].t == 4
+        @test xs[2].t == 6
+
+        c = cube()
+        r = ray(point(0.5, 5, 0), vector(0, -1, 0))
+        xs = intersect(c, r)
+        @test length(xs) == 2
+        @test xs[1].t == 4
+        @test xs[2].t == 6
+
+        c = cube()
+        r = ray(point(0.5, -5, 0), vector(0, 1, 0))
+        xs = intersect(c, r)
+        @test length(xs) == 2
+        @test xs[1].t == 4
+        @test xs[2].t == 6
+
+        c = cube()
+        r = ray(point(0.5, 0, 5), vector(0, 0, -1))
+        xs = intersect(c, r)
+        @test length(xs) == 2
+        @test xs[1].t == 4
+        @test xs[2].t == 6
+
+        c = cube()
+        r = ray(point(0.5, 0, -5), vector(0, 0, 1))
+        xs = intersect(c, r)
+        @test length(xs) == 2
+        @test xs[1].t == 4
+        @test xs[2].t == 6
+
+        c = cube()
+        r = ray(point(0, 0.5, 0), vector(0, 0, 1))
+        xs = intersect(c, r)
+        @test length(xs) == 2
+        @test xs[1].t == -1
+        @test xs[2].t == 1
+
+        c = cube()
+        r = ray(point(-2, 0, 0), vector(0.2673, 0.5345, 0.8018))
+        xs = intersect(c, r)
+        @test length(xs) == 0
+
+        c = cube()
+        r = ray(point(0, -2, 0), vector(0.8018, 0.2673, 0.5345))
+        xs = intersect(c, r)
+        @test length(xs) == 0
+
+        c = cube()
+        r = ray(point(0, 0, -2), vector(0.5345, 0.8018, 0.2673))
+        xs = intersect(c, r)
+        @test length(xs) == 0
+
+        c = cube()
+        r = ray(point(2, 0, 2), vector(0, 0, -1))
+        xs = intersect(c, r)
+        @test length(xs) == 0
+
+        c = cube()
+        r = ray(point(0, 2, 2), vector(0, -1, 0))
+        xs = intersect(c, r)
+        @test length(xs) == 0
+
+        c = cube()
+        r = ray(point(2, 2, 0), vector(-1, 0, 0))
+        xs = intersect(c, r)
+        @test length(xs) == 0
+
+        c = cube()
+        p = point(1, 0.5, -0.8)
+        n = normal_at(c, p)
+        @test n == vector(1, 0, 0)
+
+        c = cube()
+        p = point(-1, -0.2, 0.9)
+        n = normal_at(c, p)
+        @test n == vector(-1, 0, 0)
+
+        c = cube()
+        p = point(-0.4, 1, -0.1)
+        n = normal_at(c, p)
+        @test n == vector(0, 1, 0)
+
+        c = cube()
+        p = point(0.3, -1, -0.7)
+        n = normal_at(c, p)
+        @test n == vector(0, -1, 0)
+
+        c = cube()
+        p = point(-0.6, -0.3, 1)
+        n = normal_at(c, p)
+        @test n == vector(0, 0, 1)
+
+        c = cube()
+        p = point(0.4, 0.4, -1)
+        n = normal_at(c, p)
+        @test n == vector(0, 0, -1)
+
+        c = cube()
+        p = point(1, 1, 1)
+        n = normal_at(c, p)
+        @test n == vector(1, 0, 0)
+
+        c = cube()
+        p = point(-1, -1, -1)
+        n = normal_at(c, p)
+        @test n == vector(-1, 0, 0)
     end
 
     @testset "ch 13 - cylinders" begin

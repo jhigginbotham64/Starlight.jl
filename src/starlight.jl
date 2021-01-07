@@ -56,6 +56,9 @@ export glass_sphere, reflected_color, refracted_color, schlick
 DEFAULT_RECURSION_LIMIT = 5
 export DEFAULT_RECURSION_LIMIT
 
+# chapter 12
+export cube
+
 #=
     chapter 1
 =#
@@ -719,7 +722,47 @@ end
     chapter 12
 =#
 
+mutable struct cube <: shape
+    transform::Transform
+    material::material
+    cube(; transform = DEFAULT_TRANSFORM, material = material()) = new(transform, material)
+end
 
+function check_axis(origin::AbstractFloat, direction::AbstractFloat)
+    tmin_numerator = (-1 - origin)
+    tmax_numerator = (1 - origin)
+
+    tmin = tmin_numerator * Inf
+    tmax = tmax_numerator * Inf
+
+    if abs(direction) >= eps()
+        tmin = tmin_numerator / direction
+        tmax = tmax_numerator / direction
+    end
+
+    return min(tmin, tmax), max(tmin, tmax)
+end
+
+function _intersect(c::cube, r::ray)
+    xtmin, xtmax = check_axis(r.origin[1], r.velocity[1])
+    ytmin, ytmax = check_axis(r.origin[2], r.velocity[2])
+    ztmin, ztmax = check_axis(r.origin[3], r.velocity[3])
+
+    tmin = max(xtmin, ytmin, ztmin)
+    tmax = min(xtmax, ytmax, ztmax)
+
+    if tmin > tmax return Intersections([]) end
+
+    return intersections(intersection(tmin, c), intersection(tmax, c))
+end
+
+function _normal_at(c::cube, op::VectorN)
+    maxc = max(abs(op[1]), abs(op[2]), abs(op[3]))
+
+    if maxc == abs(op[1]) return vector(op[1], 0, 0)
+    elseif maxc == abs(op[2]) return vector(0, op[2], 0)
+    else return vector(0, 0, op[3]) end
+end
 
 #=
     chapter 13
