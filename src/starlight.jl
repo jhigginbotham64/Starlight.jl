@@ -79,7 +79,8 @@ vector(x, y, z) = [x, y, z, 0.0]
 
 # height is number of rows, which in julia is the first dimension.
 # width is number of columns, which in julia is the second dimension.
-canvas(w::Int, h::Int, c = colorant"black") = fill(c, (h, w))
+# also you have to be careful about Color types if precision matters to you.
+canvas(w::Int, h::Int, c = RGB{Float64}(colorant"black")) = fill(c, (h, w))
 pixel(mat, x::Int, y::Int) = mat[x,y]
 pixel!(mat, x::Int, y::Int, c::Colorant) = mat[x,y] = c
 pixels(mat) = flat(mat)

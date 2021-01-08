@@ -846,9 +846,7 @@ using Test
         up = vector(0, 1, 0)
         c = camera(hsize=11, vsize=11, fov=π/2, transform=view_transform(from, to, up))
         img = render(c, w)
-        # so this test suffered from the green channel bug, but it seems to have
-        # the additional issue of type comparisons
-        @test_broken round_color(pixel(img, 5, 5)) == round_color(RGB(0.38066, 0.47583, 0.2855))
+        @test round_color(pixel(img, 5, 5)) == round_color(RGB(0.38066, 0.47583, 0.2855))
     end
 
     @testset "ch 8 - shadows" begin
@@ -1675,6 +1673,17 @@ using Test
             builds on that, so i want to make sure my stuff is correct before
             it breaks something that builds on top of it in a way that's even
             harder to diagnose.
+
+            ...the bugs turned out to be: 1) default world sphere 1 color should
+            have had green == 1.0 instead of green == 0.1, 2) change canvas
+            default color from colorant"black" to RGB{Float64}(colorant"black").
+
+            there are exactly 5 tests where my implementation doesn't get exactly
+            the same results as the book, and the worst of these are correct if
+            rounded to 3 decimal places, which means "practically no visible
+            difference" (all of these are color tests, by the way). there's likely
+            an issue somewhere, perhaps even a numerical one, but i'm not convinced
+            just yet that it would be worthwhile to try and tackle it.
         =#
     end
 
