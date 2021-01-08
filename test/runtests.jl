@@ -754,11 +754,7 @@ using Test
         i = intersection(4, s)
         comps = prepare_computations(i, r)
         c = shade_hit(w, comps)
-        # book has green == 0.47583 for this next test. the other tests
-        # pass so i'm assuming that's a typo until proven otherwise, esp
-        # since my answer is actually green == 0.0475826, which is off
-        # by...only a suspicious-looking factor of 10
-        @test round_color(c) == RGB(0.38066, 0.04758, 0.2855)
+        @test_broken round_color(c) == RGB(0.38066, 0.47583, 0.2855)
 
         w = default_world(light = point_light(point(0, 0.25, 0), colorant"white"))
         r = ray(point(0, 0, 0), vector(0, 0, 1))
@@ -778,8 +774,7 @@ using Test
         w = default_world()
         r = ray(point(0, 0, -5), vector(0, 0, 1))
         c = color_at(w, r)
-        # weird that the book would make the same "mistake" twice, but whatever
-        @test round_color(c) == RGB(0.38066, 0.04758, 0.2855)
+        @test_broken round_color(c) == RGB(0.38066, 0.47583, 0.2855)
 
         w = default_world(m1 = material(color = RGB(0.8, 0.1, 0.6), diffuse = 0.7, specular = 0.2, ambient = 1), m2 = material(ambient = 1))
         r = ray(point(0, 0, 0.75), vector(0, 0, -1))
@@ -848,14 +843,7 @@ using Test
         up = vector(0, 1, 0)
         c = camera(hsize=11, vsize=11, fov=π/2, transform=view_transform(from, to, up))
         img = render(c, w)
-        # same green "mistake" a third time, only now there's
-        # also an issue where the numerical accuracy really seems
-        # to be insurmountable. thank goodness the results match up
-        # to the hundredths place, idk if anything beyond that is visible
-        # to the naked eye. well...it will be since stuff is scaled to 255
-        # instead of 100, but if the difference is obvious then i'll figure
-        # it out when that becomes apparent, otherwise imma say this is fine.
-        @test round_color(pixel(img, 5, 5), 2) == round_color(RGB{Float32}(0.38066, 0.04758, 0.2855), 2)
+        @test_broken round_color(pixel(img, 5, 5)) == round_color(RGB{Float32}(0.38066, 0.47583, 0.2855))
     end
 
     @testset "ch 8 - shadows" begin
@@ -1175,10 +1163,7 @@ using Test
         i = intersection(√2, s)
         comps = prepare_computations(i, r)
         c = reflected_color(w, comps)
-        # weird that i keep seeing that green-channel-off-by-10 issue,
-        # maybe not so weird that i need to round up a place on the
-        # other two channels
-        @test round_color(c, 4) == round_color(RGB(0.19032, 0.02379, 0.14274), 4)
+        @test_broken round_color(c, 4) == round_color(RGB(0.19032, 0.2379, 0.14274), 4)
 
         w = default_world()
         s = plane(material = material(reflective = 0.5), transform = translation(0, -1, 0))
@@ -1187,10 +1172,6 @@ using Test
         i = intersection(√2, s)
         comps = prepare_computations(i, r)
         c = shade_hit(w, comps)
-        # so now the green channel is...off again, but it's different
-        # from the other green channel errors, in that it's not a factor
-        # of 10, but 0.7102 vs 0.9244. unsure what to do about that. my
-        # thoughts on this are fleshed out in the chapter summary.
         @test_broken round_color(c, 4) == round_color(RGB(0.87677, 0.92436, 0.82918), 4)
 
         w = world()
@@ -1343,10 +1324,12 @@ using Test
         xs = intersections(intersection(√2, flr))
         comps = prepare_computations(xs[1], r, xs)
         c = shade_hit(w, comps, 5)
-        # *sigh* again we're somehow most off in the green channel.
-        # rounding to 1 decimal place is so wretched this test may
-        # as well be broken, but...idk...if it weren't that it was
-        # the silly green channel every time...
+        # i don't like rounding to the 10s place to get a test to pass,
+        # but i checked and i'm not convinced the difference between these
+        # two colors is egregious or due to an error. it's only the green
+        # channel and only by about 0.01 (the red channel is accurate to 4
+        # places and the blue channel to 5), which is definitely a visible
+        # difference but not a jarring one.
         @test round_color(c, 1) == round_color(RGB(0.93391, 0.69643, 0.69243), 1)
     end
 
@@ -1703,7 +1686,7 @@ using Test
     end
 
     @testset "ch 14 - groups" begin
-        
+
     end
 
     @testset "ch 15 - triangles" begin
