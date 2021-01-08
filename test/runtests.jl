@@ -1466,6 +1466,22 @@ using Test
             few test cases that were failing due to silly mistakes, but
             got through them. now that i've had a bit more experience
             debugging this application i'll revisit the broken ch 11 cases.
+
+            ...did some work on that, made some progress. realized that
+            the ColorVectorSpace package is documented to do the silly and
+            simple sort of "colors are vectors" operations that this book
+            asks for, so it shouldn't be the issue really, although there
+            are a few boxes in the demo image in the README where the difference
+            between a vector space vs a colorimetrically correct approach is as
+            striking as some i've seen while working on this project, namely
+            the green-off-by-a-factor-of-10 ones.
+
+            it's just a question of "how big a problem is this, really"?
+            i mean there definitely is a problem, but when do i want to
+            work on it?
+
+            ...we'll see how i feel when i get to the bonus chapters, which
+            will make further demands on the problematic code segments.
         =#
 
         c = cylinder()
