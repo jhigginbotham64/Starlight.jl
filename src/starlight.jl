@@ -432,11 +432,13 @@ function shade_hit(w::world, c::computations, remaining::Int = DEFAULT_RECURSION
         from only the lit ones.
     =#
     shadows = [is_shadowed(w, c.over_point, i) for i=1:length(w.lights)]
-    if all(shadows) return c.object.material.color * c.object.material.ambient end
 
-    # this minus the shadow stuff is all you need for chapter 7
-    surface = sum([
-        lighting(c.object.material, l, c.point, c.eyev, c.normalv, shadows[i], obj = obj) # obj added in chapter 10
+    # this minus the shadow  and pattern stuff is all you need for chapter 7
+    surface =
+    (all(shadows)) ?
+    ((isnothing(c.object.material.pattern)) ? c.object.material.color : pattern_at_object(c.object.material.pattern, c.object, c.over_point)) * c.object.material.ambient :
+    sum([
+        lighting(c.object.material, l, c.point, c.eyev, c.normalv, false, obj = obj) # obj added in chapter 10
         for (i, l) in enumerate(w.lights) if !shadows[i]
     ])
 

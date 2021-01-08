@@ -1300,15 +1300,7 @@ using Test
         xs = intersections(intersection(-0.9899, a), intersection(-0.4899, b), intersection(0.4899, b), intersection(0.9899, a))
         comps = prepare_computations(xs[3], r, xs)
         c = refracted_color(w, comps, 5)
-        # currently getting RGB(0.8, 0.1, 0.6) as the result,
-        # no idea where to even begin with that. i'll probably
-        # make a lot more progress and maybe even do the bonus
-        # chapters and then, if i still have broken tests, go
-        # back and do a massive round of debugging and refactoring,
-        # just really not in the mood right now. also why are other
-        # tests passing? tbh that's not a gripe, that's probably an
-        # avenue of investigation that would shed light on these issues.
-        @test_broken round_color(c) == RGB(0, 0.99888, 0.04725)
+        @test round_color(c, 3) == round_color(RGB(0, 0.99888, 0.04725), 3)
 
         w = default_world()
         flr = plane(transform = translation(0, -1, 0), material = material(transparency = 0.5, refractive_index = 1.5))
@@ -1711,7 +1703,7 @@ using Test
     end
 
     @testset "ch 14 - groups" begin
-
+        
     end
 
     @testset "ch 15 - triangles" begin
