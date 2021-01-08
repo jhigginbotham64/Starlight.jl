@@ -34,10 +34,10 @@ export submatrix, minor, cofactor, invertible
 export translation, scaling, reflection_x, reflection_y, reflection_z, rotation_x, rotation_y, rotation_z, shearing
 
 # chapter 5
-export ray, sphere, intersect, intersection, intersections, Intersections, hit, transform
+export ray, sphere, intersect, _intersect, intersection, intersections, Intersections, hit, transform
 
 # chapter 6
-export normal_at, reflect, point_light, material, lighting, round_color
+export normal_at, _normal_at, reflect, point_light, material, lighting, round_color
 
 # chapter 7
 export world, default_world, prepare_computations, shade_hit, color_at, view_transform, camera, ray_for_pixel, render
@@ -58,6 +58,9 @@ export DEFAULT_RECURSION_LIMIT
 
 # chapter 12
 export cube
+
+# chapter 13
+export cylinder, intersect_caps!, check_cap, cone
 
 #=
     chapter 1
@@ -768,7 +771,145 @@ end
     chapter 13
 =#
 
+mutable struct cylinder <: shape
+    transform::Transform
+    material::material
+    min::AbstractFloat
+    max::AbstractFloat
+    closed::Bool
+    cylinder(; transform = DEFAULT_TRANSFORM, material = material(), min = -Inf, max = Inf, closed = false) = new(transform, material, min, max, closed)
+end
 
+function check_cap(r::ray, t::AbstractFloat)
+    x = r.origin[1] + t * r.velocity[1]
+    z = r.origin[3] + t * r.velocity[3]
+
+    return (x^2 + z^2) <= 1
+end
+
+function intersect_caps!(xs::Intersections, c::cylinder, r::ray)
+    if !c.closed || r.velocity[2] ≈ 0 return end
+    t1 = (c.min - r.origin[2]) / r.velocity[2]
+    if check_cap(r, t1) push!(xs, intersection(t1, c)) end
+    t2 = (c.max - r.origin[2]) / r.velocity[2]
+    if check_cap(r, t2) push!(xs, intersection(t2, c)) end
+end
+
+function _intersect(c::cylinder, r::ray)
+    xs = Intersections([])
+
+    intersect_caps!(xs, c, r)
+
+    a = r.velocity[1]^2 + r.velocity[3]^2
+    if a ≈ 0 return xs end
+
+    b = 2 * r.origin[1] * r.velocity[1] + 2 * r.origin[3] * r.velocity[3]
+    _c = r.origin[1]^2 + r.origin[3]^2 - 1
+    disc = b^2 - 4 * a * _c
+    if disc < 0 return xs end
+
+    t0 = (-b - √disc) / 2a
+    t1 = (-b + √disc) / 2a
+
+    t0, t1 = min(t0, t1), max(t0, t1)
+
+    y0 = r.origin[2] + t0 * r.velocity[2]
+    if c.min < y0 && y0 < c.max
+        push!(xs, intersection(t0, c))
+    end
+
+    y1 = r.origin[2] + t1 * r.velocity[2]
+    if c.min < y1 && y1 < c.max
+        push!(xs, intersection(t1, c))
+    end
+
+    return xs
+end
+
+function _normal_at(c::cylinder, op::VectorN)
+    dist = op[1]^2 + op[3]^2
+    if dist < 1 && op[2] >= c.max - eps()
+        return vector(0, 1, 0)
+    elseif dist < 1 && op[2] <= c.min + eps()
+        return vector(0, -1, 0)
+    else
+        return vector(op[1], 0, op[3])
+    end
+end
+
+mutable struct cone <: shape
+    transform::Transform
+    material::material
+    min::AbstractFloat
+    max::AbstractFloat
+    closed::Bool
+    cone(; transform = DEFAULT_TRANSFORM, material = material(), min = -Inf, max = Inf, closed = false) = new(transform, material, min, max, closed)
+end
+
+function check_cap(r::ray, t::AbstractFloat, y::AbstractFloat)
+    x = r.origin[1] + t * r.velocity[1]
+    z = r.origin[3] + t * r.velocity[3]
+
+    return (x^2 + z^2) <= abs(y)
+end
+
+function intersect_caps!(xs::Intersections, c::cone, r::ray)
+    if !c.closed || r.velocity[2] ≈ 0 return end
+    t1 = (c.min - r.origin[2]) / r.velocity[2]
+    if check_cap(r, t1, c.min) push!(xs, intersection(t1, c)) end
+    t2 = (c.max - r.origin[2]) / r.velocity[2]
+    if check_cap(r, t2, c.max) push!(xs, intersection(t2, c)) end
+end
+
+function _intersect(c::cone, r::ray)
+    xs = Intersections([])
+
+    intersect_caps!(xs, c, r)
+
+    a = r.velocity[1]^2 - r.velocity[2]^2 + r.velocity[3]^2
+    b = 2 * r.origin[1] * r.velocity[1] - 2 * r.origin[2] * r.velocity[2] + 2 * r.origin[3] * r.velocity[3]
+    _c = r.origin[1]^2 - r.origin[2]^2 + r.origin[3]^2
+
+    if a ≈ 0 && b ≈ 0 return xs
+    elseif a ≈ 0
+        t = -_c / 2b
+        push!(xs, intersection(t, c))
+        return xs
+    end
+
+    disc = b^2 - 4 * a * _c
+    if disc < 0 return xs end
+
+    t0 = (-b - √disc) / 2a
+    t1 = (-b + √disc) / 2a
+
+    t0, t1 = min(t0, t1), max(t0, t1)
+
+    y0 = r.origin[2] + t0 * r.velocity[2]
+    if c.min < y0 && y0 < c.max
+        push!(xs, intersection(t0, c))
+    end
+
+    y1 = r.origin[2] + t1 * r.velocity[2]
+    if c.min < y1 && y1 < c.max
+        push!(xs, intersection(t1, c))
+    end
+
+    return xs
+end
+
+function _normal_at(c::cone, op::VectorN)
+    dist = op[1]^2 + op[3]^2
+    if dist < 1 && op[2] >= c.max - eps()
+        return vector(0, 1, 0)
+    elseif dist < 1 && op[2] <= c.min + eps()
+        return vector(0, -1, 0)
+    else
+        y = √(op[1]^2 + op[3]^2)
+        if op[2] > 0 y = -y end
+        return vector(op[1], y, op[3])
+    end
+end
 
 #=
     chapter 14

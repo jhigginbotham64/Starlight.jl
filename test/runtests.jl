@@ -1484,7 +1484,230 @@ using Test
     end
 
     @testset "ch 13 - cylinders" begin
+        #=
+            TODO: reimagine and rewrite to not be organized by chapters
 
+            easy to lose track of stuff at this point, beat my head on a
+            few test cases that were failing due to silly mistakes, but
+            got through them. now that i've had a bit more experience
+            debugging this application i'll revisit the broken ch 11 cases.
+        =#
+
+        c = cylinder()
+        dir = normalize(vector(0, 1, 0))
+        r = ray(point(1, 0, 0), dir)
+        xs = intersect(c, r)
+        @test length(xs) == 0
+
+        c = cylinder()
+        dir = normalize(vector(0, 0, 0))
+        r = ray(point(0, 0, 0), dir)
+        xs = intersect(c, r)
+        @test length(xs) == 0
+
+        c = cylinder()
+        dir = normalize(vector(1, 1, 1))
+        r = ray(point(0, 0, -5), dir)
+        xs = intersect(c, r)
+        @test length(xs) == 0
+
+        c = cylinder()
+        dir = normalize(vector(0, 0, 1))
+        r = ray(point(1, 0, -5), dir)
+        xs = intersect(c, r)
+        @test length(xs) == 2
+        @test xs[1].t == 5
+        @test xs[2].t == 5
+
+        c = cylinder()
+        dir = normalize(vector(0, 0, 1))
+        r = ray(point(0, 0, -5), dir)
+        xs = intersect(c, r)
+        @test length(xs) == 2
+        @test xs[1].t == 4
+        @test xs[2].t == 6
+
+        c = cylinder()
+        dir = normalize(vector(0.1, 1, 1))
+        r = ray(point(0.5, 0, -5), dir)
+        xs = intersect(c, r)
+        @test length(xs) == 2
+        @test round(xs[1].t, digits=5) == 6.80798
+        @test round(xs[2].t, digits=5) == 7.08872
+
+        c = cylinder()
+        n = normal_at(c, point(1, 0, 0))
+        @test n == vector(1, 0, 0)
+
+        c = cylinder()
+        n = normal_at(c, point(0, 5, -1))
+        @test n == vector(0, 0, -1)
+
+        c = cylinder()
+        n = normal_at(c, point(0, -2, 1))
+        @test n == vector(0, 0, 1)
+
+        c = cylinder()
+        n = normal_at(c, point(-1, 1, 0))
+        @test n == vector(-1, 0, 0)
+
+        c = cylinder()
+        @test c.min == -Inf
+        @test c.max == Inf
+
+        c = cylinder(min = 1, max = 2)
+        dir = normalize(vector(0.1, 1, 0))
+        r = ray(point(0, 1.5, 0), dir)
+        xs = intersect(c, r)
+        @test length(xs) == 0
+
+        c = cylinder(min = 1, max = 2)
+        dir = normalize(vector(0, 0, 1))
+        r = ray(point(0, 3, -5), dir)
+        xs = intersect(c, r)
+        @test length(xs) == 0
+
+        c = cylinder(min = 1, max = 2)
+        dir = normalize(vector(0, 0, 1))
+        r = ray(point(0, 0, -5), dir)
+        xs = intersect(c, r)
+        @test length(xs) == 0
+
+        c = cylinder(min = 1, max = 2)
+        dir = normalize(vector(0, 0, 1))
+        r = ray(point(0, 2, -5), dir)
+        xs = intersect(c, r)
+        @test length(xs) == 0
+
+        c = cylinder(min = 1, max = 2)
+        dir = normalize(vector(0, 0, 1))
+        r = ray(point(0, 1, -5), dir)
+        xs = intersect(c, r)
+        @test length(xs) == 0
+
+        c = cylinder(min = 1, max = 2)
+        dir = normalize(vector(0, 0, 1))
+        r = ray(point(0, 1.5, -2), dir)
+        xs = intersect(c, r)
+        @test length(xs) == 2
+
+        c = cylinder()
+        @test c.closed == false
+
+        c = cylinder(min = 1, max = 2, closed = true)
+        dir = normalize(vector(0, -1, 0))
+        r = ray(point(0, 3, 0), dir)
+        xs = intersect(c, r)
+        @test length(xs) == 2
+
+        c = cylinder(min = 1, max = 2, closed = true)
+        dir = normalize(vector(0, -1, 2))
+        r = ray(point(0, 3, -2), dir)
+        xs = intersect(c, r)
+        @test length(xs) == 2
+
+        c = cylinder(min = 1, max = 2, closed = true)
+        dir = normalize(vector(0, -1, 1))
+        r = ray(point(0, 4, -2), dir)
+        xs = intersect(c, r)
+        @test length(xs) == 2
+
+        c = cylinder(min = 1, max = 2, closed = true)
+        dir = normalize(vector(0, 1, 2))
+        r = ray(point(0, 0, -2), dir)
+        xs = intersect(c, r)
+        @test length(xs) == 2
+
+        c = cylinder(min = 1, max = 2, closed = true)
+        dir = normalize(vector(0, 1, 1))
+        r = ray(point(0, -1, -2), dir)
+        xs = intersect(c, r)
+        @test length(xs) == 2
+
+        c = cylinder(min = 1, max = 2, closed = true)
+        n = normal_at(c, point(0, 1, 0))
+        @test n == vector(0, -1, 0)
+
+        c = cylinder(min = 1, max = 2, closed = true)
+        n = normal_at(c, point(0.5, 1, 0))
+        @test n == vector(0, -1, 0)
+
+        c = cylinder(min = 1, max = 2, closed = true)
+        n = normal_at(c, point(0, 1, 0.5))
+        @test n == vector(0, -1, 0)
+
+        c = cylinder(min = 1, max = 2, closed = true)
+        n = normal_at(c, point(0, 2, 0))
+        @test n == vector(0, 1, 0)
+
+        c = cylinder(min = 1, max = 2, closed = true)
+        n = normal_at(c, point(0.5, 2, 0))
+        @test n == vector(0, 1, 0)
+
+        c = cylinder(min = 1, max = 2, closed = true)
+        n = normal_at(c, point(0, 2, 0.5))
+        @test n == vector(0, 1, 0)
+
+        c = cone()
+        dir = normalize(vector(0, 0, 1))
+        r = ray(point(0, 0, -5), dir)
+        xs = intersect(c, r)
+        @test length(xs) == 2
+        @test xs[1].t == 5
+        @test xs[2].t == 5
+
+        c = cone()
+        dir = normalize(vector(1, 1, 1))
+        r = ray(point(0, 0, -5), dir)
+        xs = intersect(c, r)
+        @test length(xs) == 2
+        @test round(xs[1].t, digits=5) == 8.66025
+        @test round(xs[2].t, digits=5) == 8.66025
+
+        c = cone()
+        dir = normalize(vector(-0.5, -1, 1))
+        r = ray(point(1, 1, -5), dir)
+        xs = intersect(c, r)
+        @test length(xs) == 2
+        @test round(xs[1].t, digits=5) == 4.55006
+        @test round(xs[2].t, digits=5) == 49.44994
+
+        c = cone()
+        dir = normalize(vector(0, 1, 1))
+        r = ray(point(0, 0, -1), dir)
+        xs = intersect(c, r)
+        @test length(xs) == 1
+        @test round(xs[1].t, digits=5) == 0.35355
+
+        c = cone(min = -0.5, max = 0.5, closed = true)
+        dir = normalize(vector(0, 1, 0))
+        r = ray(point(0, 0, -5), dir)
+        xs = intersect(c, r)
+        @test length(xs) == 0
+
+        c = cone(min = -0.5, max = 0.5, closed = true)
+        dir = normalize(vector(0, 1, 1))
+        r = ray(point(0, 0, -0.25), dir)
+        xs = intersect(c, r)
+        @test length(xs) == 2
+
+        c = cone(min = -0.5, max = 0.5, closed = true)
+        dir = normalize(vector(0, 1, 0))
+        r = ray(point(0, 0, -0.25), dir)
+        xs = intersect(c, r)
+        @test length(xs) == 4
+
+        c = cone()
+        n = _normal_at(c, point(0, 0, 0))
+        @test n == vector(0, 0, 0)
+
+        c = cone()
+        n = _normal_at(c, point(1, 1, 1))
+        @test n == vector(1, -√2, 1)
+
+        c = cone()
+        n = _normal_at(c, point(-1, -1, 0))
+        @test n == vector(-1, 1, 0)
     end
 
     @testset "ch 14 - groups" begin
