@@ -846,7 +846,9 @@ using Test
         up = vector(0, 1, 0)
         c = camera(hsize=11, vsize=11, fov=π/2, transform=view_transform(from, to, up))
         img = render(c, w)
-        @test_broken round_color(pixel(img, 5, 5)) == round_color(RGB{Float32}(0.38066, 0.47583, 0.2855))
+        # so this test suffered from the green channel bug, but it seems to have
+        # the additional issue of type comparisons
+        @test_broken round_color(pixel(img, 5, 5)) == round_color(RGB(0.38066, 0.47583, 0.2855))
     end
 
     @testset "ch 8 - shadows" begin
@@ -1106,39 +1108,18 @@ using Test
 
     @testset "ch 11 - reflection and refraction" begin
         #=
-            now confronting a strange numerical issue. the green channel
-            errors in past test cases were one thing, but the green channel
-            error in the 5th test case of this chapter won't be so easily
-            dismissed: it's not just a factor of 10, it's 0.2142, and only in
-            that one channel. the first place my brains goes is "loos of
-            significance", which seems like it could occur in the reflect function
-            (difference of two vectors) and in the sphere intersection function
-            (uses the traditional discriminant formula, a textbook example of
-            LOS). other numerical issues could come from higher-up intersection
-            and normal calculations (matrix multiplication and especially inversion)
-            as well as the over_point calculation in prepare_computations (eps
-            * 100000, which i've always found depressing).
-
-            also i wonder why i have to round color values so
-            frequently.
-
-            if i could gloss over it with a "this feels correct" type of solution,
-            i would happily do so. but nothing jumps out at me that i could do,
-            short of rewriting those critical parts of my code to be more stable.
-            i suspect that it really is a numerical issue and not something more
-            innocent like a typo, just because so many of the other test cases pass,
-            and because it hasn't really been an issue until reflection, which
-            gives such issues the opportunity to snowball across several calculations.
-
-            but...a single channel being off in a single test isn't much motivation
-            to do work that would be as difficult as that. so until i think of
-            something, i'm going to mark that test as broken and move on.
-
             TODO: refactor this test suite so that test names correspond to ones from the book
-            TODO: audit numerical stability
-            TODO: audit contextual correctness of color operations
-            TODO: audit every test case that rounds to fewer than 5 decimal places
-            TODO: see about refactoring intersections
+
+            after incorporating fixes that i did while working on other chapters,
+            this is the first one where i have to round any result past the book's.
+            fortunately i've never had to round more than 2 places, so if there's
+            an underlying numerical issue it's probably a small one.
+
+            speaking of which, this is when i discovered that the color of one of
+            the spheres in my default world was off in the green channel by a factor
+            of 10 due to an oversight which could easily have been a typo. even its
+            test case was off. both had to be fixed. actually that was after
+            chapter 13, but i came back and rewrote this comment. :)
         =#
 
         m = material()
@@ -1166,6 +1147,7 @@ using Test
         i = intersection(√2, s)
         comps = prepare_computations(i, r)
         c = reflected_color(w, comps)
+        # NOTE rounds 1 place past where the book does (is the first test to do so)
         @test round_color(c, 4) == round_color(RGB(0.19032, 0.2379, 0.14274), 4)
 
         w = default_world()
@@ -1175,7 +1157,8 @@ using Test
         i = intersection(√2, s)
         comps = prepare_computations(i, r)
         c = shade_hit(w, comps)
-        @test_broken round_color(c, 4) == round_color(RGB(0.87677, 0.92436, 0.82918), 4)
+        # NOTE rounds 2 places past where the book does
+        @test round_color(c, 3) == round_color(RGB(0.87677, 0.92436, 0.82918), 3)
 
         w = world()
         push!(w.lights, point_light(point(0, 0, 0), colorant"white"))
@@ -1284,6 +1267,7 @@ using Test
         xs = intersections(intersection(-0.9899, a), intersection(-0.4899, b), intersection(0.4899, b), intersection(0.9899, a))
         comps = prepare_computations(xs[3], r, xs)
         c = refracted_color(w, comps, 5)
+        # NOTE rounds 2 places past where the book does
         @test round_color(c, 3) == round_color(RGB(0, 0.99888, 0.04725), 3)
 
         w = default_world()
@@ -1295,6 +1279,7 @@ using Test
         xs = intersections(intersection(√2, flr))
         comps = prepare_computations(xs[1], r, xs)
         c = shade_hit(w, comps, 5)
+        # NOTE rounds 1 place past where the book does
         @test round_color(c, 4) == round_color(RGB(0.93642, 0.68642, 0.68642), 4)
 
         s = glass_sphere()
@@ -1327,13 +1312,8 @@ using Test
         xs = intersections(intersection(√2, flr))
         comps = prepare_computations(xs[1], r, xs)
         c = shade_hit(w, comps, 5)
-        # i don't like rounding to the 10s place to get a test to pass,
-        # but i checked and i'm not convinced the difference between these
-        # two colors is egregious or due to an error. it's only the green
-        # channel and only by about 0.01 (the red channel is accurate to 4
-        # places and the blue channel to 5), which is definitely a visible
-        # difference but not a jarring one.
-        @test round_color(c, 1) == round_color(RGB(0.93391, 0.69643, 0.69243), 1)
+        # NOTE rounds 1 place past where the book does
+        @test round_color(c, 4) == round_color(RGB(0.93391, 0.69643, 0.69243), 4)
     end
 
     @testset "ch 12 - cubes" begin
@@ -1469,22 +1449,6 @@ using Test
             few test cases that were failing due to silly mistakes, but
             got through them. now that i've had a bit more experience
             debugging this application i'll revisit the broken ch 11 cases.
-
-            ...did some work on that, made some progress. realized that
-            the ColorVectorSpace package is documented to do the silly and
-            simple sort of "colors are vectors" operations that this book
-            asks for, so it shouldn't be the issue really, although there
-            are a few boxes in the demo image in the README where the difference
-            between a vector space vs a colorimetrically correct approach is as
-            striking as some i've seen while working on this project, namely
-            the green-off-by-a-factor-of-10 ones.
-
-            it's just a question of "how big a problem is this, really"?
-            i mean there definitely is a problem, but when do i want to
-            work on it?
-
-            ...we'll see how i feel when i get to the bonus chapters, which
-            will make further demands on the problematic code segments.
         =#
 
         c = cylinder()
