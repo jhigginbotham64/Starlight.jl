@@ -704,12 +704,15 @@ using Test
         @test w.objects == []
         @test w.lights == []
 
+        # the book does these tests with set membership. i'm doing it by checking
+        # the attributes that are supposed to be set because equality comparison
+        # in julia is a little tricky.
         w = default_world()
         @test length(w.lights) == 1
         @test w.lights[1].position == point(-10, 10, -10)
         @test w.lights[1].intensity == colorant"white"
         @test length(w.objects) == 2
-        @test w.objects[1].material.color == RGB(0.8, 0.1, 0.6)
+        @test w.objects[1].material.color == RGB(0.8, 1.0, 0.6)
         @test w.objects[1].material.diffuse == 0.7
         @test w.objects[1].material.specular == 0.2
         @test w.objects[2].transform == scaling(0.5, 0.5, 0.5)
@@ -754,7 +757,7 @@ using Test
         i = intersection(4, s)
         comps = prepare_computations(i, r)
         c = shade_hit(w, comps)
-        @test_broken round_color(c) == RGB(0.38066, 0.47583, 0.2855)
+        @test round_color(c) == RGB(0.38066, 0.47583, 0.2855)
 
         w = default_world(light = point_light(point(0, 0.25, 0), colorant"white"))
         r = ray(point(0, 0, 0), vector(0, 0, 1))
@@ -774,7 +777,7 @@ using Test
         w = default_world()
         r = ray(point(0, 0, -5), vector(0, 0, 1))
         c = color_at(w, r)
-        @test_broken round_color(c) == RGB(0.38066, 0.47583, 0.2855)
+        @test round_color(c) == RGB(0.38066, 0.47583, 0.2855)
 
         w = default_world(m1 = material(color = RGB(0.8, 0.1, 0.6), diffuse = 0.7, specular = 0.2, ambient = 1), m2 = material(ambient = 1))
         r = ray(point(0, 0, 0.75), vector(0, 0, -1))
@@ -1163,7 +1166,7 @@ using Test
         i = intersection(√2, s)
         comps = prepare_computations(i, r)
         c = reflected_color(w, comps)
-        @test_broken round_color(c, 4) == round_color(RGB(0.19032, 0.2379, 0.14274), 4)
+        @test round_color(c, 4) == round_color(RGB(0.19032, 0.2379, 0.14274), 4)
 
         w = default_world()
         s = plane(material = material(reflective = 0.5), transform = translation(0, -1, 0))
@@ -1702,7 +1705,13 @@ using Test
     end
 
     @testset "ch 14 - groups" begin
-
+        #=
+            ok bug fixes for ch 7 and ch 11 are going to be labeled by
+            this chapter if something is unclear. ch 7 is worlds, and this
+            builds on that, so i want to make sure my stuff is correct before
+            it breaks something that builds on top of it in a way that's even
+            harder to diagnose.
+        =#
     end
 
     @testset "ch 15 - triangles" begin

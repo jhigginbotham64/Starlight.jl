@@ -322,7 +322,7 @@ mutable struct world
     world(; lights = [], objects = []) = new(lights, objects)
 end
 
-function default_world(; light = point_light(point(-10, 10, -10), colorant"white"), t1 = DEFAULT_TRANSFORM, m1 = material(color = RGB(0.8, 0.1, 0.6), diffuse = 0.7, specular = 0.2), t2 = scaling(0.5, 0.5, 0.5), m2 = material())
+function default_world(; light = point_light(point(-10, 10, -10), colorant"white"), t1 = DEFAULT_TRANSFORM, m1 = material(color = RGB(0.8, 1.0, 0.6), diffuse = 0.7, specular = 0.2), t2 = scaling(0.5, 0.5, 0.5), m2 = material())
     s1 = sphere(transform = t1, material = m1)
     s2 = sphere(transform = t2, material = m2)
     w = world()
