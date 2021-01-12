@@ -1018,8 +1018,6 @@ explode_aabb(bs::aabb) =
 function bounds(s::shape)
     ps = explode_aabb(_bounds(s))
 
-    # if this was an aggregate transform, then groups would skip it
-    # as their own bounding box is simply an aggregate of child boxes
     if !(s isa group) ps = map(p -> inherited_transform(s) * p, ps) end
 
     # wondering if i could use slicing for this or for the group _bounds,
