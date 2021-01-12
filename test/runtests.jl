@@ -1816,6 +1816,109 @@ using Test
         xs = _intersect(t, r)
         @test length(xs) == 1
         @test xs[1].t == 2
+
+        p = parse_obj_file("/home/jhigginbotham64/.julia/dev/starlight/test/gibberish.obj")
+        @test p.ignored == 5
+
+        p = parse_obj_file("/home/jhigginbotham64/.julia/dev/starlight/test/vertices.obj")
+        @test p.vertices[1] == point(-1, 1, 0)
+        @test p.vertices[2] == point(-1, 0.5, 0)
+        @test p.vertices[3] == point(1, 0, 0)
+        @test p.vertices[4] == point(1, 1, 0)
+
+        p = parse_obj_file("/home/jhigginbotham64/.julia/dev/starlight/test/triangles.obj")
+        g = parser.default_group
+        t1 = g.children[1]
+        t2 = g.children[2]
+        @test t1.p1 == parser.vertices[1]
+        @test t1.p2 == parser.vertices[2]
+        @test t1.p3 == parser.vertices[3]
+        @test t2.p1 == parser.vertices[1]
+        @test t2.p2 == parser.vertices[3]
+        @test t2.p3 == parser.vertices[4]
+
+        p = parse_obj_file("/home/jhigginbotham64/.julia/dev/starlight/test/polygons.obj")
+        g = parser.default_group
+        t1 = g.children[1]
+        t2 = g.children[2]
+        t3 = g.children[3]
+        @test t1.p1 == parser.vertices[1]
+        @test t1.p2 == parser.vertices[2]
+        @test t1.p3 == parser.vertices[3]
+        @test t2.p1 == parser.vertices[1]
+        @test t2.p2 == parser.vertices[3]
+        @test t2.p3 == parser.vertices[4]
+        @test t3.p1 == parser.vertices[1]
+        @test t3.p2 == parser.vertices[4]
+        @test t3.p3 == parser.vertices[5]
+
+        p = parse_obj_file("/home/jhigginbotham64/.julia/dev/starlight/test/groups.obj")
+        g1 = p.groups["FirstGroup"]
+        g2 = p.groups["SecondGroup"]
+        t1 = g1.children[1]
+        t2 = g2.children[1]
+        @test t1.p1 == parser.vertices[1]
+        @test t1.p2 == parser.vertices[2]
+        @test t1.p3 == parser.vertices[3]
+        @test t2.p1 == parser.vertices[1]
+        @test t2.p2 == parser.vertices[3]
+        @test t2.p3 == parser.vertices[4]
+
+        p = parse_obj_file("/home/jhigginbotham64/.julia/dev/starlight/test/groups.obj")
+        g = obj_to_group(p)
+        @test g.children[1] == p.groups["FirstGroup"]
+        @test g.children[2] == p.groups["SecondGroup"]
+
+        p1 = point(0, 1, 0)
+        p2 = point(-1, 0, 0)
+        p3 = point(1, 0, 0)
+        n1 = vector(0, 1, 0)
+        n2 = vector(-1, 0, 0)
+        n3 = vector(1, 0, 0)
+        tri = smooth_triangle(p1, p2, p3, n1, n2, n3)
+        @test tri.p1 == p1
+        @test tri.p2 == p2
+        @test tri.p3 == p3
+        @test tri.n1 == n1
+        @test tri.n2 == n2
+        @test tri.n3 == n3
+
+        s = triangle(p1, p2, p3)
+        i = intersection(3.5, s, 0.2, 0.4)
+        @test i.u == 0.2
+        @test i.v == 0.4
+
+        r = ray(point(-0.2, 0.3, -2), vector(0, 0, 1))
+        xs = _intersect(tri, r)
+        @test xs[1].u == 0.45
+        @test xs[1].v == 0.25
+
+        i = intersection(1, tri, 0.45, 0.25)
+        n = normal_at(tri, point(0, 0, 0), i)
+        @test round.(n, digits=5) == vector(-0.5547, 0.83205, 0)
+
+        i = intersection(1, tri, 0.45, 0.25)r = ray(point(-0.2, 0.3, -2), vector(0, 0, 1))
+        xs = interesections(i)
+        comps = prepare_computations(i, r, xs)
+        @test round.(comps.normalv, digits=5) == vector(-0.5547, 0.83205, 0)
+
+        p = parse_obj_file("/home/jhigginbotham64/.julia/dev/starlight/test/normals.obj")
+        @test parser.normals[1] == vector(0, 0, 1)
+        @test parser.normals[2] == vector(0.707, 0, -0.707)
+        @test parser.normals[3] == vector(1, 2, 3)
+
+        p = parse_obj_file("/home/jhigginbotham64/.julia/dev/starlight/test/faces_with_normals.obj")
+        g = p.default_group
+        t1 = g.children[1]
+        t2 = g.children[2]
+        @test t1.p1 == p.vertices[1]
+        @test t1.p2 == p.vertices[2]
+        @test t1.p3 == p.vertices[3]
+        @test t1.n1 == p.normals[3]
+        @test t1.n2 == p.normals[1]
+        @test t1.n3 == p.normals[2]
+        @test t2.vertices == t1.vertices
+        @test t2.normals == t1.normals
     end
 
     @testset "ch 16 - constructive solid geometry" begin
