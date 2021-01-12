@@ -20,6 +20,8 @@ Transform = Array{Float64, 2}
 export Transform
 VectorF = Vector{Float64}
 export VectorF
+optional{T} = Union{Nothing, T}
+export optional
 # found myself doing this a lot
 exists(thing) = !isnothing(thing)
 export exists
@@ -52,7 +54,7 @@ export is_shadowed
 export shape, plane
 
 # chapter 10
-export pattern, pattern_at, pattern_at_object, test_pattern, stripes, gradient, rings, checkers, OptionalShape
+export pattern, pattern_at, pattern_at_object, test_pattern, stripes, gradient, rings, checkers
 
 # chapter 11
 export glass_sphere, reflected_color, refracted_color, schlick
@@ -69,7 +71,7 @@ export cylinder, intersect_caps!, check_cap, cone
 export group, add_child, has_child, has_children, inherited_transform, world_to_object, normal_to_world, aabb, _bounds, explode_aabb, bounds, hits_box
 
 # chapter 15
-export triangle
+export triangle, smooth_triangle
 
 #=
     chapter 1
@@ -188,7 +190,7 @@ mutable struct material
     diffuse::Float64
     specular::Float64
     shininess::Float64
-    pattern::Union{Nothing, pattern}
+    pattern::optional{pattern}
     reflective::Float64 # chapter 11
     transparency::Float64 # chapter 11
     refractive_index::Float64 # chapter 11
@@ -197,20 +199,18 @@ end
 
 abstract type shape end # chapter 9
 
-OptionalShape = Union{Nothing, shape} # chapter 10
-
 # chapter 14
 mutable struct group <: shape
     transform::Transform
     children::Vector{<:shape}
-    parent::OptionalShape
+    parent::optional{shape}
     group(; transform = DEFAULT_TRANSFORM, children = Vector{shape}([]), parent = nothing) = new(transform, children, parent)
 end
 
 mutable struct sphere <: shape # chapter 9
     transform::Transform
     material::material
-    parent::OptionalShape
+    parent::optional{shape}
     sphere(; transform = DEFAULT_TRANSFORM, material = material(), parent = nothing) = new(transform, material, parent)
 end
 
@@ -220,7 +220,7 @@ end
 mutable struct plane <: shape
     transform::Transform
     material::material
-    parent::OptionalShape
+    parent::optional{shape}
     plane(; transform = DEFAULT_TRANSFORM, material = material(), parent = nothing) = new(transform, material, parent)
 end
 
@@ -228,7 +228,7 @@ end
 mutable struct cube <: shape
     transform::Transform
     material::material
-    parent::OptionalShape
+    parent::optional{shape}
     cube(; transform = DEFAULT_TRANSFORM, material = material(), parent = nothing) = new(transform, material, parent)
 end
 
@@ -239,7 +239,7 @@ mutable struct cylinder <: shape
     min::Float64
     max::Float64
     closed::Bool
-    parent::OptionalShape
+    parent::optional{shape}
     cylinder(; transform = DEFAULT_TRANSFORM, material = material(), min = -Inf, max = Inf, closed = false, parent = nothing) = new(transform, material, min, max, closed, parent)
 end
 
@@ -250,7 +250,7 @@ mutable struct cone <: shape
     min::Float64
     max::Float64
     closed::Bool
-    parent::OptionalShape
+    parent::optional{shape}
     cone(; transform = DEFAULT_TRANSFORM, material = material(), min = -Inf, max = Inf, closed = false, parent = nothing) = new(transform, material, min, max, closed, parent)
 end
 
@@ -264,7 +264,7 @@ mutable struct triangle <: shape
     n::VectorF # n == normal, i.e. pre-calculated surface normal
     transform::Transform
     material::material
-    parent::OptionalShape
+    parent::optional{shape}
     function triangle(; p1::VectorF, p2::VectorF, p3::VectorF, transform::Transform = DEFAULT_TRANSFORM, material = material(), parent = nothing)
         e1 = p2 - p1
         e2 = p3 - p1
@@ -273,11 +273,30 @@ mutable struct triangle <: shape
     end
 end
 
+# chapter 15
+mutable struct smooth_triangle <: shape
+    p1::VectorF
+    p2::VectorF
+    p3::VectorF
+    e1::VectorF
+    e2::VectorF
+    n1::VectorF
+    n2::VectorF
+    n3::VectorF
+    transform::Transform
+    material::material
+    parent::optional{shape}
+    smooth_triangle(; p1::VectorF, p2::VectorF, p3::VectorF, n1::VectorF, n2::VectorF, n3::VectorF, transform::Transform = DEFAULT_TRANSFORM, material = material(), parent = nothing) = new(p1, p2, p3, p2 - p1, p3 - p1, n1, n2, n3, transform, material, parent)
+end
+
 inherited_transform(s::shape)::Transform = ((exists(s.parent)) ? inherited_transform(s.parent) : DEFAULT_TRANSFORM) * s.transform
 
 mutable struct intersection
     t::Number
-    object
+    object::shape
+    u::optional{Number}
+    v::optional{Number}
+    intersection(t, object; u = nothing, v = nothing) = new(t, object, u, v)
 end
 
 Intersections = Vector{intersection}
@@ -325,7 +344,7 @@ end
     chapter 6
 =#
 
-function normal_at(s::shape, p::VectorF)
+function normal_at(s::shape, p::VectorF; hit::optional{intersection} = nothing)
     # served until chapter 14
     # op = inv(s.transform) * p
     # on = _normal_at(s, op) # chapter 9
@@ -335,7 +354,7 @@ function normal_at(s::shape, p::VectorF)
 
     # chapter 14 onwards
     lp = world_to_object(s, p)
-    ln = _normal_at(s, lp)
+    ln = _normal_at(s, lp, hit=hit)
     return normal_to_world(s, ln)
 end
 
@@ -346,7 +365,7 @@ mutable struct point_light
     intensity::Color
 end
 
-function lighting(m, l, p, eyev, normalv, in_shadow = false; obj::OptionalShape = nothing)
+function lighting(m, l, p, eyev, normalv, in_shadow = false; obj::optional{shape} = nothing)
     c = (exists(m.pattern)) ? pattern_at_object(m.pattern, obj, p) : m.color # chapter 10
     if in_shadow return c * m.ambient end # chapter 8
     effective_color = hadamard(c, l.intensity)
@@ -437,12 +456,12 @@ mutable struct computations
     n2::Float64
 end
 
-function prepare_computations(i::intersection, r::ray, xs::Union{Nothing, Intersections} = nothing)
+function prepare_computations(i::intersection, r::ray, xs::optional{Intersections} = nothing)
     t = i.t
     obj = i.object
     p = position(r, t)
     eyev = -r.velocity
-    normalv = normal_at(obj, p)
+    normalv = normal_at(obj, p, hit=hit((exists(xs)) ? xs : Intersections([])))
     inside = false
     if normalv ⋅ eyev < 0
         normalv = -normalv
@@ -499,7 +518,7 @@ function prepare_computations(i::intersection, r::ray, xs::Union{Nothing, Inters
     return computations(t, obj, p, eyev, normalv, inside, over_point, under_point, reflectv, n1, n2)
 end
 
-function shade_hit(w::world, c::computations, remaining::Int = DEFAULT_RECURSION_LIMIT; obj::OptionalShape = nothing)
+function shade_hit(w::world, c::computations, remaining::Int = DEFAULT_RECURSION_LIMIT; obj::optional{shape} = nothing)
     #=
         chapter 8
 
@@ -675,7 +694,7 @@ function _intersect(s::sphere, r::ray)
 end
 
 # algorithm written in chapter 6 and refactored to here in chapter 9
-_normal_at(s::sphere, op::VectorF) = op - point(0, 0, 0)
+_normal_at(s::sphere, op::VectorF; hit::optional{intersection} = nothing) = op - point(0, 0, 0)
 
 function _intersect(p::plane, r::ray)
     if abs(r.velocity[2]) < eps()
@@ -686,7 +705,7 @@ function _intersect(p::plane, r::ray)
     return intersections(intersection(t, p))
 end
 
-_normal_at(p::plane, op::VectorF) = vector(0, 1, 0) # we're in object space, and the normal is the same everywhere...
+_normal_at(p::plane, op::VectorF; hit::optional{intersection} = nothing) = vector(0, 1, 0) # we're in object space, and the normal is the same everywhere...
 
 function plane_demo(; width = 100, height = 50, fov = π/3)
     flr = plane(transform = scaling(10, 0.01, 10), material = material(color = RGB(1, 0.9, 0.9), specular = 0))
@@ -755,7 +774,7 @@ function pattern_at(pat::gradient, p::VectorF)
 end
 pattern_at(pat::rings, p::VectorF) = (floor(√(p[1]^2 + p[3]^2)) % 2 == 0) ? pat.a : pat.b
 pattern_at(pat::checkers, p::VectorF) = (sum(floor.(p[1:3])) % 2 == 0) ? pat.a : pat.b
-pattern_at_object(pat::pattern, obj::OptionalShape, wp::VectorF) = (exists(obj)) ? pattern_at(pat, inv(pat.transform) * world_to_object(obj, wp)) : pattern_at(pat, wp)
+pattern_at_object(pat::pattern, obj::optional{shape}, wp::VectorF) = (exists(obj)) ? pattern_at(pat, inv(pat.transform) * world_to_object(obj, wp)) : pattern_at(pat, wp)
 
 #=
     chapter 11
@@ -836,7 +855,7 @@ function _intersect(c::cube, r::ray)
     return intersections(intersection(tmin, c), intersection(tmax, c))
 end
 
-function _normal_at(c::cube, op::VectorF)
+function _normal_at(c::cube, op::VectorF; hit::optional{intersection} = nothing)
     maxc = max(abs(op[1]), abs(op[2]), abs(op[3]))
 
     if maxc == abs(op[1]) return vector(op[1], 0, 0)
@@ -894,7 +913,7 @@ function _intersect(c::cylinder, r::ray)
     return xs
 end
 
-function _normal_at(c::cylinder, op::VectorF)
+function _normal_at(c::cylinder, op::VectorF; hit::optional{intersection} = nothing)
     dist = op[1]^2 + op[3]^2
     if dist < 1 && op[2] >= c.max - eps()
         return vector(0, 1, 0)
@@ -957,7 +976,7 @@ function _intersect(c::cone, r::ray)
     return xs
 end
 
-function _normal_at(c::cone, op::VectorF)
+function _normal_at(c::cone, op::VectorF; hit::optional{intersection} = nothing)
     dist = op[1]^2 + op[3]^2
     if dist < 1 && op[2] >= c.max - eps()
         return vector(0, 1, 0)
@@ -1067,7 +1086,10 @@ end
     chapter 15
 =#
 
-_normal_at(t::triangle, p::VectorF) = t.n
+_normal_at(t::triangle, p::VectorF; hit::optional{intersection} = nothing) = t.n
+
+# only _normal_at for which hit is non-optional
+_normal_at(tri::smooth_triangle, p::VectorF; hit::intersection) = tri.n2 * hit.u + tri.n3 * hit.v + tri.n1 * (1 - hit.u - hit.v)
 
 function _intersect(t::triangle, r::ray)
     dir_cross_e2 = cross(r.velocity, t.e2)
@@ -1085,6 +1107,25 @@ function _intersect(t::triangle, r::ray)
 
     return intersections(intersection(f * t.e2 ⋅ origin_cross_e1, t))
 end
+
+function _intersect(t::smooth_triangle, r::ray)
+    dir_cross_e2 = cross(r.velocity, t.e2)
+    det = t.e1 ⋅ dir_cross_e2
+    if abs(det) < eps() return Intersections([]) end
+
+    f = 1.0 / det
+    p1_to_origin = r.origin - t.p1
+    u = f * p1_to_origin ⋅ dir_cross_e2
+    if u < 0 || u > 1 return Intersections([]) end
+
+    origin_cross_e1 = cross(p1_to_origin, t.e1)
+    v = f * r.velocity ⋅ origin_cross_e1
+    if v < 0 || (u + v) > 1 return Intersections([]) end
+
+    return intersections(intersection(f * t.e2 ⋅ origin_cross_e1, t, u=u, v=v))
+end
+
+
 
 #=
     chapter 16
