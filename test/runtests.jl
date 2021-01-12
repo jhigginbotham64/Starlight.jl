@@ -54,8 +54,8 @@ using Test
 
         # i really really really love julia
         @test vector(1, 2, 3) ⋅ vector(2, 3, 4) == 20
-        @test vector(([1, 2, 3] × [2, 3, 4])...) == vector(-1, 2, -1)
-        @test vector(([2, 3, 4] × [1, 2, 3])...) == vector(1, -2, 1)
+        @test cross(vector(2, 3, 4), vector(1, 2, 3)) == vector(-1, 2, -1)
+        @test cross(vector(1, 2, 3), vector(2, 3, 4)) == vector(1, -2, 1)
     end
 
     @testset "ch 2 - drawing on a canvas" begin
@@ -1753,11 +1753,84 @@ using Test
     end
 
     @testset "ch 15 - triangles" begin
+        #=
+            yeeeeaaaaaaaaah triangles
+        =#
 
+        p1 = point(0, 1, 0)
+        p2 = point(-1, 0, 0)
+        p3 = point(1, 0, 0)
+        t = triangle(p1=p1, p2=p2, p3=p3)
+        @test t.p1 == p1
+        @test t.p2 == p2
+        @test t.p3 == p3
+        @test t.e1 == vector(-1, -1, 0)
+        @test t.e2 == vector(1, -1, 0)
+        @test t.n == vector(0, 0, 1)
+
+        p1 = point(0, 1, 0)
+        p2 = point(-1, 0, 0)
+        p3 = point(1, 0, 0)
+        t = triangle(p1=p1, p2=p2, p3=p3)
+        @test _normal_at(t, point(0, 0.5, 0)) == t.n
+        @test _normal_at(t, point(-0.5, 0.75, 0)) == t.n
+        @test _normal_at(t, point(0.5, 0.25, 0)) == t.n
+
+        p1 = point(0, 1, 0)
+        p2 = point(-1, 0, 0)
+        p3 = point(1, 0, 0)
+        t = triangle(p1=p1, p2=p2, p3=p3)
+        r = ray(point(0, -1, -2), vector(0, 1, 0))
+        xs = _intersect(t, r)
+        @test length(xs) == 0
+
+        p1 = point(0, 1, 0)
+        p2 = point(-1, 0, 0)
+        p3 = point(1, 0, 0)
+        t = triangle(p1=p1, p2=p2, p3=p3)
+        r = ray(point(1, 1, -2), vector(0, 0, 1))
+        xs = _intersect(t, r)
+        @test length(xs) == 0
+
+        p1 = point(0, 1, 0)
+        p2 = point(-1, 0, 0)
+        p3 = point(1, 0, 0)
+        t = triangle(p1=p1, p2=p2, p3=p3)
+        r = ray(point(-1, 1, -2), vector(0, 0, 1))
+        xs = _intersect(t, r)
+        @test length(xs) == 0
+
+        p1 = point(0, 1, 0)
+        p2 = point(-1, 0, 0)
+        p3 = point(1, 0, 0)
+        t = triangle(p1=p1, p2=p2, p3=p3)
+        r = ray(point(0, -1, -2), vector(0, 0, 1))
+        xs = _intersect(t, r)
+        @test length(xs) == 0
+
+        p1 = point(0, 1, 0)
+        p2 = point(-1, 0, 0)
+        p3 = point(1, 0, 0)
+        t = triangle(p1=p1, p2=p2, p3=p3)
+        r = ray(point(0, 0.5, -2), vector(0, 0, 1))
+        xs = _intersect(t, r)
+        @test length(xs) == 1
+        @test xs[1].t == 2
     end
 
     @testset "ch 16 - constructive solid geometry" begin
 
     end
 
+    @testset "bch 1 - soft shadows" begin
+
+    end
+
+    @testset "bch 2 - texture mapping" begin
+
+    end
+
+    @testset "bch 3 - bounding boxes" begin
+
+    end
 end

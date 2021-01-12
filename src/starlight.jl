@@ -18,14 +18,14 @@ DEFAULT_TRANSFORM = Array{Float64, 2}(I(4))
 export DEFAULT_TRANSFORM
 Transform = Array{Float64, 2}
 export Transform
-VectorN = Vector{Float64}
-export VectorN
+VectorF = Vector{Float64}
+export VectorF
 # found myself doing this a lot
 exists(thing) = !isnothing(thing)
 export exists
 
 # chapter 1
-export point, vector
+export point, vector, cross
 
 # chapter 2
 export canvas, pixel, pixel!, pixels, flat, hadamard
@@ -68,6 +68,9 @@ export cylinder, intersect_caps!, check_cap, cone
 # chapter 14
 export group, add_child, has_child, has_children, inherited_transform, world_to_object, normal_to_world, aabb, _bounds, explode_aabb, bounds, hits_box
 
+# chapter 15
+export triangle
+
 #=
     chapter 1
 =#
@@ -78,6 +81,9 @@ export group, add_child, has_child, has_children, inherited_transform, world_to_
 # overriding getproperty and setproperty! for Vector is worse.
 point(x, y, z) = [x, y, z, 1.0]
 vector(x, y, z) = [x, y, z, 0.0]
+# cross(x, y) == y × x, NOT x × y. this is due to matching up test
+# cases with the expectations of julia's cross product function.
+cross(x::VectorF, y::VectorF) = vector((y[1:3] × x[1:3])...)
 
 #=
     chapter 2
@@ -165,12 +171,12 @@ shearing(xy, xz, yx, yz, zx, zy) = [
 =#
 
 mutable struct ray
-    origin::VectorN
+    origin::VectorF
     # the book calls this field "direction", but in my mind direction
     # is a unit vector which you combine with a magnitude (speed)
     # to get velocity, and the book uses direction mathematically
     # like a velocity, so i'm calling it velocity.
-    velocity::VectorN
+    velocity::VectorF
 end
 
 abstract type pattern end # chapter 10
@@ -248,12 +254,26 @@ mutable struct cone <: shape
     cone(; transform = DEFAULT_TRANSFORM, material = material(), min = -Inf, max = Inf, closed = false, parent = nothing) = new(transform, material, min, max, closed, parent)
 end
 
-inherited_transform(s::sphere)::Transform = ((exists(s.parent)) ? inherited_transform(s.parent) : DEFAULT_TRANSFORM) * s.transform
-inherited_transform(s::plane)::Transform = ((exists(s.parent)) ? inherited_transform(s.parent) : DEFAULT_TRANSFORM) * s.transform
-inherited_transform(s::cube)::Transform = ((exists(s.parent)) ? inherited_transform(s.parent) : DEFAULT_TRANSFORM) * s.transform
-inherited_transform(s::cylinder)::Transform = ((exists(s.parent)) ? inherited_transform(s.parent) : DEFAULT_TRANSFORM) * s.transform
-inherited_transform(s::cone)::Transform = ((exists(s.parent)) ? inherited_transform(s.parent) : DEFAULT_TRANSFORM) * s.transform
-inherited_transform(s::group)::Transform = ((exists(s.parent)) ? inherited_transform(s.parent) : DEFAULT_TRANSFORM) * s.transform
+# chapter 15
+mutable struct triangle <: shape
+    p1::VectorF # p == point, i.e. vertex
+    p2::VectorF
+    p3::VectorF
+    e1::VectorF # e == edge, i.e. side
+    e2::VectorF
+    n::VectorF # n == normal, i.e. pre-calculated surface normal
+    transform::Transform
+    material::material
+    parent::OptionalShape
+    function triangle(; p1::VectorF, p2::VectorF, p3::VectorF, transform::Transform = DEFAULT_TRANSFORM, material = material(), parent = nothing)
+        e1 = p2 - p1
+        e2 = p3 - p1
+        n = normalize(cross(e2, e1))
+        new(p1, p2, p3, p2 - p1, p3 - p1, n, transform, material, parent)
+    end
+end
+
+inherited_transform(s::shape)::Transform = ((exists(s.parent)) ? inherited_transform(s.parent) : DEFAULT_TRANSFORM) * s.transform
 
 mutable struct intersection
     t::Number
@@ -305,7 +325,7 @@ end
     chapter 6
 =#
 
-function normal_at(s::shape, p::VectorN)
+function normal_at(s::shape, p::VectorF)
     # served until chapter 14
     # op = inv(s.transform) * p
     # on = _normal_at(s, op) # chapter 9
@@ -319,10 +339,10 @@ function normal_at(s::shape, p::VectorN)
     return normal_to_world(s, ln)
 end
 
-reflect(v::VectorN, n::VectorN) = v - (n * (2 * (v ⋅ n)))
+reflect(v::VectorF, n::VectorF) = v - (n * (2 * (v ⋅ n)))
 
 mutable struct point_light
-    position::VectorN
+    position::VectorF
     intensity::Color
 end
 
@@ -406,13 +426,13 @@ intersect(w::world, r::ray) = Intersections(sort([i for o in w.objects for i in 
 mutable struct computations
     t::Number
     object
-    point::VectorN
-    eyev::VectorN
-    normalv::VectorN
+    point::VectorF
+    eyev::VectorF
+    normalv::VectorF
     inside::Bool
-    over_point::VectorN # chapter 8
-    under_point::VectorN # chapter 11
-    reflectv::VectorN # chapter 11
+    over_point::VectorF # chapter 8
+    under_point::VectorF # chapter 11
+    reflectv::VectorF # chapter 11
     n1::Float64
     n2::Float64
 end
@@ -536,8 +556,8 @@ end
 function view_transform(from, to, up)
     forward = normalize(to - from)
     upn = normalize(up)
-    left = vector((forward[1:3] × upn[1:3])...)
-    true_up = vector((left[1:3] × forward[1:3])...)
+    left = cross(upn, forward)
+    true_up = cross(forward, left)
     ornt = [
         left[1] left[2] left[3] 0
         true_up[1] true_up[2] true_up[3] 0
@@ -621,7 +641,7 @@ end
     chapter 8
 =#
 
-function is_shadowed(w::world, p::VectorN, light_no = 1)
+function is_shadowed(w::world, p::VectorF, light_no = 1)
     v = w.lights[light_no].position - p
     dist = norm(v)
     dir = normalize(v)
@@ -655,7 +675,7 @@ function _intersect(s::sphere, r::ray)
 end
 
 # algorithm written in chapter 6 and refactored to here in chapter 9
-_normal_at(s::sphere, op::VectorN) = op - point(0, 0, 0)
+_normal_at(s::sphere, op::VectorF) = op - point(0, 0, 0)
 
 function _intersect(p::plane, r::ray)
     if abs(r.velocity[2]) < eps()
@@ -666,7 +686,7 @@ function _intersect(p::plane, r::ray)
     return intersections(intersection(t, p))
 end
 
-_normal_at(p::plane, op::VectorN) = vector(0, 1, 0) # we're in object space, and the normal is the same everywhere...
+_normal_at(p::plane, op::VectorF) = vector(0, 1, 0) # we're in object space, and the normal is the same everywhere...
 
 function plane_demo(; width = 100, height = 50, fov = π/3)
     flr = plane(transform = scaling(10, 0.01, 10), material = material(color = RGB(1, 0.9, 0.9), specular = 0))
@@ -723,9 +743,9 @@ mutable struct checkers <: pattern
     checkers(; a = colorant"white", b = colorant"black", transform = DEFAULT_TRANSFORM) = new(a, b, transform)
 end
 
-pattern_at(pat::test_pattern, p::VectorN) = RGB(Float64.(p[1:3])...)
-pattern_at(pat::stripes, p::VectorN) = (floor(p[1]) % 2 == 0) ? pat.a : pat.b
-function pattern_at(pat::gradient, p::VectorN)
+pattern_at(pat::test_pattern, p::VectorF) = RGB(Float64.(p[1:3])...)
+pattern_at(pat::stripes, p::VectorF) = (floor(p[1]) % 2 == 0) ? pat.a : pat.b
+function pattern_at(pat::gradient, p::VectorF)
     # when you want to handle "negative" colors differently than your library
     a, b = pat.a, pat.b
     ar, ag, ab = Float64.([red(a), green(a), blue(a)])
@@ -733,9 +753,9 @@ function pattern_at(pat::gradient, p::VectorN)
     dr, dg, db = [br - ar, bg - ag, bb - ab] * (p[1] - floor(p[1]))
     return RGB(red(pat.a) + dr, green(pat.a) + dg, blue(pat.a) + db)
 end
-pattern_at(pat::rings, p::VectorN) = (floor(√(p[1]^2 + p[3]^2)) % 2 == 0) ? pat.a : pat.b
-pattern_at(pat::checkers, p::VectorN) = (sum(floor.(p[1:3])) % 2 == 0) ? pat.a : pat.b
-pattern_at_object(pat::pattern, obj::OptionalShape, wp::VectorN) = (exists(obj)) ? pattern_at(pat, inv(pat.transform) * world_to_object(obj, wp)) : pattern_at(pat, wp)
+pattern_at(pat::rings, p::VectorF) = (floor(√(p[1]^2 + p[3]^2)) % 2 == 0) ? pat.a : pat.b
+pattern_at(pat::checkers, p::VectorF) = (sum(floor.(p[1:3])) % 2 == 0) ? pat.a : pat.b
+pattern_at_object(pat::pattern, obj::OptionalShape, wp::VectorF) = (exists(obj)) ? pattern_at(pat, inv(pat.transform) * world_to_object(obj, wp)) : pattern_at(pat, wp)
 
 #=
     chapter 11
@@ -816,7 +836,7 @@ function _intersect(c::cube, r::ray)
     return intersections(intersection(tmin, c), intersection(tmax, c))
 end
 
-function _normal_at(c::cube, op::VectorN)
+function _normal_at(c::cube, op::VectorF)
     maxc = max(abs(op[1]), abs(op[2]), abs(op[3]))
 
     if maxc == abs(op[1]) return vector(op[1], 0, 0)
@@ -874,7 +894,7 @@ function _intersect(c::cylinder, r::ray)
     return xs
 end
 
-function _normal_at(c::cylinder, op::VectorN)
+function _normal_at(c::cylinder, op::VectorF)
     dist = op[1]^2 + op[3]^2
     if dist < 1 && op[2] >= c.max - eps()
         return vector(0, 1, 0)
@@ -937,7 +957,7 @@ function _intersect(c::cone, r::ray)
     return xs
 end
 
-function _normal_at(c::cone, op::VectorN)
+function _normal_at(c::cone, op::VectorF)
     dist = op[1]^2 + op[3]^2
     if dist < 1 && op[2] >= c.max - eps()
         return vector(0, 1, 0)
@@ -969,14 +989,14 @@ has_children(g::group, ss::shape...) = all(s -> has_child(g, s), ss)
 # worlds with multiple groups.
 _intersect(g::group, r::ray) = Intersections((hits_box(g, r)) ? sort([i for c in g.children for i in intersect(c, r)], by=(i)->i.t) : [])
 
-function world_to_object(s::shape, p::VectorN)
+function world_to_object(s::shape, p::VectorF)
     # not sure how this little bit of recursion could be
     # optimized away, it makes for a ton of matrix multiplications
     if has_parent(s) p = world_to_object(s.parent, p) end
     return inv(s.transform) * p
 end
 
-function normal_to_world(s::shape, n::VectorN)
+function normal_to_world(s::shape, n::VectorF)
     # ditto as above for the recursion and matrix multiplications
     n = inv(s.transform)' * n
     n[4] = 0
@@ -986,8 +1006,8 @@ function normal_to_world(s::shape, n::VectorN)
 end
 
 mutable struct aabb # axially-aligned bounding box
-    min::VectorN # top-left point (not sure if z would be forward or back here)
-    max::VectorN # lower-right point
+    min::VectorF # top-left point (not sure if z would be forward or back here)
+    max::VectorF # lower-right point
     # could check min < max, but eh...
 end
 
@@ -1047,7 +1067,24 @@ end
     chapter 15
 =#
 
+_normal_at(t::triangle, p::VectorF) = t.n
 
+function _intersect(t::triangle, r::ray)
+    dir_cross_e2 = cross(r.velocity, t.e2)
+    det = t.e1 ⋅ dir_cross_e2
+    if abs(det) < eps() return Intersections([]) end
+
+    f = 1.0 / det
+    p1_to_origin = r.origin - t.p1
+    u = f * p1_to_origin ⋅ dir_cross_e2
+    if u < 0 || u > 1 return Intersections([]) end
+
+    origin_cross_e1 = cross(p1_to_origin, t.e1)
+    v = f * r.velocity ⋅ origin_cross_e1
+    if v < 0 || (u + v) > 1 return Intersections([]) end
+
+    return intersections(intersection(f * t.e2 ⋅ origin_cross_e1, t))
+end
 
 #=
     chapter 16
