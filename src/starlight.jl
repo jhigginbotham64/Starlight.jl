@@ -14,12 +14,15 @@ export SDL2
 export rsi_demo, light_demo, scene_demo, plane_demo
 
 # helpers
-DEFAULT_TRANSFORM = Array{AbstractFloat, 2}(I(4))
+DEFAULT_TRANSFORM = Array{Float64, 2}(I(4))
 export DEFAULT_TRANSFORM
-Transform = Array{<:Number, 2}
+Transform = Array{Float64, 2}
 export Transform
-VectorN = Vector{<:Number}
+VectorN = Vector{Float64}
 export VectorN
+# found myself doing this a lot
+exists(thing) = !isnothing(thing)
+export exists
 
 # chapter 1
 export point, vector
@@ -46,7 +49,7 @@ export world, default_world, prepare_computations, shade_hit, color_at, view_tra
 export is_shadowed
 
 # chapter 9
-export plane
+export shape, plane
 
 # chapter 10
 export pattern, pattern_at, pattern_at_object, test_pattern, stripes, gradient, rings, checkers, OptionalShape
@@ -57,10 +60,13 @@ DEFAULT_RECURSION_LIMIT = 5
 export DEFAULT_RECURSION_LIMIT
 
 # chapter 12
-export cube
+export cube, check_axis
 
 # chapter 13
 export cylinder, intersect_caps!, check_cap, cone
+
+# chapter 14
+export group, add_child, has_child, has_children, inherited_transform, world_to_object, normal_to_world, aabb, _bounds, explode_aabb, bounds, hits_box
 
 #=
     chapter 1
@@ -172,24 +178,82 @@ abstract type pattern end # chapter 10
 # material added in chapter 6, put here for compilation
 mutable struct material
     color::Color
-    ambient::AbstractFloat
-    diffuse::AbstractFloat
-    specular::AbstractFloat
-    shininess::AbstractFloat
+    ambient::Float64
+    diffuse::Float64
+    specular::Float64
+    shininess::Float64
     pattern::Union{Nothing, pattern}
-    reflective::AbstractFloat # chapter 11
-    transparency::AbstractFloat # chapter 11
-    refractive_index::AbstractFloat # chapter 11
+    reflective::Float64 # chapter 11
+    transparency::Float64 # chapter 11
+    refractive_index::Float64 # chapter 11
     material(; color = colorant"white", ambient = 0.1, diffuse = 0.9, specular = 0.9, shininess = 200.0, pattern = nothing, reflective = 0.0, transparency = 0.0, refractive_index = 1.0) = new(color, ambient, diffuse, specular, shininess, pattern, reflective, transparency, refractive_index)
 end
 
 abstract type shape end # chapter 9
 
+OptionalShape = Union{Nothing, shape} # chapter 10
+
+# chapter 14
+mutable struct group <: shape
+    transform::Transform
+    children::Vector{<:shape}
+    parent::OptionalShape
+    group(; transform = DEFAULT_TRANSFORM, children = Vector{shape}([]), parent = nothing) = new(transform, children, parent)
+end
+
 mutable struct sphere <: shape # chapter 9
     transform::Transform
     material::material
-    sphere(; transform = DEFAULT_TRANSFORM, material = material()) = new(transform, material)
+    parent::OptionalShape
+    sphere(; transform = DEFAULT_TRANSFORM, material = material(), parent = nothing) = new(transform, material, parent)
 end
+
+# chapter 9; literally exactly the same as sphere,
+# the only purpose of this struct is to facilitate
+# dispatch. unsure how to refactor though.
+mutable struct plane <: shape
+    transform::Transform
+    material::material
+    parent::OptionalShape
+    plane(; transform = DEFAULT_TRANSFORM, material = material(), parent = nothing) = new(transform, material, parent)
+end
+
+# chapter 12
+mutable struct cube <: shape
+    transform::Transform
+    material::material
+    parent::OptionalShape
+    cube(; transform = DEFAULT_TRANSFORM, material = material(), parent = nothing) = new(transform, material, parent)
+end
+
+# chapter 13
+mutable struct cylinder <: shape
+    transform::Transform
+    material::material
+    min::Float64
+    max::Float64
+    closed::Bool
+    parent::OptionalShape
+    cylinder(; transform = DEFAULT_TRANSFORM, material = material(), min = -Inf, max = Inf, closed = false, parent = nothing) = new(transform, material, min, max, closed, parent)
+end
+
+# chapter 13
+mutable struct cone <: shape
+    transform::Transform
+    material::material
+    min::Float64
+    max::Float64
+    closed::Bool
+    parent::OptionalShape
+    cone(; transform = DEFAULT_TRANSFORM, material = material(), min = -Inf, max = Inf, closed = false, parent = nothing) = new(transform, material, min, max, closed, parent)
+end
+
+inherited_transform(s::sphere)::Transform = ((exists(s.parent)) ? inherited_transform(s.parent) : DEFAULT_TRANSFORM) * s.transform
+inherited_transform(s::plane)::Transform = ((exists(s.parent)) ? inherited_transform(s.parent) : DEFAULT_TRANSFORM) * s.transform
+inherited_transform(s::cube)::Transform = ((exists(s.parent)) ? inherited_transform(s.parent) : DEFAULT_TRANSFORM) * s.transform
+inherited_transform(s::cylinder)::Transform = ((exists(s.parent)) ? inherited_transform(s.parent) : DEFAULT_TRANSFORM) * s.transform
+inherited_transform(s::cone)::Transform = ((exists(s.parent)) ? inherited_transform(s.parent) : DEFAULT_TRANSFORM) * s.transform
+inherited_transform(s::group)::Transform = ((exists(s.parent)) ? inherited_transform(s.parent) : DEFAULT_TRANSFORM) * s.transform
 
 mutable struct intersection
     t::Number
@@ -199,13 +263,14 @@ end
 Intersections = Vector{intersection}
 
 intersections(is::intersection...) = Intersections([is...])
+transform(r::ray, mat::Array{Int, 2}) = transform(r, Float64.(mat))
 transform(r::ray, mat::Transform) = ray(mat * r.origin, mat * r.velocity)
 
 import Base.position
 position(r::ray, t::Number) = r.origin + r.velocity * t
 
 import Base.intersect
-intersect(s::shape, r::ray) = _intersect(s, transform(r, inv(s.transform))) # chapter 9
+intersect(s::shape, r::ray) = _intersect(s, (s isa group) ? r : transform(r, inv(inherited_transform(s)))) # chapter 9 and chapter 14
 
 hit(is::Intersections) = (all(map(i -> i.t < 0, is))) ? nothing : is[argmin(map(i -> (i.t < 0) ? Inf : i.t, is))]
 
@@ -227,7 +292,7 @@ function rsi_demo(; height=100, width=100, bg_color=colorant"black", c=colorant"
             pos = point(wx, wy, wz)
             r = ray(ray_origin, normalize(pos - ray_origin))
             xs = intersect(s, r)
-            if !isnothing(hit(xs))
+            if exists(hit(xs))
                 pixel!(canv, x, y, c)
             end
         end
@@ -241,11 +306,17 @@ end
 =#
 
 function normal_at(s::shape, p::VectorN)
-    op = inv(s.transform) * p
-    on = _normal_at(s, op) # chapter 9
-    wn = inv(s.transform)' * on
-    wn[4] = 0
-    return normalize(wn)
+    # served until chapter 14
+    # op = inv(s.transform) * p
+    # on = _normal_at(s, op) # chapter 9
+    # wn = inv(s.transform)' * on
+    # wn[4] = 0
+    # return normalize(wn)
+
+    # chapter 14 onwards
+    lp = world_to_object(s, p)
+    ln = _normal_at(s, lp)
+    return normal_to_world(s, ln)
 end
 
 reflect(v::VectorN, n::VectorN) = v - (n * (2 * (v ⋅ n)))
@@ -255,10 +326,8 @@ mutable struct point_light
     intensity::Color
 end
 
-OptionalShape = Union{Nothing, shape} # chapter 10
-
 function lighting(m, l, p, eyev, normalv, in_shadow = false; obj::OptionalShape = nothing)
-    c = (!isnothing(m.pattern)) ? pattern_at_object(m.pattern, obj, p) : m.color # chapter 10
+    c = (exists(m.pattern)) ? pattern_at_object(m.pattern, obj, p) : m.color # chapter 10
     if in_shadow return c * m.ambient end # chapter 8
     effective_color = hadamard(c, l.intensity)
     lightv = normalize(l.position - p)
@@ -300,7 +369,7 @@ function light_demo(; height=100, width=100, bg_color=colorant"black", light_col
             r = ray(ray_origin, normalize(pos - ray_origin))
             xs = intersect(s, r)
             h = hit(xs)
-            if !isnothing(h)
+            if exists(h)
                 pos2 = position(r, h.t)
                 n = normal_at(h.object, pos2)
                 eye = -r.velocity
@@ -344,8 +413,8 @@ mutable struct computations
     over_point::VectorN # chapter 8
     under_point::VectorN # chapter 11
     reflectv::VectorN # chapter 11
-    n1::AbstractFloat
-    n2::AbstractFloat
+    n1::Float64
+    n2::Float64
 end
 
 function prepare_computations(i::intersection, r::ray, xs::Union{Nothing, Intersections} = nothing)
@@ -378,7 +447,7 @@ function prepare_computations(i::intersection, r::ray, xs::Union{Nothing, Inters
     reflectv = reflect(r.velocity, normalv)
     n1 = 1.0
     n2 = 1.0
-    if !isnothing(xs)
+    if exists(xs)
         containers = []
 
         for x in xs
@@ -458,7 +527,7 @@ end
 function color_at(w::world, r::ray, remaining::Int = DEFAULT_RECURSION_LIMIT)
     h = hit(intersect(w, r))
     c = colorant"black"
-    if !isnothing(h)
+    if exists(h)
         c = shade_hit(w, prepare_computations(h, r), remaining)
     end
     return c
@@ -559,7 +628,7 @@ function is_shadowed(w::world, p::VectorN, light_no = 1)
     r = ray(p, dir)
     is = intersect(w, r)
     h = hit(is)
-    return !isnothing(h) && h.t < dist
+    return exists(h) && h.t < dist
 end
 
 #=
@@ -587,15 +656,6 @@ end
 
 # algorithm written in chapter 6 and refactored to here in chapter 9
 _normal_at(s::sphere, op::VectorN) = op - point(0, 0, 0)
-
-# this is literally exactly the same as sphere,
-# the only purpose of this struct is to facilitate
-# dispatch. unsure how to refactor though.
-mutable struct plane <: shape
-    transform::Transform
-    material::material
-    plane(; transform = DEFAULT_TRANSFORM, material = material()) = new(transform, material)
-end
 
 function _intersect(p::plane, r::ray)
     if abs(r.velocity[2]) < eps()
@@ -663,19 +723,19 @@ mutable struct checkers <: pattern
     checkers(; a = colorant"white", b = colorant"black", transform = DEFAULT_TRANSFORM) = new(a, b, transform)
 end
 
-pattern_at(pat::test_pattern, p::VectorN) = RGB(AbstractFloat.(p[1:3])...)
+pattern_at(pat::test_pattern, p::VectorN) = RGB(Float64.(p[1:3])...)
 pattern_at(pat::stripes, p::VectorN) = (floor(p[1]) % 2 == 0) ? pat.a : pat.b
 function pattern_at(pat::gradient, p::VectorN)
-    # when you want to handle "negative colors" differently than your library
+    # when you want to handle "negative" colors differently than your library
     a, b = pat.a, pat.b
-    ar, ag, ab = AbstractFloat.([red(a), green(a), blue(a)])
-    br, bg, bb = AbstractFloat.([red(b), green(b), blue(b)])
+    ar, ag, ab = Float64.([red(a), green(a), blue(a)])
+    br, bg, bb = Float64.([red(b), green(b), blue(b)])
     dr, dg, db = [br - ar, bg - ag, bb - ab] * (p[1] - floor(p[1]))
     return RGB(red(pat.a) + dr, green(pat.a) + dg, blue(pat.a) + db)
 end
 pattern_at(pat::rings, p::VectorN) = (floor(√(p[1]^2 + p[3]^2)) % 2 == 0) ? pat.a : pat.b
 pattern_at(pat::checkers, p::VectorN) = (sum(floor.(p[1:3])) % 2 == 0) ? pat.a : pat.b
-pattern_at_object(pat::pattern, obj::OptionalShape, wp::VectorN) = (!isnothing(obj)) ? pattern_at(pat, inv(pat.transform) * inv(obj.transform) * wp) : pattern_at(pat, wp)
+pattern_at_object(pat::pattern, obj::OptionalShape, wp::VectorN) = (exists(obj)) ? pattern_at(pat, inv(pat.transform) * world_to_object(obj, wp)) : pattern_at(pat, wp)
 
 #=
     chapter 11
@@ -728,15 +788,9 @@ end
     chapter 12
 =#
 
-mutable struct cube <: shape
-    transform::Transform
-    material::material
-    cube(; transform = DEFAULT_TRANSFORM, material = material()) = new(transform, material)
-end
-
-function check_axis(origin::AbstractFloat, direction::AbstractFloat)
-    tmin_numerator = (-1 - origin)
-    tmax_numerator = (1 - origin)
+function check_axis(origin::Float64, direction::Float64, axmin::Float64=-1.0, axmax::Float64=1.0)
+    tmin_numerator = (axmin - origin)
+    tmax_numerator = (axmax - origin)
 
     tmin = tmin_numerator * Inf
     tmax = tmax_numerator * Inf
@@ -774,16 +828,7 @@ end
     chapter 13
 =#
 
-mutable struct cylinder <: shape
-    transform::Transform
-    material::material
-    min::AbstractFloat
-    max::AbstractFloat
-    closed::Bool
-    cylinder(; transform = DEFAULT_TRANSFORM, material = material(), min = -Inf, max = Inf, closed = false) = new(transform, material, min, max, closed)
-end
-
-function check_cap(r::ray, t::AbstractFloat)
+function check_cap(r::ray, t::Float64)
     x = r.origin[1] + t * r.velocity[1]
     z = r.origin[3] + t * r.velocity[3]
 
@@ -840,16 +885,7 @@ function _normal_at(c::cylinder, op::VectorN)
     end
 end
 
-mutable struct cone <: shape
-    transform::Transform
-    material::material
-    min::AbstractFloat
-    max::AbstractFloat
-    closed::Bool
-    cone(; transform = DEFAULT_TRANSFORM, material = material(), min = -Inf, max = Inf, closed = false) = new(transform, material, min, max, closed)
-end
-
-function check_cap(r::ray, t::AbstractFloat, y::AbstractFloat)
+function check_cap(r::ray, t::Float64, y::Float64)
     x = r.origin[1] + t * r.velocity[1]
     z = r.origin[3] + t * r.velocity[3]
 
@@ -918,7 +954,96 @@ end
     chapter 14
 =#
 
+function add_child(g::group, ss::shape...)
+    foreach(s -> s.parent = g, ss)
+    push!(g.children, ss...)
+end
 
+has_parent(s::shape) = exists(s.parent)
+has_child(g::group, s::shape) = any(c -> (c isa group) ? c == s || has_child(c, s) : c == s, g.children)
+has_children(g::group, ss::shape...) = all(s -> has_child(g, s), ss)
+
+# copy-pasted from world intersection with name changes. no need to think
+# too hard about the work being done to sort intersections, sorting them
+# at this level will make sorting at a higher level faster, especially in
+# worlds with multiple groups.
+_intersect(g::group, r::ray) = Intersections((hits_box(g, r)) ? sort([i for c in g.children for i in intersect(c, r)], by=(i)->i.t) : [])
+
+function world_to_object(s::shape, p::VectorN)
+    # not sure how this little bit of recursion could be
+    # optimized away, it makes for a ton of matrix multiplications
+    if has_parent(s) p = world_to_object(s.parent, p) end
+    return inv(s.transform) * p
+end
+
+function normal_to_world(s::shape, n::VectorN)
+    # ditto as above for the recursion and matrix multiplications
+    n = inv(s.transform)' * n
+    n[4] = 0
+    normalize!(n)
+    if has_parent(s) n = normal_to_world(s.parent, n) end
+    return n
+end
+
+mutable struct aabb # axially-aligned bounding box
+    min::VectorN # top-left point (not sure if z would be forward or back here)
+    max::VectorN # lower-right point
+    # could check min < max, but eh...
+end
+
+# untransformed (i.e. object-space) bounds for given shapes
+_bounds(s::sphere) = aabb(point(-1, -1, -1), point(1, 1, 1))
+_bounds(p::plane) = aabb(point(-Inf, 0, -Inf), point(Inf, 0, Inf))
+_bounds(c::cube) = aabb(point(-1, -1, -1), point(1, 1, 1))
+_bounds(c::cylinder) = aabb(point(-1, c.min, -1), point(1, c.max, 1))
+_bounds(c::cone) = aabb(point(-1, c.min, -1), point(1, c.max, 1))
+function _bounds(g::group)
+    bs = [bounds(c) for c in g.children]
+    mins, maxs = map(b -> b.min, bs), map(b -> b.max, bs)
+    minxs, maxxs = map(b -> b[1], mins), map(b -> b[1], maxs)
+    minys, maxys = map(b -> b[2], mins), map(b -> b[2], maxs)
+    minzs, maxzs = map(b -> b[3], mins), map(b -> b[3], maxs)
+    foreach(l -> map!(m -> (abs(m) != Inf) ? m : (m == Inf) ? 1 : -1, l, l), (minxs, maxxs, minys, maxys, minzs, maxzs))
+    return aabb(point(min(minxs...), min(minys...), min(minzs...)), point(max(maxxs...), max(maxys...), max(maxzs...)))
+end
+
+explode_aabb(bs::aabb) =
+    # goes around the top "counterclockwise" from min, then down, then around
+    # "clockwise" to max, giving us all 8 corners of the bounding box
+    (bs.min, point(bs.min[1], bs.min[2], bs.max[3]),
+    point(bs.max[1], bs.min[2], bs.max[3]), point(bs.max[1], bs.min[2], bs.min[3]),
+    point(bs.max[1], bs.max[2], bs.min[3]), point(bs.min[1], bs.max[2], bs.min[3]),
+    point(bs.min[1], bs.max[2], bs.max[3]), bs.max)
+
+function bounds(s::shape)
+    ps = explode_aabb(_bounds(s))
+
+    # if this was an aggregate transform, then groups would skip it
+    # as their own bounding box is simply an aggregate of child boxes
+    if !(s isa group) ps = map(p -> inherited_transform(s) * p, ps) end
+
+    # wondering if i could use slicing for this or for the group _bounds,
+    # might be a lot nicer but idk if i want to mess with that
+    xs, ys, zs = map(p -> p[1], ps), map(p -> p[2], ps), map(p -> p[3], ps)
+    return aabb(point(min(xs...), min(ys...), min(zs...)), point(max(xs...), max(ys...), max(zs...)))
+end
+
+
+hits_box(s::shape, r::ray) = (!(s isa group) || length(s.children) > 0) ? hits_box(bounds(s), r) : false
+function hits_box(b::aabb, r::ray)
+    # copy-paste of cube intersection, but calls check_axis
+    # differently and returns differently
+    xtmin, xtmax = check_axis(r.origin[1], r.velocity[1], b.min[1], b.max[1])
+    ytmin, ytmax = check_axis(r.origin[2], r.velocity[2], b.min[2], b.max[2])
+    ztmin, ztmax = check_axis(r.origin[3], r.velocity[3], b.min[3], b.max[3])
+
+    tmin = max(xtmin, ytmin, ztmin)
+    tmax = min(xtmax, ytmax, ztmax)
+
+    if tmin > tmax return false end
+
+    return true
+end
 
 #=
     chapter 15

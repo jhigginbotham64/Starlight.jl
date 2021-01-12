@@ -910,7 +910,7 @@ using Test
             that's half or more of the chapter, or at least of the work
             involved, since the plane is a really simple primitive.
 
-            the affected functions are ==, transform!, material!, intersect,
+            the affected functions are ==, transform, material!, intersect,
             and normal_at, and those are the *only* affected functions (i.e.
             the only places where changing sphere changes other code
             requirements).
@@ -920,7 +920,7 @@ using Test
 
             ...ok going by the docs, probably none of these should be immutable,
             or at least it probably won't hurt anything if they're all mutable.
-            however, material! and transform! don't really help anyone do anything,
+            however, material! and transform don't really help anyone do anything,
             so i removed them and refactored a bunch of the constructors to use
             keyword arguments. also i stopped hard-assigning world array fields
             in favor of push!ing. then i refactored the test to remove the == operator
@@ -1167,7 +1167,7 @@ using Test
         # this test fails with an exception if max recursion depth is exceeded,
         # like in python, so the only success condition is that we can actually
         # test for a value at all.
-        @test !isnothing(color_at(w, r))
+        @test exists(color_at(w, r))
 
         w = default_world()
         s = plane(material = material(reflective = 0.5), transform = translation(0, -1, 0))
@@ -1684,7 +1684,72 @@ using Test
             difference" (all of these are color tests, by the way). there's likely
             an issue somewhere, perhaps even a numerical one, but i'm not convinced
             just yet that it would be worthwhile to try and tackle it.
+
+            moving on to chapter 14 proper...
+
+            decided not to do anything to prevent the recursion that would be
+            made possible by having shapes or groups be parents of themselves.
+            also not going to force parents or children to be groups because i
+            don't want to mess with the compiler or the type system or my
+            shape-level intersect and normal calculations, altho i'd kinda like
+            to have anything potentially be a child of anything else like in the
+            game engines i'm familiar with. i think doing something like that would
+            require more robust structs a la Unity's GameObject or Godot's Node
+            which can do lots of different things depending on the situation.
         =#
+
+        g = group()
+        @test g.transform == I
+        @test g.children == []
+
+        shapes = [sphere(), plane(), cube(), cylinder(), cone(), group()]
+        @test all(s -> s.parent == nothing, shapes)
+
+        g = group()
+        shapes = [sphere(), plane(), cube(), cylinder(), cone(), group()]
+        add_child(g, shapes...)
+        @test has_children(g, shapes...)
+
+        g = group()
+        r = ray(point(0, 0, 0), vector(0, 0, 1))
+        xs = _intersect(g, r)
+        @test length(xs) == 0
+
+        g = group()
+        s1 = sphere()
+        s2 = sphere(transform = translation(0, 0, -3))
+        s3 = sphere(transform = translation(5, 0, 0))
+        add_child(g, s1, s2, s3)
+        r = ray(point(0, 0, -5), vector(0, 0, 1))
+        xs = _intersect(g, r)
+        @test length(xs) == 4
+        @test xs[1].object == s2
+        @test xs[2].object == s2
+        @test xs[3].object == s1
+        @test xs[4].object == s1
+
+        g = group(transform = scaling(2, 2, 2))
+        s = sphere(transform = translation(5, 0, 0))
+        add_child(g, s)
+        r = ray(point(10, 0, -10), vector(0, 0, 1))
+        xs = intersect(g, r)
+        @test length(xs) == 2
+
+        g1 = group(transform = rotation_y(π/2))
+        g2 = group(transform = scaling(2, 2, 2))
+        add_child(g1, g2)
+        s = sphere(transform = translation(5, 0, 0))
+        add_child(g2, s)
+        @test world_to_object(s, point(-2, 0, -10)) ≈ point(0, 0, -1)
+
+        g1 = group(transform = rotation_y(π/2))
+        g2 = group(transform = scaling(1, 2, 3))
+        add_child(g1, g2)
+        s = sphere(transform = translation(5, 0, 0))
+        add_child(g2, s)
+        @test round.(normal_to_world(s, vector(√3/3, √3/3, √3/3)), digits=4) == vector(0.2857, 0.4286, -0.8571)
+        # don't like having to round past where the book does, but whatever
+        @test round.(normal_at(s, point(1.7321, 1.1547, -5.5774)), digits=3) == round.(vector(0.2857, 0.4286, -0.8571), digits=3)
     end
 
     @testset "ch 15 - triangles" begin
