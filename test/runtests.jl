@@ -630,7 +630,7 @@ using Test
         intensity = colorant"white"
         pos = point(0, 0, 0)
         light = point_light(pos, intensity)
-        @test light.position == pos
+        @test light.corner == pos
         @test light.intensity == intensity
 
         m = material()
@@ -657,7 +657,7 @@ using Test
         normalv = vector(0, 0, -1)
         light = point_light(point(0, 0, -10), colorant"white")
         result = lighting(m, light, pos, eyev, normalv)
-        @test result == RGB(1.9, 1.9, 1.9)
+        @test result ≈ RGB(1.9, 1.9, 1.9)
 
         m = material()
         pos = point(0, 0, 0)
@@ -710,7 +710,7 @@ using Test
         # in julia is a little tricky.
         w = default_world()
         @test length(w.lights) == 1
-        @test w.lights[1].position == point(-10, 10, -10)
+        @test w.lights[1].corner == point(-10, 10, -10)
         @test w.lights[1].intensity == colorant"white"
         @test length(w.objects) == 2
         @test w.objects[1].material.color == RGB(0.8, 1.0, 0.6)
@@ -1936,7 +1936,13 @@ using Test
     @testset "bch 1 - soft shadows" begin
 
         #=
+            was not expecting this chapter to be so difficult
+            or so rewarding. translating gherkin into julia
+            made for some really dumb mistakes, especially the
+            sequence reset "bug".
 
+            but area lights allowed some nice refactoring, especially
+            wrt shadows and shade_hit, and i really like the new version.
         =#
 
         w = default_world()
@@ -1980,7 +1986,6 @@ using Test
         @test l.vvec == vector(0, 0, 0.5)
         @test l.vsteps == 2
         @test l.samples == 8
-        @test l.position == point(1, 0, 0.5)
 
         corner = point(0, 0, 0)
         v1 = vector(2, 0, 0)
@@ -2014,8 +2019,7 @@ using Test
         v2 = vector(0, 0, 1)
         l = area_light(corner, v1, 4, v2, 2, colorant"white", sequence(0.3, 0.7))
         @test point_on_light(l, 0, 0) == point(0.15, 0, 0.35)
-        # the book's way of looping through test cases doesn't
-        # make it clear that the sequence resets every time
+        # gherkin doesn't make it clear that the sequence resets every time
         l.jitter_by.pos = 1
         @test point_on_light(l, 1, 0) == point(0.65, 0, 0.35)
         l.jitter_by.pos = 1
@@ -2049,12 +2053,12 @@ using Test
         pt = point(0, 0, -1)
         eyev = normalize(eye - pt)
         n = vector(pt[1:3]...)
-        res = lighting(s.material, s, light, pt, eyev, n, 1.0)
+        res = lighting(s.material, l, pt, eyev, n, 1.0, obj=s)
         @test round_color(res, 4) == RGB(0.9965, 0.9965, 0.9965)
         pt = point(0, 0.7071, -0.7071)
         eyev = normalize(eye - pt)
         n = vector(pt[1:3]...)
-        res = lighting(s.material, s, light, pt, eyev, n, 1.0)
+        res = lighting(s.material, l, pt, eyev, n, 1.0, obj=s)
         @test round_color(res, 4) == RGB(0.6232, 0.6232, 0.6232)
     end
 

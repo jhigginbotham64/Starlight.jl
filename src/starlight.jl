@@ -339,29 +339,34 @@ end
 
 reflect(v::VectorF, n::VectorF) = v - (n * (2 * (v ⋅ n)))
 
-mutable struct point_light
-    position::VectorF
-    intensity::Color
-end
-
 function lighting(m, l, p, eyev, normalv, intensity = 1.0; obj::optional{shape} = nothing)
     c = (exists(m.pattern)) ? pattern_at_object(m.pattern, obj, p) : m.color # chapter 10
     effective_color = hadamard(c, l.intensity)
-    lightv = normalize(l.position - p)
     ambient = effective_color * m.ambient
-    light_dot_normal = lightv ⋅ normalv
-    diffuse = colorant"black"
-    specular = colorant"black"
-    if light_dot_normal >= 0
-        diffuse = effective_color * m.diffuse * light_dot_normal
-        reflectv = reflect(-lightv, normalv)
-        reflect_dot_eye = reflectv ⋅ eyev
-        if reflect_dot_eye > 0
-            factor = reflect_dot_eye ^ m.shininess
-            specular = l.intensity * m.specular * factor
+    dssum = colorant"black"
+    for v=0:l.vsteps-1
+        for u=0:l.usteps-1
+            diffuse = colorant"black"
+            specular = colorant"black"
+
+            pos = point_on_light(l, u, v)
+            lightv = normalize(pos - p)
+            light_dot_normal = lightv ⋅ normalv
+            if light_dot_normal >= 0
+                diffuse = effective_color * m.diffuse * light_dot_normal
+                reflectv = reflect(-lightv, normalv)
+                reflect_dot_eye = reflectv ⋅ eyev
+                if reflect_dot_eye > 0
+                    factor = reflect_dot_eye ^ m.shininess
+                    specular = l.intensity * m.specular * factor
+                end
+            end
+
+            dssum += diffuse + specular
         end
     end
-    return ambient + diffuse * intensity + specular * intensity
+
+    return ambient + (dssum / l.samples) * intensity
 end
 
 round_color(c::Color, digits::Int = 5) = mapc(chan -> round(chan, digits=digits), c)
@@ -485,16 +490,15 @@ function shade_hit(w::world, c::computations, remaining::Int = DEFAULT_RECURSION
         be handled by the blending that occurs in the lighting function.
         i guess for several lit vs unlit sources, i'd need to sum the results
         from only the lit ones.
-    =#
-    shadows = [is_shadowed(w, l.position, c.over_point) for l ∈ w.lights]
 
-    # this minus the shadow  and pattern stuff is all you need for chapter 7
-    surface =
-    (all(shadows)) ?
-    ((isnothing(c.object.material.pattern)) ? c.object.material.color : pattern_at_object(c.object.material.pattern, c.object, c.over_point)) * c.object.material.ambient :
-    sum([
-        lighting(c.object.material, l, c.point, c.eyev, c.normalv, intensity_at(l, l.position, w), obj = obj) # obj added in chapter 10
-        for (i, l) in enumerate(w.lights) if !shadows[i]
+        bonus chapter 1
+
+        area lights and soft shadows made this function a lot simpler.
+    =#
+
+    surface = sum([
+        lighting(c.object.material, l, c.point, c.eyev, c.normalv, intensity_at(l, c.over_point, w), obj = obj)
+        for (i, l) in enumerate(w.lights)
     ])
 
     # chapter 11
@@ -1108,6 +1112,8 @@ mutable struct sequence
     sequence(elems::Float64...) = new([elems...], 1)
 end
 
+sequence(elems::Number...) = sequence(Float64.(elems)...)
+
 function next(s::sequence)
     e = s.elems[s.pos]
     s.pos += 1
@@ -1122,15 +1128,14 @@ mutable struct area_light
     vvec::VectorF
     vsteps::Number
     samples::Number
-    position::VectorF
-    color::Color
-    jitter_by::sequence
-    area_light(corner, uvec, usteps, vvec, vsteps, color = colorant"white", seq = sequence(0.5)) = new(corner, uvec / usteps, usteps, vvec / vsteps, vsteps, usteps * vsteps, point(1, 0, 0.5), color, seq)
+    intensity::Color
+    jitter_by::sequence # will need to be refactored for "real" renders
+    area_light(corner, uvec, usteps, vvec, vsteps, intensity = colorant"white", seq = sequence(0.5)) = new(corner, uvec / usteps, usteps, vvec / vsteps, vsteps, usteps * vsteps, intensity, seq)
 end
 
-point_on_light(l, u, v) = l.corner + l.uvec * (u + next(l.jitter_by)) + l.vvec * (v + next(l.jitter_by))
+point_light(pos::VectorF, intensity::Color) = area_light(pos, point(0, 0, 0), 1, point(0, 0, 0), 1, intensity, sequence(0))
 
-intensity_at(l::point_light, p::VectorF, w::world) = is_shadowed(w, l.position, p) ? 0.0 : 1.0
+point_on_light(l, u, v) = l.corner + l.uvec * (u + next(l.jitter_by)) + l.vvec * (v + next(l.jitter_by))
 
 function intensity_at(l::area_light, p::VectorF, w::world)
     total = 0.0
