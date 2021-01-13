@@ -2014,9 +2014,15 @@ using Test
         v2 = vector(0, 0, 1)
         l = area_light(corner, v1, 4, v2, 2, colorant"white", sequence(0.3, 0.7))
         @test point_on_light(l, 0, 0) == point(0.15, 0, 0.35)
+        # the book's way of looping through test cases doesn't
+        # make it clear that the sequence resets every time
+        l.jitter_by.pos = 1
         @test point_on_light(l, 1, 0) == point(0.65, 0, 0.35)
+        l.jitter_by.pos = 1
         @test point_on_light(l, 0, 1) == point(0.15, 0, 0.85)
+        l.jitter_by.pos = 1
         @test point_on_light(l, 2, 0) == point(1.15, 0, 0.35)
+        l.jitter_by.pos = 1
         @test point_on_light(l, 3, 1) == point(1.65, 0, 0.85)
 
         w = default_world()
@@ -2025,9 +2031,13 @@ using Test
         v2 = vector(0, 1, 0)
         l = area_light(corner, v1, 2, v2, 2, colorant"white", sequence(0.7, 0.3, 0.9, 0.1, 0.5))
         @test intensity_at(l, point(0, 0, 2), w) == 0.0
+        l.jitter_by.pos = 1
         @test intensity_at(l, point(1, -1, 2), w) == 0.5
+        l.jitter_by.pos = 1
         @test intensity_at(l, point(1.5, 0, 2), w) == 0.75
+        l.jitter_by.pos = 1
         @test intensity_at(l, point(1.25, 1.25, 3), w) == 0.75
+        l.jitter_by.pos = 1
         @test intensity_at(l, point(0, 0, -2), w) == 1.0
 
         corner = point(-0.5, -0.5, -5)
