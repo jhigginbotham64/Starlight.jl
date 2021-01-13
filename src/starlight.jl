@@ -1090,7 +1090,6 @@ function _intersect(c::csg, r::ray)
     leftxs = intersect(c.l, r)
     rightxs = intersect(c.r, r)
 
-    # Intersections(sort([i for o in w.objects for i in intersect(o, r)], by=(i)->i.t))
     xs = intersections(sort(push!(leftxs, rightxs...), by=(i)->i.t)...)
 
     return csg_filter(c, xs)
@@ -1100,9 +1099,19 @@ end
     bonus chapter 1
 =#
 
+
+
 #=
     bonus chapter 2
 =#
+
+
+
+#=
+    bonus chapter 3
+=#
+
+
 
 #=
     input and demos
