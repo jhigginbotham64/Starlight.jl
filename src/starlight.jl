@@ -10,9 +10,6 @@ using Reexport
 SDL2 = SimpleDirectMediaLayer
 export SDL2
 
-# demo
-export rsi_demo, light_demo, scene_demo, plane_demo
-
 # helpers
 DEFAULT_TRANSFORM = Array{Float64, 2}(I(4))
 export DEFAULT_TRANSFORM
@@ -72,6 +69,12 @@ export group, add_child, has_child, has_children, inherited_transform, world_to_
 
 # chapter 15
 export triangle, smooth_triangle
+
+# chapter 16
+export csg, intersection_allowed, csg_filter
+
+# demo
+export rsi_demo, light_demo, scene_demo, plane_demo
 
 #=
     chapter 1
@@ -313,33 +316,6 @@ intersect(s::shape, r::ray) = _intersect(s, (s isa group) ? r : transform(r, inv
 
 hit(is::Intersections) = (all(map(i -> i.t < 0, is))) ? nothing : is[argmin(map(i -> (i.t < 0) ? Inf : i.t, is))]
 
-function rsi_demo(; height=100, width=100, bg_color=colorant"black", c=colorant"red")
-    canv = canvas(width, height)
-
-    s = sphere()
-
-    ray_origin = point(0, 0, -5)
-    wz = 10 # wall z
-    wall_size = 7.0
-    half = wall_size / 2
-    pixel_size = wall_size / width # can't accomodate stretching yet?
-
-    for y = 1:height
-        wy = half - pixel_size * y
-        for x = 1:width
-            wx = -half + pixel_size * x
-            pos = point(wx, wy, wz)
-            r = ray(ray_origin, normalize(pos - ray_origin))
-            xs = intersect(s, r)
-            if exists(hit(xs))
-                pixel!(canv, x, y, c)
-            end
-        end
-    end
-
-    return canv
-end
-
 #=
     chapter 6
 =#
@@ -387,39 +363,6 @@ function lighting(m, l, p, eyev, normalv, in_shadow = false; obj::optional{shape
 end
 
 round_color(c::Color, digits::Int = 5) = mapc(chan -> round(chan, digits=digits), c)
-
-function light_demo(; height=100, width=100, bg_color=colorant"black", light_color=colorant"white", mat_color=colorant"purple")
-    canv = canvas(width, height, bg_color)
-
-    s = sphere(material = material(color = mat_color))
-    l = point_light(point(-10, 10, -10), light_color)
-
-    ray_origin = point(0, 0, -5)
-    wz = 10 # wall z
-    wall_size = 7.0
-    half = wall_size / 2
-    pixel_size = wall_size / width # can't accomodate stretching yet?
-
-    for y = 1:height
-        wy = half - pixel_size * y
-        for x = 1:width
-            wx = -half + pixel_size * x
-            pos = point(wx, wy, wz)
-            r = ray(ray_origin, normalize(pos - ray_origin))
-            xs = intersect(s, r)
-            h = hit(xs)
-            if exists(h)
-                pos2 = position(r, h.t)
-                n = normal_at(h.object, pos2)
-                eye = -r.velocity
-                c = lighting(h.object.material, l, pos2, eye, n)
-                pixel!(canv, x, y, mapc(chan -> clamp(chan, 0, 1), c))
-            end
-        end
-    end
-
-    return canv
-end
 
 #=
     chapter 7
@@ -637,25 +580,6 @@ function render(c::camera, w::world)
     return img
 end
 
-function scene_demo(; width = 100, height = 50, fov = π/3)
-    wmat = material(color = RGB(1, 0.9, 0.9), specular = 0)
-
-    flr = sphere(transform = scaling(10, 0.01, 10), material = wmat)
-    left_wall = sphere(transform = translation(0, 0, 5) * rotation_y(-π/4) * rotation_x(π/2) * scaling(10, 0.01, 10), material = wmat)
-    right_wall = sphere(transform = translation(0, 0, 5) * rotation_y(π/4) * rotation_x(π/2) * scaling(10, 0.01, 10), material = wmat)
-    middle = sphere(transform = translation(-0.5, 1, 0.5), material = material(color = RGB(0.1, 1, 0.5), diffuse = 0.7, specular = 0.3))
-    right = sphere(transform = translation(1.5, 0.5, -0.5) * scaling(0.5, 0.5, 0.5), material = material(color = RGB(0.5, 1, 0.1), diffuse = 0.7, specular = 0.3))
-    left = sphere(transform = translation(-1.5, 0.33, -0.75) * scaling(0.33, 0.33, 0.33), material = material(color = RGB(1, 0.8, 0.1), diffuse = 0.7, specular = 0.3))
-
-    w = world()
-    push!(w.lights, point_light(point(-10, 10, -10), colorant"white"))
-    push!(w.objects, flr, left_wall, right_wall, middle, right, left)
-
-    cam = camera(hsize=width, vsize=height, fov=π/3, transform=view_transform(point(0, 1.5, -5), point(0, 1, 0), vector(0, 1, 0)))
-
-    return render(cam, w)
-end
-
 #=
     chapter 8
 =#
@@ -706,21 +630,6 @@ function _intersect(p::plane, r::ray)
 end
 
 _normal_at(p::plane, op::VectorF; hit::optional{intersection} = nothing) = vector(0, 1, 0) # we're in object space, and the normal is the same everywhere...
-
-function plane_demo(; width = 100, height = 50, fov = π/3)
-    flr = plane(transform = scaling(10, 0.01, 10), material = material(color = RGB(1, 0.9, 0.9), specular = 0))
-    middle = sphere(transform = translation(-0.5, 1, 0.5), material = material(color = RGB(0.1, 1, 0.5), diffuse = 0.7, specular = 0.3))
-    right = sphere(transform = translation(1.5, 0.5, -0.5) * scaling(0.5, 0.5, 0.5), material = material(color = RGB(0.5, 1, 0.1), diffuse = 0.7, specular = 0.3))
-    left = sphere(transform = translation(-1.5, 0.33, -0.75) * scaling(0.33, 0.33, 0.33), material = material(color = RGB(1, 0.8, 0.1), diffuse = 0.7, specular = 0.3))
-
-    w = world()
-    push!(w.lights, point_light(point(-10, 10, -10), colorant"white"))
-    push!(w.objects, flr, middle, right, left)
-
-    cam = camera(hsize=width, vsize=height, fov=π/3, transform=view_transform(point(0, 1.5, -5), point(0, 1, 0), vector(0, 1, 0)))
-
-    return render(cam, w)
-end
 
 #=
     chapter 10
@@ -1131,6 +1040,166 @@ end
     chapter 16
 =#
 
+mutable struct csg <: shape
+    op::Symbol # could probably make this an enum
+    l::shape
+    r::shape
+    transform::Transform
+    parent::optional{shape}
+    function csg(s::Symbol, l::shape, r::shape; transform = DEFAULT_TRANSFORM, parent = nothing)
+        c = new(s, l, r, transform, parent)
+        l.parent = c
+        r.parent = c
+        return c
+    end
+end
 
+function intersection_allowed(op::Symbol, lhit::Bool, inl::Bool, inr::Bool)
+    if op == :union return (lhit && !inr) || (!lhit && !inl)
+    elseif op == :intersect return (lhit && inr) || (!lhit && inl)
+    elseif op == :difference return (lhit && !inr) || (!lhit && inl)
+    else return false end
+end
+
+function includes(a::shape, b::shape)
+    if a == b return true
+    elseif a isa group return has_child(a, b)
+    elseif a isa csg return includes(a.l, b) || includes(a.r, b)
+    else return false end
+end
+
+function csg_filter(c::csg, xs::Intersections)
+    inl = false
+    inr = false
+
+    res = Intersections([])
+
+    for i in xs
+        lhit = includes(c.l, i.object)
+
+        if intersection_allowed(c.op, lhit, inl, inr) push!(res, i) end
+
+        if lhit inl = !inl
+        else inr = !inr end
+    end
+
+    return intersections(res...)
+end
+
+function _intersect(c::csg, r::ray)
+    leftxs = intersect(c.l, r)
+    rightxs = intersect(c.r, r)
+
+    # Intersections(sort([i for o in w.objects for i in intersect(o, r)], by=(i)->i.t))
+    xs = intersections(sort(push!(leftxs, rightxs...), by=(i)->i.t)...)
+
+    return csg_filter(c, xs)
+end
+
+#=
+    bonus chapter 1
+=#
+
+#=
+    bonus chapter 2
+=#
+
+#=
+    input and demos
+=#
+
+function rsi_demo(; height=100, width=100, bg_color=colorant"black", c=colorant"red")
+    canv = canvas(width, height)
+
+    s = sphere()
+
+    ray_origin = point(0, 0, -5)
+    wz = 10 # wall z
+    wall_size = 7.0
+    half = wall_size / 2
+    pixel_size = wall_size / width # can't accomodate stretching yet?
+
+    for y = 1:height
+        wy = half - pixel_size * y
+        for x = 1:width
+            wx = -half + pixel_size * x
+            pos = point(wx, wy, wz)
+            r = ray(ray_origin, normalize(pos - ray_origin))
+            xs = intersect(s, r)
+            if exists(hit(xs))
+                pixel!(canv, x, y, c)
+            end
+        end
+    end
+
+    return canv
+end
+
+function light_demo(; height=100, width=100, bg_color=colorant"black", light_color=colorant"white", mat_color=colorant"purple")
+    canv = canvas(width, height, bg_color)
+
+    s = sphere(material = material(color = mat_color))
+    l = point_light(point(-10, 10, -10), light_color)
+
+    ray_origin = point(0, 0, -5)
+    wz = 10 # wall z
+    wall_size = 7.0
+    half = wall_size / 2
+    pixel_size = wall_size / width # can't accomodate stretching yet?
+
+    for y = 1:height
+        wy = half - pixel_size * y
+        for x = 1:width
+            wx = -half + pixel_size * x
+            pos = point(wx, wy, wz)
+            r = ray(ray_origin, normalize(pos - ray_origin))
+            xs = intersect(s, r)
+            h = hit(xs)
+            if exists(h)
+                pos2 = position(r, h.t)
+                n = normal_at(h.object, pos2)
+                eye = -r.velocity
+                c = lighting(h.object.material, l, pos2, eye, n)
+                pixel!(canv, x, y, mapc(chan -> clamp(chan, 0, 1), c))
+            end
+        end
+    end
+
+    return canv
+end
+
+function scene_demo(; width = 100, height = 50, fov = π/3)
+    wmat = material(color = RGB(1, 0.9, 0.9), specular = 0)
+
+    flr = sphere(transform = scaling(10, 0.01, 10), material = wmat)
+    left_wall = sphere(transform = translation(0, 0, 5) * rotation_y(-π/4) * rotation_x(π/2) * scaling(10, 0.01, 10), material = wmat)
+    right_wall = sphere(transform = translation(0, 0, 5) * rotation_y(π/4) * rotation_x(π/2) * scaling(10, 0.01, 10), material = wmat)
+    middle = sphere(transform = translation(-0.5, 1, 0.5), material = material(color = RGB(0.1, 1, 0.5), diffuse = 0.7, specular = 0.3))
+    right = sphere(transform = translation(1.5, 0.5, -0.5) * scaling(0.5, 0.5, 0.5), material = material(color = RGB(0.5, 1, 0.1), diffuse = 0.7, specular = 0.3))
+    left = sphere(transform = translation(-1.5, 0.33, -0.75) * scaling(0.33, 0.33, 0.33), material = material(color = RGB(1, 0.8, 0.1), diffuse = 0.7, specular = 0.3))
+
+    w = world()
+    push!(w.lights, point_light(point(-10, 10, -10), colorant"white"))
+    push!(w.objects, flr, left_wall, right_wall, middle, right, left)
+
+    cam = camera(hsize=width, vsize=height, fov=π/3, transform=view_transform(point(0, 1.5, -5), point(0, 1, 0), vector(0, 1, 0)))
+
+    return render(cam, w)
+end
+
+function plane_demo(; width = 100, height = 50, fov = π/3)
+    flr = plane(transform = scaling(10, 0.01, 10), material = material(color = RGB(1, 0.9, 0.9), specular = 0))
+    middle = sphere(transform = translation(-0.5, 1, 0.5), material = material(color = RGB(0.1, 1, 0.5), diffuse = 0.7, specular = 0.3))
+    right = sphere(transform = translation(1.5, 0.5, -0.5) * scaling(0.5, 0.5, 0.5), material = material(color = RGB(0.5, 1, 0.1), diffuse = 0.7, specular = 0.3))
+    left = sphere(transform = translation(-1.5, 0.33, -0.75) * scaling(0.33, 0.33, 0.33), material = material(color = RGB(1, 0.8, 0.1), diffuse = 0.7, specular = 0.3))
+
+    w = world()
+    push!(w.lights, point_light(point(-10, 10, -10), colorant"white"))
+    push!(w.objects, flr, middle, right, left)
+
+    cam = camera(hsize=width, vsize=height, fov=π/3, transform=view_transform(point(0, 1.5, -5), point(0, 1, 0), vector(0, 1, 0)))
+
+    return render(cam, w)
+end
 
 end

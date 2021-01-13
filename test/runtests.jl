@@ -693,6 +693,7 @@ using Test
     end
 
     @testset "ch 7 - making a scene" begin
+
         #=
             first 3d render. also first time numerical issues
             presented challenges i felt like i had to avoid
@@ -850,6 +851,7 @@ using Test
     end
 
     @testset "ch 8 - shadows" begin
+
         #=
             wondering if i should have decided to do multiple lights.
             there are no test cases for them in the book, and it made
@@ -904,6 +906,7 @@ using Test
     end
 
     @testset "ch 9 - planes" begin
+
         #=
             this chapter involves refactoring sphere so you can accomodate
             it and the new plan class more easily via an abstract shape class.
@@ -989,6 +992,7 @@ using Test
     end
 
     @testset "ch 10 - patterns" begin
+
         #=
             more "abstract class" shenanigans, altho i'm beginning to think
             that this is actually yet another place where julia outdoes more
@@ -1105,6 +1109,7 @@ using Test
     end
 
     @testset "ch 11 - reflection and refraction" begin
+
         #=
             TODO: refactor this test suite so that test names correspond to ones from the book
 
@@ -1315,6 +1320,7 @@ using Test
     end
 
     @testset "ch 12 - cubes" begin
+
         #=
             cubes were a nice break after the last chapter.
         =#
@@ -1440,6 +1446,7 @@ using Test
     end
 
     @testset "ch 13 - cylinders" begin
+
         #=
             TODO: reimagine and rewrite to not be organized by chapters
 
@@ -1667,6 +1674,7 @@ using Test
     end
 
     @testset "ch 14 - groups" begin
+
         #=
             ok bug fixes for ch 7 and ch 11 are going to be labeled by
             this chapter if something is unclear. ch 7 is worlds, and this
@@ -1753,6 +1761,7 @@ using Test
     end
 
     @testset "ch 15 - triangles" begin
+
         #=
             yeeeeaaaaaaaaah triangles. decided to skip the obj parser
             and move it into its own test set, will do after the bonus
@@ -1857,6 +1866,88 @@ using Test
 
     @testset "ch 16 - constructive solid geometry" begin
 
+        #=
+
+        =#
+
+        s1 = sphere()
+        s2 = cube()
+        c = csg(:union, s1, s2)
+        @test c.op == :union
+        @test c.l == s1
+        @test c.r == s2
+        @test s1.parent == c
+        @test s2.parent == c
+
+        @test !intersection_allowed(:union, true, true, true)
+        @test intersection_allowed(:union, true, true, false)
+        @test !intersection_allowed(:union, true, false, true)
+        @test intersection_allowed(:union, true, false, false)
+        @test !intersection_allowed(:union, false, true, true)
+        @test !intersection_allowed(:union, false, true, false)
+        @test intersection_allowed(:union, false, false, true)
+        @test intersection_allowed(:union, false, false, false)
+
+        @test intersection_allowed(:intersect, true, true, true)
+        @test !intersection_allowed(:intersect, true, true, false)
+        @test intersection_allowed(:intersect, true, false, true)
+        @test !intersection_allowed(:intersect, true, false, false)
+        @test intersection_allowed(:intersect, false, true, true)
+        @test intersection_allowed(:intersect, false, true, false)
+        @test !intersection_allowed(:intersect, false, false, true)
+        @test !intersection_allowed(:intersect, false, false, false)
+
+        @test !intersection_allowed(:difference, true, true, true)
+        @test intersection_allowed(:difference, true, true, false)
+        @test !intersection_allowed(:difference, true, false, true)
+        @test intersection_allowed(:difference, true, false, false)
+        @test intersection_allowed(:difference, false, true, true)
+        @test intersection_allowed(:difference, false, true, false)
+        @test !intersection_allowed(:difference, false, false, true)
+        @test !intersection_allowed(:difference, false, false, false)
+
+        s1 = sphere()
+        s2 = cube()
+        c = csg(:union, s1, s2)
+        xs = intersections(intersection(1, s1), intersection(2, s2), intersection(3, s1), intersection(4, s2))
+        res = csg_filter(c, xs)
+        @test length(res) == 2
+        @test res[1] == xs[1]
+        @test res[2] == xs[4]
+
+        s1 = sphere()
+        s2 = cube()
+        c = csg(:intersect, s1, s2)
+        xs = intersections(intersection(1, s1), intersection(2, s2), intersection(3, s1), intersection(4, s2))
+        res = csg_filter(c, xs)
+        @test length(res) == 2
+        @test res[1] == xs[2]
+        @test res[2] == xs[3]
+
+        s1 = sphere()
+        s2 = cube()
+        c = csg(:difference, s1, s2)
+        xs = intersections(intersection(1, s1), intersection(2, s2), intersection(3, s1), intersection(4, s2))
+        res = csg_filter(c, xs)
+        @test length(res) == 2
+        @test res[1] == xs[1]
+        @test res[2] == xs[2]
+
+        c = csg(:union, sphere(), cube())
+        r = ray(point(0, 2, -5), vector(0, 0, 1))
+        xs = _intersect(c, r)
+        @test length(xs) == 0
+
+        s1 = sphere()
+        s2 = sphere(transform = translation(0, 0, 0.5))
+        c = csg(:union, s1, s2)
+        r = ray(point(0, 0, -5), vector(0, 0, 1))
+        xs = _intersect(c, r)
+        @test length(xs) == 2
+        @test xs[1].t == 4
+        @test xs[1].object == s1
+        @test xs[2].t == 6.5
+        @test xs[2].object == s2
     end
 
     @testset "bch 1 - soft shadows" begin
@@ -1871,7 +1962,16 @@ using Test
 
     end
 
-    @testset "input 1 - wavefront obj" begin
+    @testset "input" begin
+
+        #=
+            not really sure whether i'll actually do these. i recall that
+            i skipped the earlier PPM stuff completely, i may run into similar
+            solutions for this. we'll see, it likely won't matter until i get
+            to doing demo scenes to polish this project off, at which point i'll
+            be at the mercy of whatever's available for free.
+        =#
+
         # o = obj("/home/jhigginbotham64/.julia/dev/starlight/test/gibberish.obj")
         # @test o.ignored == 5
 
