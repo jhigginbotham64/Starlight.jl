@@ -39,7 +39,7 @@ export translation, scaling, reflection_x, reflection_y, reflection_z, rotation_
 export ray, sphere, intersect, _intersect, intersection, intersections, Intersections, hit, transform
 
 # chapter 6
-export normal_at, _normal_at, reflect, point_light, material, lighting, round_color
+export normal_at, _normal_at, reflect, point_light, material, lighting, round_color, clamp_color
 
 # chapter 7
 export world, default_world, prepare_computations, shade_hit, color_at, view_transform, camera, ray_for_pixel, render
@@ -72,6 +72,9 @@ export triangle, smooth_triangle
 
 # chapter 16
 export csg, intersection_allowed, csg_filter
+
+# bonus chapter 1
+export point_on_light, area_light, intensity_at, sequence, next
 
 # demo
 export rsi_demo, light_demo, scene_demo, plane_demo
@@ -341,9 +344,8 @@ mutable struct point_light
     intensity::Color
 end
 
-function lighting(m, l, p, eyev, normalv, in_shadow = false; obj::optional{shape} = nothing)
+function lighting(m, l, p, eyev, normalv, intensity = 1.0; obj::optional{shape} = nothing)
     c = (exists(m.pattern)) ? pattern_at_object(m.pattern, obj, p) : m.color # chapter 10
-    if in_shadow return c * m.ambient end # chapter 8
     effective_color = hadamard(c, l.intensity)
     lightv = normalize(l.position - p)
     ambient = effective_color * m.ambient
@@ -359,10 +361,11 @@ function lighting(m, l, p, eyev, normalv, in_shadow = false; obj::optional{shape
             specular = l.intensity * m.specular * factor
         end
     end
-    return ambient + diffuse + specular
+    return ambient + diffuse * intensity + specular * intensity
 end
 
 round_color(c::Color, digits::Int = 5) = mapc(chan -> round(chan, digits=digits), c)
+clamp_color(c::Color) = mapc(chan -> clamp(chan, 0, 1), c)
 
 #=
     chapter 7
@@ -483,14 +486,14 @@ function shade_hit(w::world, c::computations, remaining::Int = DEFAULT_RECURSION
         i guess for several lit vs unlit sources, i'd need to sum the results
         from only the lit ones.
     =#
-    shadows = [is_shadowed(w, c.over_point, i) for i=1:length(w.lights)]
+    shadows = [is_shadowed(w, l.position, c.over_point) for l ∈ w.lights]
 
     # this minus the shadow  and pattern stuff is all you need for chapter 7
     surface =
     (all(shadows)) ?
     ((isnothing(c.object.material.pattern)) ? c.object.material.color : pattern_at_object(c.object.material.pattern, c.object, c.over_point)) * c.object.material.ambient :
     sum([
-        lighting(c.object.material, l, c.point, c.eyev, c.normalv, false, obj = obj) # obj added in chapter 10
+        lighting(c.object.material, l, c.point, c.eyev, c.normalv, intensity_at(l, l.position, w), obj = obj) # obj added in chapter 10
         for (i, l) in enumerate(w.lights) if !shadows[i]
     ])
 
@@ -565,16 +568,16 @@ function ray_for_pixel(c::camera, px::Int, py::Int)
     return ray(orgn, dir)
 end
 
-function render(c::camera, w::world)
-    img = canvas(c.hsize, c.vsize)
-    for y=1:c.vsize
-        for x=1:c.hsize
-            r = ray_for_pixel(c, x, y)
-            col = color_at(w, r)
+function render(cam::camera, w::world)
+    img = canvas(cam.hsize, cam.vsize)
+    for y=1:cam.vsize
+        for x=1:cam.hsize
+            r = ray_for_pixel(cam, x, y)
+            c = color_at(w, r)
             # idk why i have to swap x and y here, there's probably
             # a really good mathematical reason for it and i can probably
             # fix it...but i don't really want to right now...
-            pixel!(img, y, x, mapc(chan -> clamp(chan, 0, 1), col))
+            pixel!(img, y, x, clamp_color(c))
         end
     end
     return img
@@ -584,8 +587,8 @@ end
     chapter 8
 =#
 
-function is_shadowed(w::world, p::VectorF, light_no = 1)
-    v = w.lights[light_no].position - p
+function is_shadowed(w::world, lpos::VectorF, p::VectorF)
+    v = lpos - p
     dist = norm(v)
     dir = normalize(v)
     r = ray(p, dir)
@@ -1099,7 +1102,47 @@ end
     bonus chapter 1 - http://raytracerchallenge.com/bonus/area-light.html
 =#
 
+mutable struct sequence
+    elems::VectorF
+    pos::Int
+    sequence(elems::Float64...) = new([elems...], 1)
+end
 
+function next(s::sequence)
+    e = s.elems[s.pos]
+    s.pos += 1
+    if s.pos > length(s.elems) s.pos = 1 end
+    return e
+end
+
+mutable struct area_light
+    corner::VectorF
+    uvec::VectorF
+    usteps::Number
+    vvec::VectorF
+    vsteps::Number
+    samples::Number
+    position::VectorF
+    color::Color
+    jitter_by::sequence
+    area_light(corner, uvec, usteps, vvec, vsteps, color = colorant"white", seq = sequence(0.5)) = new(corner, uvec / usteps, usteps, vvec / vsteps, vsteps, usteps * vsteps, point(1, 0, 0.5), color, seq)
+end
+
+point_on_light(l, u, v) = l.corner + l.uvec * (u + next(l.jitter_by)) + l.vvec * (v + next(l.jitter_by))
+
+intensity_at(l::point_light, p::VectorF, w::world) = is_shadowed(w, l.position, p) ? 0.0 : 1.0
+
+function intensity_at(l::area_light, p::VectorF, w::world)
+    total = 0.0
+
+    for v=0:l.vsteps-1
+        for u=0:l.usteps-1
+            if !is_shadowed(w, point_on_light(l, u, v), p) total += 1.0 end
+        end
+    end
+
+    return total / l.samples
+end
 
 #=
     bonus chapter 2 - http://raytracerchallenge.com/bonus/texture-mapping.html
@@ -1169,7 +1212,7 @@ function light_demo(; height=100, width=100, bg_color=colorant"black", light_col
                 n = normal_at(h.object, pos2)
                 eye = -r.velocity
                 c = lighting(h.object.material, l, pos2, eye, n)
-                pixel!(canv, x, y, mapc(chan -> clamp(chan, 0, 1), c))
+                pixel!(canv, x, y, clamp_color(c))
             end
         end
     end

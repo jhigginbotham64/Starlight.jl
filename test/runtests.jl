@@ -866,25 +866,8 @@ using Test
         eyev = vector(0, 0, -1)
         normalv = vector(0, 0, -1)
         light = point_light(point(0, 0, -10), colorant"white")
-        in_shadow = true
-        result = lighting(m, light, pos, eyev, normalv, in_shadow)
+        result = lighting(m, light, pos, eyev, normalv, 0.0)
         @test result == RGB(0.1, 0.1, 0.1)
-
-        w = default_world()
-        p = point(0, 10, 0)
-        @test !is_shadowed(w, p)
-
-        w = default_world()
-        p = point(10, -10, 10)
-        @test is_shadowed(w, p)
-
-        w = default_world()
-        p = point(-20, 20, -20)
-        @test !is_shadowed(w, p)
-
-        w = default_world()
-        p = point(-2, 2, -2)
-        @test !is_shadowed(w, p)
 
         w = world()
         push!(w.lights, point_light(point(0, 0, -10), colorant"white"))
@@ -1952,6 +1935,117 @@ using Test
 
     @testset "bch 1 - soft shadows" begin
 
+        #=
+
+        =#
+
+        w = default_world()
+        light_pos = point(-10, -10, -10)
+        @test !is_shadowed(w, light_pos, point(-10, -10, 10))
+        @test is_shadowed(w, light_pos, point(10, 10, 10))
+        @test !is_shadowed(w, light_pos, point(-20, -20, -20))
+        @test !is_shadowed(w, light_pos, point(-5, -5, -5))
+
+        w = default_world()
+        light = w.lights[1]
+        @test intensity_at(light, point(0, 1.0001, 0), w) == 1.0
+        @test intensity_at(light, point(-1.0001, 0, 0), w) == 1.0
+        @test intensity_at(light, point(0, 0, -1.0001), w) == 1.0
+        @test intensity_at(light, point(0, 0, 1.0001), w) == 0.0
+        @test intensity_at(light, point(1.0001, 0, 0), w) == 0.0
+        @test intensity_at(light, point(0, -1.0001, 0), w) == 0.0
+        @test intensity_at(light, point(0, 0, 0), w) == 0.0
+
+        w = default_world()
+        w.lights[1] = point_light(point(0, 0, -10), colorant"white")
+        s = w.objects[1]
+        s.material.ambient = 0.1
+        s.material.diffuse = 0.9
+        s.material.specular = 0
+        s.material.color = colorant"white"
+        p = point(0, 0, -1)
+        eyev = vector(0, 0, -1)
+        n = vector(0, 0, -1)
+        @test lighting(s.material, w.lights[1], p, eyev, n, 1.0) == colorant"white"
+        @test lighting(s.material, w.lights[1], p, eyev, n, 0.5) == RGB(0.55, 0.55, 0.55)
+        @test lighting(s.material, w.lights[1], p, eyev, n, 0.0) == RGB(0.1, 0.1, 0.1)
+
+        corner = point(0, 0, 0)
+        v1 = vector(2, 0, 0)
+        v2 = vector(0, 0, 1)
+        l = area_light(corner, v1, 4, v2, 2, colorant"white")
+        @test l.corner == corner
+        @test l.uvec == vector(0.5, 0, 0)
+        @test l.usteps == 4
+        @test l.vvec == vector(0, 0, 0.5)
+        @test l.vsteps == 2
+        @test l.samples == 8
+        @test l.position == point(1, 0, 0.5)
+
+        corner = point(0, 0, 0)
+        v1 = vector(2, 0, 0)
+        v2 = vector(0, 0, 1)
+        l = area_light(corner, v1, 4, v2, 2, colorant"white")
+        @test point_on_light(l, 0, 0) == point(0.25, 0, 0.25)
+        @test point_on_light(l, 1, 0) == point(0.75, 0, 0.25)
+        @test point_on_light(l, 0, 1) == point(0.25, 0, 0.75)
+        @test point_on_light(l, 2, 0) == point(1.25, 0, 0.25)
+        @test point_on_light(l, 3, 1) == point(1.75, 0, 0.75)
+
+        w = default_world()
+        corner = point(-0.5, -0.5, -5)
+        v1 = vector(1, 0, 0)
+        v2 = vector(0, 1, 0)
+        l = area_light(corner, v1, 2, v2, 2, colorant"white")
+        @test intensity_at(l, point(0, 0, 2), w) == 0.0
+        @test intensity_at(l, point(1, -1, 2), w) == 0.25
+        @test intensity_at(l, point(1.5, 0, 2), w) == 0.5
+        @test intensity_at(l, point(1.25, 1.25, 3), w) == 0.75
+        @test intensity_at(l, point(0, 0, -2), w) == 1.0
+
+        gen = sequence(0.1, 0.5, 1.0)
+        @test next(gen) == 0.1
+        @test next(gen) == 0.5
+        @test next(gen) == 1.0
+        @test next(gen) == 0.1
+
+        corner = point(0, 0, 0)
+        v1 = vector(2, 0, 0)
+        v2 = vector(0, 0, 1)
+        l = area_light(corner, v1, 4, v2, 2, colorant"white", sequence(0.3, 0.7))
+        @test point_on_light(l, 0, 0) == point(0.15, 0, 0.35)
+        @test point_on_light(l, 1, 0) == point(0.65, 0, 0.35)
+        @test point_on_light(l, 0, 1) == point(0.15, 0, 0.85)
+        @test point_on_light(l, 2, 0) == point(1.15, 0, 0.35)
+        @test point_on_light(l, 3, 1) == point(1.65, 0, 0.85)
+
+        w = default_world()
+        corner = point(-0.5, -0.5, -5)
+        v1 = vector(1, 0, 0)
+        v2 = vector(0, 1, 0)
+        l = area_light(corner, v1, 2, v2, 2, colorant"white", sequence(0.7, 0.3, 0.9, 0.1, 0.5))
+        @test intensity_at(l, point(0, 0, 2), w) == 0.0
+        @test intensity_at(l, point(1, -1, 2), w) == 0.5
+        @test intensity_at(l, point(1.5, 0, 2), w) == 0.75
+        @test intensity_at(l, point(1.25, 1.25, 3), w) == 0.75
+        @test intensity_at(l, point(0, 0, -2), w) == 1.0
+
+        corner = point(-0.5, -0.5, -5)
+        v1 = vector(1, 0, 0)
+        v2 = vector(0, 1, 0)
+        l = area_light(corner, v1, 2, v2, 2, colorant"white")
+        s = sphere(material = material(ambient = 0.1, diffuse = 0.9, specular = 0, color = colorant"white"))
+        eye = point(0, 0, -5)
+        pt = point(0, 0, -1)
+        eyev = normalize(eye - pt)
+        n = vector(pt[1:3]...)
+        res = lighting(s.material, s, light, pt, eyev, n, 1.0)
+        @test round_color(res, 4) == RGB(0.9965, 0.9965, 0.9965)
+        pt = point(0, 0.7071, -0.7071)
+        eyev = normalize(eye - pt)
+        n = vector(pt[1:3]...)
+        res = lighting(s.material, s, light, pt, eyev, n, 1.0)
+        @test round_color(res, 4) == RGB(0.6232, 0.6232, 0.6232)
     end
 
     @testset "bch 2 - texture mapping" begin
