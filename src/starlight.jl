@@ -1096,19 +1096,19 @@ function _intersect(c::csg, r::ray)
 end
 
 #=
-    bonus chapter 1
+    bonus chapter 1 - http://raytracerchallenge.com/bonus/area-light.html
 =#
 
 
 
 #=
-    bonus chapter 2
+    bonus chapter 2 - http://raytracerchallenge.com/bonus/texture-mapping.html
 =#
 
 
 
 #=
-    bonus chapter 3
+    bonus chapter 3 - http://raytracerchallenge.com/bonus/bounding-boxes.html
 =#
 
 
