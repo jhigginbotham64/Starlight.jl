@@ -2064,6 +2064,129 @@ using Test
 
     @testset "bch 2 - texture mapping" begin
 
+        #=
+
+        =#
+
+        c = uv_checkers(2, 2, colorant"black", colorant"white")
+        @test pattern_at(c, 0, 0) == colorant"black"
+        @test pattern_at(c, 0.5, 0) == colorant"white"
+        @test pattern_at(c, 0, 0.5) == colorant"white"
+        @test pattern_at(c, 0.5, 0.5) == colorant"black"
+        @test pattern_at(c, 1, 1) == colorant"black"
+
+        @test spherical_uv_map(point(0, 0, -1)) == (0, 0.5)
+        @test spherical_uv_map(point(1, 0, 0)) == (0.25, 0.5)
+        @test spherical_uv_map(point(0, 0, 1)) == (0.5, 0.5)
+        @test spherical_uv_map(point(-1, 0, 0)) == (0.75, 0.5)
+        @test spherical_uv_map(point(0, 1, 0)) == (0.5, 1.0)
+        @test spherical_uv_map(point(0, -1, 0)) == (0.5, 0)
+        @test spherical_uv_map(point(√2/2, √2/2, 0)) == (0.25, 0.75)
+
+        c = uv_checkers(16, 8, colorant"black", colorant"white")
+        t = texture_map(c, spherical_uv_map)
+        @test pattern_at(t, point(0.4315, 0.4670, 0.7719)) == colorant"white"
+        @test pattern_at(t, point(-0.9654, 0.2552, -0.0534)) == colorant"black"
+        @test pattern_at(t, point(0.1039, 0.7090, 0.6975)) == colorant"white"
+        @test pattern_at(t, point(-0.4986, -0.7856, -0.3663)) == colorant"black"
+        @test pattern_at(t, point(-0.0317, -0.9395, 0.3411)) == colorant"black"
+        @test pattern_at(t, point(0.4809, -0.7721, 0.4154)) == colorant"black"
+        @test pattern_at(t, point(0.0285, -0.9612, -0.2745)) == colorant"black"
+        @test pattern_at(t, point(-0.5734, -0.2162, -0.7903)) == colorant"white"
+        @test pattern_at(t, point(0.7688, -0.1470, 0.6223)) == colorant"black"
+        @test pattern_at(t, point(-0.7652, 0.2175, 0.6060)) == colorant"black"
+
+        @test planar_uv_map(point(0.25, 0, 0.5)) == (0.25, 0.5)
+        @test planar_uv_map(point(0.25, 0, -0.25)) == (0.25, 0.75)
+        @test planar_uv_map(point(0.25, 0.5, -0.25)) == (0.25, 0.75)
+        @test planar_uv_map(point(1.25, 0, 0.5)) == (0.25, 0.5)
+        @test planar_uv_map(point(0.25, 0, -1.75)) == (0.25, 0.25)
+        @test planar_uv_map(point(1, 0, -1)) == (0, 0)
+        @test planar_uv_map(point(0, 0, 0)) == (0, 0)
+
+        @test cylindrical_uv_map(point(0, 0, -1)) == (0, 0)
+        @test cylindrical_uv_map(point(0, 0.5, -1)) == (0, 0.5)
+        @test cylindrical_uv_map(point(0, 1, -1)) == (0, 0)
+        @test cylindrical_uv_map(point(0.70711, 0.5, -0.70711)) == (0.125, 0.5)
+        @test cylindrical_uv_map(point(1, 0.5, 0)) == (0.25, 0.5)
+        @test cylindrical_uv_map(point(0.70711, 0.5, 0.70711)) == (0.375, 0.5)
+        @test cylindrical_uv_map(point(0, -0.25, 1)) == (0.5, 0.75)
+        @test cylindrical_uv_map(point(-0.70711, 0.5, 0.70711)) == (0.625, 0.5)
+        @test cylindrical_uv_map(point(-1, 1.25, 0)) == (0.75, 0.25)
+        @test cylindrical_uv_map(point(-0.70711, 0.5, -0.70711)) == (0.875, 0.5)
+
+        pat = uv_align_check(colorant"white", colorant"red", colorant"yellow", colorant"green", colorant"cyan")
+        @test pattern_at(pat, 0.5, 0.5) == colorant"white"
+        @test pattern_at(pat, 0.1, 0.9) == colorant"red"
+        @test pattern_at(pat, 0.9, 0.9) == colorant"yellow"
+        @test pattern_at(pat, 0.1, 0.1) == colorant"green"
+        @test pattern_at(pat, 0.9, 0.1) == colorant"cyan"
+
+        @test face(point(-1, 0.5, -0.25)) == LEFT
+        @test face(point(1.1, -0.75, 0.8)) == RIGHT
+        @test face(point(0.1, 0.6, 0.9)) == FRONT
+        @test face(point(-0.7, 0, -2)) == BACK
+        @test face(point(0.5, 1, 0.9)) == UP
+        @test face(point(-0.2, -1.3, 1.1)) == DOWN
+
+        @test cubical_uv_map(point(-0.5, 0.5, 1)) == (0.25, 0.75)
+        @test cubical_uv_map(point(0.5, -0.5, 1)) == (0.75, 0.25)
+        @test cubical_uv_map(point(0.5, 0.5, -1)) == (0.25, 0.75)
+        @test cubical_uv_map(point(-0.5, -0.5, -1)) == (0.75, 0.25)
+        @test cubical_uv_map(point(-1, 0.5, -0.5)) == (0.25, 0.75)
+        @test cubical_uv_map(point(-1, -0.5, 0.5)) == (0.75, 0.25)
+        @test cubical_uv_map(point(1, 0.5, 0.5)) == (0.25, 0.75)
+        @test cubical_uv_map(point(1, -0.5, -0.5)) == (0.75, 0.25)
+        @test cubical_uv_map(point(-0.5, 1, -0.5)) == (0.25, 0.75)
+        @test cubical_uv_map(point(0.5, 1, 0.5)) == (0.75, 0.25)
+        @test cubical_uv_map(point(-0.5, -1, 0.5)) == (0.25, 0.75)
+        @test cubical_uv_map(point(0.5, -1, -0.5)) == (0.75, 0.25)
+
+        re = colorant"red"
+        ye = colorant"yellow"
+        br = colorant"brown"
+        gr = colorant"green"
+        cy = colorant"cyan"
+        bl = colorant"blue"
+        pu = colorant"purple"
+        wh = colorant"white"
+        lface = uv_align_check(ye, cy, re, bl, br)
+        fface = uv_align_check(cy, re, ye, br, gr)
+        rface = uv_align_check(re, ye, pu, gr, wh)
+        bface = uv_align_check(gr, pu, cy, wh, bl)
+        uface = uv_align_check(br, cy, pu, re, ye)
+        dface = uv_align_check(pu, br, gr, bl, wh)
+        c = cube_map(lface, fface, rface, bface, uface, dface)
+        @test pattern_at(c, point(-1, 0, 0)) == ye
+        @test pattern_at(c, point(-1, 0.9, -0.9)) == cy
+        @test pattern_at(c, point(-1, 0.9, 0.9)) == re
+        @test pattern_at(c, point(-1, -0.9, -0.9)) == bl
+        @test pattern_at(c, point(-1, -0.9, 0.9)) == br
+        @test pattern_at(c, point(0, 0, 1)) == cy
+        @test pattern_at(c, point(-0.9, 0.9, 1)) == re
+        @test pattern_at(c, point(0.9, 0.9, 1)) == ye
+        @test pattern_at(c, point(-0.9, -0.9, 1)) == br
+        @test pattern_at(c, point(0.9, -0.9, 1)) == gr
+        @test pattern_at(c, point(1, 0, 0)) == re
+        @test pattern_at(c, point(1, 0.9, 0.9)) == ye
+        @test pattern_at(c, point(1, 0.9, -0.9)) == pu
+        @test pattern_at(c, point(1, -0.9, 0.9)) == gr
+        @test pattern_at(c, point(1, -0.9, -0.9)) == wh
+        @test pattern_at(c, point(0, 0, -1)) == gr
+        @test pattern_at(c, point(0.9, 0.9, -1)) == pu
+        @test pattern_at(c, point(-0.9, 0.9, -1)) == cy
+        @test pattern_at(c, point(0.9, -0.9, -1)) == wh
+        @test pattern_at(c, point(-0.9, -0.9, -1)) == bl
+        @test pattern_at(c, point(0, 1, 0)) == br
+        @test pattern_at(c, point(-0.9, 1, -0.9)) == cy
+        @test pattern_at(c, point(0.9, 1, -0.9)) == pu
+        @test pattern_at(c, point(-0.9, 1, 0.9)) == re
+        @test pattern_at(c, point(0.9, 1, 0.9)) == ye
+        @test pattern_at(c, point(0, -1, 0)) == pu
+        @test pattern_at(c, point(-0.9, -1, 0.9)) == br
+        @test pattern_at(c, point(0.9, -1, 0.9)) == gr
+        @test pattern_at(c, point(-0.9, -1, -0.9)) == bl
+        @test pattern_at(c, point(0.9, -1, -0.9)) == wh
     end
 
     @testset "bch 3 - bounding boxes" begin

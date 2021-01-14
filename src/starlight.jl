@@ -76,6 +76,9 @@ export csg, intersection_allowed, csg_filter
 # bonus chapter 1
 export point_on_light, area_light, intensity_at, sequence, next
 
+# bonus chapter 2
+export uv_pattern, uv_checkers, uv_align_check, spherical_uv_map, texture_map, planar_uv_map, cylindrical_uv_map, faces, LEFT, RIGHT, FRONT, BACK, UP, DOWN, face, cubical_uv_map, cube_map
+
 # demo
 export rsi_demo, light_demo, scene_demo, plane_demo
 
@@ -1153,7 +1156,120 @@ end
     bonus chapter 2 - http://raytracerchallenge.com/bonus/texture-mapping.html
 =#
 
+mutable struct uv_checkers <: pattern
+    width::Number
+    height::Number
+    a::Color
+    b::Color
+end
 
+pattern_at(pat::uv_checkers, u::Number, v::Number) = ((floor(u * pat.width) + floor(v * pat.height)) % 2 == 0) ? pat.a : pat.b
+
+function spherical_uv_map(p::VectorF)
+    θ = atan(p[1], p[3])
+    v = vector(p[1:3]...)
+    r = norm(v)
+    ϕ = acos(p[2] / r)
+
+    u = 1 - ((θ / 2π) + 0.5)
+    v = 1 - ϕ/π
+
+    return (u, v)
+end
+
+mutable struct texture_map <: pattern
+    pat::pattern
+    uvmap # should be a function that takes a point and returns a u,v pair
+end
+
+pattern_at(tmap::texture_map, p::VectorF) = pattern_at(tmap.pat, tmap.uvmap(p)...)
+
+function planar_uv_map(p::VectorF)
+    u = p[1] % 1
+    if u < 0 u += 1 end
+    v = p[3] % 1
+    if v < 0 v += 1 end
+    return (u, v)
+end
+
+function cylindrical_uv_map(p::VectorF)
+    θ = atan(p[1], p[3])
+    u = 1 - ((θ / 2π) + 0.5)
+    v = p[2] % 1
+    if v < 0 v += 1 end
+
+    return (u, v)
+end
+
+mutable struct uv_align_check <: pattern
+    main::Color
+    ul::Color
+    ur::Color
+    bl::Color
+    br::Color
+end
+
+function pattern_at(pat::uv_align_check, u::Number, v::Number)
+    if v > 0.8
+        if u < 0.2 return pat.ul end
+        if u > 0.8 return pat.ur end
+    elseif v < 0.2
+        if u < 0.2 return pat.bl end
+        if u > 0.8 return pat.br end
+    end
+
+    return pat.main
+end
+
+@enum faces LEFT=1 FRONT=2 RIGHT=3 BACK=4 UP=5 DOWN=6
+
+function face(p::VectorF)
+    coord = max(abs.(p[1:3])...)
+
+    if coord == p[1] return RIGHT
+    elseif coord == -p[1] return LEFT
+    elseif coord == p[2] return UP
+    elseif coord == -p[2] return DOWN
+    elseif coord == p[3] return FRONT
+    else return BACK end
+end
+
+function cubical_uv_map(p::VectorF)
+    u = 0.0
+    v = 0.0
+
+    f = face(p)
+
+    if f == FRONT
+        u = ((p[1] + 1) % 2.0) / 2.0
+        v = ((p[2] + 1) % 2.0) / 2.0
+    elseif f == BACK
+        u = ((1 - p[1]) % 2.0) / 2.0
+        v = ((p[2] + 1) % 2.0) / 2.0
+    elseif f == LEFT
+        u = ((p[3] + 1) % 2.0) / 2.0
+        v = ((p[2] + 1) % 2.0) / 2.0
+    elseif f == RIGHT
+        u = ((1 - p[3]) % 2.0) / 2.0
+        v = ((p[2] + 1) % 2.0) / 2.0
+    elseif f == DOWN
+        u = ((p[1] + 1) % 2.0) / 2.0
+        v = ((p[3] + 1) % 2.0) / 2.0
+    else
+        u = ((p[1] + 1) % 2.0) / 2.0
+        v = ((1 - p[3]) % 2.0) / 2.0
+    end
+
+    return (u, v)
+end
+
+mutable struct cube_map <: pattern
+    faces::Vector{pattern}
+    # must pass faces in order L, R, F, B, U, D for pattern_at to work
+    cube_map(faces::pattern...) = new([faces...])
+end
+
+pattern_at(c::cube_map, p::VectorF) = pattern_at(c.faces[Int(face(p))], cubical_uv_map(p)...)
 
 #=
     bonus chapter 3 - http://raytracerchallenge.com/bonus/bounding-boxes.html
