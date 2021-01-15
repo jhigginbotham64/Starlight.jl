@@ -846,7 +846,7 @@ using Test
         to = point(0, 0, 0)
         up = vector(0, 1, 0)
         c = camera(hsize=11, vsize=11, fov=π/2, transform=view_transform(from, to, up))
-        img = render(c, w)
+        img = raytrace(c, w)
         @test round_color(pixel(img, 5, 5)) == round_color(RGB(0.38066, 0.47583, 0.2855))
     end
 
@@ -939,7 +939,37 @@ using Test
 
             planes were super easy to add after all that was dealt with, but i
             do want to see about maybe refactoring them later.
+
+            bonus chapter 3 EDIT -
+            came back and did test_shape stuff
         =#
+
+        @test test_shape().transform == I
+        @test test_shape(transform = translation(2, 3, 4)).transform == translation(2, 3, 4)
+        @test test_shape().material.ambient == material().ambient
+        @test test_shape().material.specular == material().specular
+        @test test_shape().material.diffuse == material().diffuse
+        @test test_shape(material = material(ambient = 1)).material.ambient == 1
+        @test test_shape(material = material(ambient = 1)).material.specular == material().specular
+        @test test_shape(material = material(ambient = 1)).material.diffuse == material().diffuse
+
+        r = ray(point(0, 0, -5), vector(0, 0, 1))
+        s = test_shape(transform = scaling(2, 2, 2))
+        xs = intersect(s, r)
+        @test s.saved_ray.origin == point(0, 0, -2.5)
+        @test s.saved_ray.velocity == vector(0, 0, 0.5)
+
+        r = ray(point(0, 0, -5), vector(0, 0, 1))
+        s = test_shape(transform = translation(5, 0, 0))
+        xs = intersect(s, r)
+        @test s.saved_ray.origin == point(-5, 0, -5)
+        @test s.saved_ray.velocity == vector(0, 0, 1)
+
+        s = test_shape(transform = translation(0, 1, 0))
+        @test round.(normal_at(s, point(0, 1.70711, -0.70711)), digits=5) == vector(0, 0.70711, -0.70711)
+
+        s = test_shape(transform = scaling(1, 0.5, 1) * rotation_z(π/5))
+        @test round.(normal_at(s, point(0, √2/2, -√2/2)), digits=5) == vector(0, 0.97014, -0.24254)
 
         p = plane()
         n1 = normal_at(p, point(0, 0, 0))
@@ -1360,32 +1390,32 @@ using Test
         c = cube()
         r = ray(point(-2, 0, 0), vector(0.2673, 0.5345, 0.8018))
         xs = intersect(c, r)
-        @test length(xs) == 0
+        @test isempty(xs)
 
         c = cube()
         r = ray(point(0, -2, 0), vector(0.8018, 0.2673, 0.5345))
         xs = intersect(c, r)
-        @test length(xs) == 0
+        @test isempty(xs)
 
         c = cube()
         r = ray(point(0, 0, -2), vector(0.5345, 0.8018, 0.2673))
         xs = intersect(c, r)
-        @test length(xs) == 0
+        @test isempty(xs)
 
         c = cube()
         r = ray(point(2, 0, 2), vector(0, 0, -1))
         xs = intersect(c, r)
-        @test length(xs) == 0
+        @test isempty(xs)
 
         c = cube()
         r = ray(point(0, 2, 2), vector(0, -1, 0))
         xs = intersect(c, r)
-        @test length(xs) == 0
+        @test isempty(xs)
 
         c = cube()
         r = ray(point(2, 2, 0), vector(-1, 0, 0))
         xs = intersect(c, r)
-        @test length(xs) == 0
+        @test isempty(xs)
 
         c = cube()
         p = point(1, 0.5, -0.8)
@@ -1443,19 +1473,19 @@ using Test
         dir = normalize(vector(0, 1, 0))
         r = ray(point(1, 0, 0), dir)
         xs = intersect(c, r)
-        @test length(xs) == 0
+        @test isempty(xs)
 
         c = cylinder()
         dir = normalize(vector(0, 0, 0))
         r = ray(point(0, 0, 0), dir)
         xs = intersect(c, r)
-        @test length(xs) == 0
+        @test isempty(xs)
 
         c = cylinder()
         dir = normalize(vector(1, 1, 1))
         r = ray(point(0, 0, -5), dir)
         xs = intersect(c, r)
-        @test length(xs) == 0
+        @test isempty(xs)
 
         c = cylinder()
         dir = normalize(vector(0, 0, 1))
@@ -1505,31 +1535,31 @@ using Test
         dir = normalize(vector(0.1, 1, 0))
         r = ray(point(0, 1.5, 0), dir)
         xs = intersect(c, r)
-        @test length(xs) == 0
+        @test isempty(xs)
 
         c = cylinder(min = 1, max = 2)
         dir = normalize(vector(0, 0, 1))
         r = ray(point(0, 3, -5), dir)
         xs = intersect(c, r)
-        @test length(xs) == 0
+        @test isempty(xs)
 
         c = cylinder(min = 1, max = 2)
         dir = normalize(vector(0, 0, 1))
         r = ray(point(0, 0, -5), dir)
         xs = intersect(c, r)
-        @test length(xs) == 0
+        @test isempty(xs)
 
         c = cylinder(min = 1, max = 2)
         dir = normalize(vector(0, 0, 1))
         r = ray(point(0, 2, -5), dir)
         xs = intersect(c, r)
-        @test length(xs) == 0
+        @test isempty(xs)
 
         c = cylinder(min = 1, max = 2)
         dir = normalize(vector(0, 0, 1))
         r = ray(point(0, 1, -5), dir)
         xs = intersect(c, r)
-        @test length(xs) == 0
+        @test isempty(xs)
 
         c = cylinder(min = 1, max = 2)
         dir = normalize(vector(0, 0, 1))
@@ -1629,7 +1659,7 @@ using Test
         dir = normalize(vector(0, 1, 0))
         r = ray(point(0, 0, -5), dir)
         xs = intersect(c, r)
-        @test length(xs) == 0
+        @test isempty(xs)
 
         c = cone(min = -0.5, max = 0.5, closed = true)
         dir = normalize(vector(0, 1, 1))
@@ -1696,21 +1726,19 @@ using Test
         shapes = [sphere(), plane(), cube(), cylinder(), cone(), group()]
         @test all(s -> s.parent == nothing, shapes)
 
-        g = group()
         shapes = [sphere(), plane(), cube(), cylinder(), cone(), group()]
-        add_child(g, shapes...)
+        g = group(children = shapes)
         @test has_children(g, shapes...)
 
         g = group()
         r = ray(point(0, 0, 0), vector(0, 0, 1))
         xs = _intersect(g, r)
-        @test length(xs) == 0
+        @test isempty(xs)
 
-        g = group()
         s1 = sphere()
         s2 = sphere(transform = translation(0, 0, -3))
         s3 = sphere(transform = translation(5, 0, 0))
-        add_child(g, s1, s2, s3)
+        g = group(children = [s1, s2, s3])
         r = ray(point(0, 0, -5), vector(0, 0, 1))
         xs = _intersect(g, r)
         @test length(xs) == 4
@@ -1719,25 +1747,20 @@ using Test
         @test xs[3].object == s1
         @test xs[4].object == s1
 
-        g = group(transform = scaling(2, 2, 2))
         s = sphere(transform = translation(5, 0, 0))
-        add_child(g, s)
+        g = group(transform = scaling(2, 2, 2), children = [s])
         r = ray(point(10, 0, -10), vector(0, 0, 1))
         xs = intersect(g, r)
         @test length(xs) == 2
 
-        g1 = group(transform = rotation_y(π/2))
-        g2 = group(transform = scaling(2, 2, 2))
-        add_child(g1, g2)
         s = sphere(transform = translation(5, 0, 0))
-        add_child(g2, s)
+        g1 = group(transform = scaling(2, 2, 2), children = [s])
+        g2 = group(transform = rotation_y(π/2), children = [g1])
         @test world_to_object(s, point(-2, 0, -10)) ≈ point(0, 0, -1)
 
-        g1 = group(transform = rotation_y(π/2))
-        g2 = group(transform = scaling(1, 2, 3))
-        add_child(g1, g2)
         s = sphere(transform = translation(5, 0, 0))
-        add_child(g2, s)
+        g1 = group(transform = scaling(1, 2, 3), children = [s])
+        g2 = group(transform = rotation_y(π/2), children = [g1])
         @test round.(normal_to_world(s, vector(√3/3, √3/3, √3/3)), digits=4) == vector(0.2857, 0.4286, -0.8571)
         # don't like having to round past where the book does, but whatever
         @test round.(normal_at(s, point(1.7321, 1.1547, -5.5774)), digits=3) == round.(vector(0.2857, 0.4286, -0.8571), digits=3)
@@ -1777,7 +1800,7 @@ using Test
         t = triangle(p1=p1, p2=p2, p3=p3)
         r = ray(point(0, -1, -2), vector(0, 1, 0))
         xs = _intersect(t, r)
-        @test length(xs) == 0
+        @test isempty(xs)
 
         p1 = point(0, 1, 0)
         p2 = point(-1, 0, 0)
@@ -1785,7 +1808,7 @@ using Test
         t = triangle(p1=p1, p2=p2, p3=p3)
         r = ray(point(1, 1, -2), vector(0, 0, 1))
         xs = _intersect(t, r)
-        @test length(xs) == 0
+        @test isempty(xs)
 
         p1 = point(0, 1, 0)
         p2 = point(-1, 0, 0)
@@ -1793,7 +1816,7 @@ using Test
         t = triangle(p1=p1, p2=p2, p3=p3)
         r = ray(point(-1, 1, -2), vector(0, 0, 1))
         xs = _intersect(t, r)
-        @test length(xs) == 0
+        @test isempty(xs)
 
         p1 = point(0, 1, 0)
         p2 = point(-1, 0, 0)
@@ -1801,7 +1824,7 @@ using Test
         t = triangle(p1=p1, p2=p2, p3=p3)
         r = ray(point(0, -1, -2), vector(0, 0, 1))
         xs = _intersect(t, r)
-        @test length(xs) == 0
+        @test isempty(xs)
 
         p1 = point(0, 1, 0)
         p2 = point(-1, 0, 0)
@@ -1919,7 +1942,7 @@ using Test
         c = csg(:union, sphere(), cube())
         r = ray(point(0, 2, -5), vector(0, 0, 1))
         xs = _intersect(c, r)
-        @test length(xs) == 0
+        @test isempty(xs)
 
         s1 = sphere()
         s2 = sphere(transform = translation(0, 0, 0.5))
@@ -2199,6 +2222,9 @@ using Test
         # tests are passing at all but not being able to run them manually
         # kinda sucks. also idk how to change the canvas format nicely. nice
         # that i don't have to leave these tests for later though.
+        # ...it may end up being easier to just roll my own PPM saving and
+        # loading. if i decide to do that, it will be after the last bonus
+        # chapter and i'll include all the related test cases i've skipped so far.
         img = image_map(load("./checkers2d.ppm"))
         @test round_color(pattern_at(img, 0, 0), 1) == RGB(0.9f0, 0.9f0, 0.9f0)
         @test round_color(pattern_at(img, 0.3, 0), 1) == RGB(0.2f0, 0.2f0, 0.2f0)
@@ -2208,6 +2234,252 @@ using Test
 
     @testset "bch 3 - bounding boxes" begin
 
+        #=
+            difficult chapter turned out to be a magnificent improvement
+            on the horrible bounding boxes i did for chapter 14. well worth it.
+        =#
+
+        b = aabb()
+        @test b.min == point(Inf, Inf, Inf)
+        @test b.max == point(-Inf, -Inf, -Inf)
+
+        b = aabb(point(-1, -2, -3), point(3, 2, 1))
+        @test b.min == point(-1, -2, -3)
+        @test b.max == point(3, 2, 1)
+
+        b = aabb()
+        p1 = point(-5, 2, 0)
+        p2 = point(7, 0, -3)
+        add_points!(b, p1, p2)
+        @test b.min == point(-5, 0, -3)
+        @test b.max == point(7, 2, 0)
+
+        b = aabb()
+        p1 = point(-5, 2, 0)
+        p2 = point(7, 0, -3)
+        add_points!(b, p2, p1)
+        @test b.min == point(-5, 0, -3)
+        @test b.max == point(7, 2, 0)
+
+        b = bounds(sphere())
+        @test b.min == point(-1, -1, -1)
+        @test b.max == point(1, 1, 1)
+
+        b = bounds(plane())
+        @test b.min == point(-Inf, 0, -Inf)
+        @test b.max == point(Inf, 0, Inf)
+
+        b = bounds(cube())
+        @test b.min == point(-1, -1, -1)
+        @test b.max == point(1, 1, 1)
+
+        b = bounds(cylinder())
+        @test b.min == point(-1, -Inf, -1)
+        @test b.max == point(1, Inf, 1)
+
+        b = bounds(cylinder(min = -5, max = 3))
+        @test b.min == point(-1, -5, -1)
+        @test b.max == point(1, 3, 1)
+
+        b = bounds(cone())
+        @test b.min == point(-Inf, -Inf, -Inf)
+        @test b.max == point(Inf, Inf, Inf)
+
+        b = bounds(cone(min = -5, max = 3))
+        @test b.min == point(-5, -5, -5)
+        @test b.max == point(5, 3, 5)
+
+        b = bounds(triangle(p1 = point(-3, 7, 2), p2 = point(6, 2, -4), p3 = point(2, -1, -1)))
+        @test b.min == point(-3, -1, -4)
+        @test b.max == point(6, 7, 2)
+
+        b = bounds(test_shape())
+        @test b.min == point(-1, -1, -1)
+        @test b.max == point(1, 1, 1)
+
+        b1 = aabb(point(-5, -2, 0), point(7, 4, 4))
+        b2 = aabb(point(8, -7, -2), point(14, 2, 8))
+        add_points!(b1, b2)
+        @test b1.min == point(-5, -7, -2)
+        @test b1.max == point(14, 4, 8)
+
+        b = aabb(point(5, -2, 0), point(11, 4, 7))
+        @test contains(b, point(5, -2, 0))
+        @test contains(b, point(11, 4, 7))
+        @test contains(b, point(8, 1, 3))
+        @test !contains(b, point(3, 0, 3))
+        @test !contains(b, point(8, -4, 3))
+        @test !contains(b, point(8, 1, -1))
+        @test !contains(b, point(13, 1, 3))
+        @test !contains(b, point(8, 5, 3))
+        @test !contains(b, point(8, 1, 8))
+
+        b = aabb(point(5, -2, 0), point(11, 4, 7))
+        @test contains(b, aabb(point(5, -2, 0), point(11, 4, 7)))
+        @test contains(b, aabb(point(6, -1, 1), point(10, 3, 6)))
+        @test !contains(b, aabb(point(4, -3, -1), point(10, 3, 6)))
+        @test !contains(b, aabb(point(6, -1, 1), point(12, 5, 8)))
+
+        b = aabb(point(-1, -1, -1), point(1, 1, 1))
+        b2 = transform(b, rotation_x(π/4) * rotation_y(π/4))
+        @test round.(b2.min, digits=4) == point(-1.4142, -1.7071, -1.7071)
+        @test round.(b2.max, digits=4) == point(1.4142, 1.7071, 1.7071)
+
+        s = sphere(transform = translation(1, -3, 5) * scaling(0.5, 2, 4))
+        b = bounds(s)
+        @test b.min == point(0.5, -5, 1)
+        @test b.max == point(1.5, -1, 9)
+
+        s = sphere(transform = translation(2, 5, -3) * scaling(2, 2, 2))
+        c = cylinder(min = -2, max = 2, transform = translation(-4, -1, 4) * scaling(0.5, 1, 0.5))
+        g = group(children = [s, c])
+        b = bounds(g)
+        @test b.min == point(-4.5, -3, -5)
+        @test b.max == point(4, 7, 4.5)
+
+        b = aabb(point(-1, -1, -1), point(1, 1, 1))
+        @test intersects(b, ray(point(5, 0.5, 0), normalize(vector(-1, 0, 0))))
+        @test intersects(b, ray(point(-5, 0.5, 0), normalize(vector(1, 0, 0))))
+        @test intersects(b, ray(point(0.5, 5, 0), normalize(vector(0, -1, 0))))
+        @test intersects(b, ray(point(0.5, -5, 0), normalize(vector(0, 1, 0))))
+        @test intersects(b, ray(point(0.5, 0, 5), normalize(vector(0, 0, -1))))
+        @test intersects(b, ray(point(0.5, 0, -5), normalize(vector(0, 0, 1))))
+        @test intersects(b, ray(point(0, 0.5, 0), normalize(vector(0, 0, 1))))
+        @test !intersects(b, ray(point(-2, 0, 0), normalize(vector(2, 4, 6))))
+        @test !intersects(b, ray(point(0, -2, 0), normalize(vector(6, 2, 4))))
+        @test !intersects(b, ray(point(0, 0, -2), normalize(vector(4, 6, 2))))
+        @test !intersects(b, ray(point(2, 0, 2), normalize(vector(0, 0, -1))))
+        @test !intersects(b, ray(point(0, 2, 2), normalize(vector(0, -1, 0))))
+        @test !intersects(b, ray(point(2, 2, 0), normalize(vector(-1, 0, 0))))
+
+        b = aabb(point(5, -2, 0), point(11, 4, 7))
+        @test intersects(b, ray(point(15, 1, 2), normalize(vector(-1, 0, 0))))
+        @test intersects(b, ray(point(-5, -1, 4), normalize(vector(1, 0, 0))))
+        @test intersects(b, ray(point(7, 6, 5), normalize(vector(0, -1, 0))))
+        @test intersects(b, ray(point(9, -5, 6), normalize(vector(0, 1, 0))))
+        @test intersects(b, ray(point(8, 2, 12), normalize(vector(0, 0, -1))))
+        @test intersects(b, ray(point(6, 0, -5), normalize(vector(0, 0, 1))))
+        @test intersects(b, ray(point(8, 1, 3.5), normalize(vector(0, 0, 1))))
+        @test !intersects(b, ray(point(9, -1, -8), normalize(vector(2, 4, 6))))
+        @test !intersects(b, ray(point(8, 3, -4), normalize(vector(6, 2, 4))))
+        @test !intersects(b, ray(point(9, -1, -2), normalize(vector(4, 6, 2))))
+        @test !intersects(b, ray(point(4, 0, 9), normalize(vector(0, 0, -1))))
+        @test !intersects(b, ray(point(8, 6, -1), normalize(vector(0, -1, 0))))
+        @test !intersects(b, ray(point(12, 5, 4), normalize(vector(-1, 0, 0))))
+
+        t = test_shape()
+        g = group(children = [t])
+        r = ray(point(0, 0, -5), vector(0, 1, 0))
+        xs = intersect(g, r)
+        @test !exists(t.saved_ray)
+
+        t = test_shape()
+        g = group(children = [t])
+        r = ray(point(0, 0, -5), vector(0, 0, 1))
+        xs = intersect(g, r)
+        @test exists(t.saved_ray)
+
+        left = test_shape()
+        right = test_shape()
+        c = csg(:difference, left, right)
+        r = ray(point(0, 0, -5), vector(0, 1, 0))
+        xs = intersect(c, r)
+        @test !exists(left.saved_ray)
+        @test !exists(right.saved_ray)
+
+        left = test_shape()
+        right = test_shape()
+        c = csg(:difference, left, right)
+        r = ray(point(0, 0, -5), vector(0, 0, 1))
+        xs = intersect(c, r)
+        @test exists(left.saved_ray)
+        @test exists(right.saved_ray)
+
+        b = aabb(point(-1, -4, -5), point(9, 6, 5))
+        l, r = split(b)
+        @test l.min == point(-1, -4, -5)
+        @test l.max == point(4, 6, 5)
+        @test r.min == point(4, -4, -5)
+        @test r.max == point(9, 6, 5)
+
+        b = aabb(point(-1, -2, -3), point(9, 5.5, 3))
+        l, r = split(b)
+        @test l.min == point(-1, -2, -3)
+        @test l.max == point(4, 5.5, 3)
+        @test r.min == point(4, -2, -3)
+        @test r.max == point(9, 5.5, 3)
+
+        b = aabb(point(-1, -2, -3), point(5, 8, 3))
+        l, r = split(b)
+        @test l.min == point(-1, -2, -3)
+        @test l.max == point(5, 3, 3)
+        @test r.min == point(-1, 3, -3)
+        @test r.max == point(5, 8, 3)
+
+        b = aabb(point(-1, -2, -3), point(5, 3, 7))
+        l, r = split(b)
+        @test l.min == point(-1, -2, -3)
+        @test l.max == point(5, 3, 2)
+        @test r.min == point(-1, -2, 2)
+        @test r.max == point(5, 3, 7)
+
+        s1 = sphere(transform = translation(-2, 0, 0))
+        s2 = sphere(transform = translation(2, 0, 0))
+        s3 = sphere()
+        g = group(children = [s1, s2, s3])
+        l, r = partition!(g)
+        @test g.children == [s3]
+        @test l == [s1]
+        @test r == [s2]
+
+        s1 = sphere()
+        s2 = sphere()
+        g = group()
+        subgroup!(g, s1, s2)
+        @test length(g.children) == 1
+        @test g.children[1].children == [s1, s2]
+
+        s = sphere()
+        divide!(s, 1)
+        @test s isa sphere
+
+        s1 = sphere(transform = translation(-2, -2, 0))
+        s2 = sphere(transform = translation(-2, 2, 0))
+        s3 = sphere(transform = scaling(4, 4, 4))
+        g = group(children = [s1, s2, s3])
+        divide!(g, 1)
+        @test g.children[1] == s3
+        sg = g.children[2]
+        @test sg isa group
+        @test length(sg.children) == 2
+        @test sg.children[1].children == [s1]
+        @test sg.children[2].children == [s2]
+
+        s1 = sphere(transform = translation(-2, 0, 0))
+        s2 = sphere(transform = translation(2, 1, 0))
+        s3 = sphere(transform = translation(2, -1, 0))
+        sg = group(children = [s1, s2, s3])
+        s4 = sphere()
+        g = group(children = [sg, s4])
+        divide!(g, 3)
+        @test g.children[1] == sg
+        @test g.children[2] == s4
+        @test length(sg.children) == 2
+        @test sg.children[1].children == [s1]
+        @test sg.children[2].children == [s2, s3]
+
+        s1 = sphere(transform = translation(-1.5, 0, 0))
+        s2 = sphere(transform = translation(1.5, 0, 0))
+        l = group(children = [s1, s2])
+        s3 = sphere(transform = translation(0, 0, -1.5))
+        s4 = sphere(transform = translation(0, 0, 1.5))
+        r = group(children = [s3, s4])
+        c = csg(:difference, l, r)
+        divide!(c, 1)
+        @test l.children[1].children == [s1]
+        @test l.children[2].children == [s2]
+        @test r.children[1].children == [s3]
+        @test r.children[2].children == [s4]
     end
 
     @testset "input" begin

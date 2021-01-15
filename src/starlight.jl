@@ -42,13 +42,13 @@ export ray, sphere, intersect, _intersect, intersection, intersections, Intersec
 export normal_at, _normal_at, reflect, point_light, material, lighting, round_color, clamp_color
 
 # chapter 7
-export world, default_world, prepare_computations, shade_hit, color_at, view_transform, camera, ray_for_pixel, render
+export world, default_world, prepare_computations, shade_hit, color_at, view_transform, camera, ray_for_pixel, raytrace
 
 # chapter 8
 export is_shadowed
 
 # chapter 9
-export shape, plane
+export shape, test_shape, plane
 
 # chapter 10
 export pattern, pattern_at, pattern_at_object, test_pattern, stripes, gradient, rings, checkers
@@ -65,7 +65,7 @@ export cube, check_axis
 export cylinder, intersect_caps!, check_cap, cone
 
 # chapter 14
-export group, add_child, has_child, has_children, inherited_transform, world_to_object, normal_to_world, aabb, _bounds, explode_aabb, bounds, hits_box
+export group, add_child!, has_child, has_children, inherited_transform, world_to_object, normal_to_world, aabb, _bounds, explode_aabb, bounds, intersects
 
 # chapter 15
 export triangle, smooth_triangle
@@ -78,6 +78,9 @@ export point_on_light, area_light, intensity_at, sequence, next
 
 # bonus chapter 2
 export uv_pattern, uv_checkers, uv_align_check, spherical_uv_map, texture_map, planar_uv_map, cylindrical_uv_map, faces, LEFT, RIGHT, FRONT, BACK, UP, DOWN, face, cubical_uv_map, cube_map, image_map
+
+# bonus chapter 3
+export add_points!, partition!, subgroup!, divide!
 
 # demo
 export rsi_demo, light_demo, scene_demo, plane_demo
@@ -105,7 +108,7 @@ cross(x::VectorF, y::VectorF) = vector((y[1:3] × x[1:3])...)
 # also you have to be careful about Color types if precision matters to you.
 canvas(w::Int, h::Int, c = RGB{Float64}(colorant"black")) = fill(c, (h, w))
 pixel(mat, x::Int, y::Int) = mat[x,y]
-pixel!(mat, x::Int, y::Int, c::Colorant) = mat[x,y] = c
+pixel!(mat, x::Int, y::Int, c::Color) = mat[x,y] = c
 pixels(mat) = flat(mat)
 flat(mat) = reshape(mat, (prod(size(mat)), 1))
 # stopgap solution from https://github.com/JuliaGraphics/ColorVectorSpace.jl/issues/119#issuecomment-573167024
@@ -208,12 +211,24 @@ end
 
 abstract type shape end # chapter 9
 
+mutable struct test_shape <: shape
+    transform::Transform
+    material::material
+    parent::optional{shape}
+    saved_ray::optional{ray}
+    test_shape(; transform = DEFAULT_TRANSFORM, material = material(), parent = nothing, r = nothing) = new(transform, material, parent, r)
+end
+
 # chapter 14
 mutable struct group <: shape
     transform::Transform
     children::Vector{<:shape}
     parent::optional{shape}
-    group(; transform = DEFAULT_TRANSFORM, children = Vector{shape}([]), parent = nothing) = new(transform, children, parent)
+    function group(; transform = DEFAULT_TRANSFORM, children = Vector{shape}([]), parent = nothing)
+        g = new(transform, Vector{shape}([]), parent)
+        add_child!(g, children...)
+        return g
+    end
 end
 
 mutable struct sphere <: shape # chapter 9
@@ -499,10 +514,7 @@ function shade_hit(w::world, c::computations, remaining::Int = DEFAULT_RECURSION
         area lights and soft shadows made this function a lot simpler.
     =#
 
-    surface = sum([
-        lighting(c.object.material, l, c.point, c.eyev, c.normalv, intensity_at(l, c.over_point, w), obj = obj)
-        for (i, l) in enumerate(w.lights)
-    ])
+    surface = sum(map(l -> lighting(c.object.material, l, c.point, c.eyev, c.normalv, intensity_at(l, c.over_point, w), obj = obj), w.lights))
 
     # chapter 11
     reflected = reflected_color(w, c, remaining)
@@ -575,7 +587,7 @@ function ray_for_pixel(c::camera, px::Int, py::Int)
     return ray(orgn, dir)
 end
 
-function render(cam::camera, w::world)
+function raytrace(cam::camera, w::world)
     img = canvas(cam.hsize, cam.vsize)
     for y=1:cam.vsize
         for x=1:cam.hsize
@@ -912,7 +924,7 @@ end
     chapter 14
 =#
 
-function add_child(g::group, ss::shape...)
+function add_child!(g::group, ss::shape...)
     foreach(s -> s.parent = g, ss)
     push!(g.children, ss...)
 end
@@ -925,7 +937,7 @@ has_children(g::group, ss::shape...) = all(s -> has_child(g, s), ss)
 # too hard about the work being done to sort intersections, sorting them
 # at this level will make sorting at a higher level faster, especially in
 # worlds with multiple groups.
-_intersect(g::group, r::ray) = Intersections((hits_box(g, r)) ? sort([i for c in g.children for i in intersect(c, r)], by=(i)->i.t) : [])
+_intersect(g::group, r::ray) = Intersections((intersects(g, r)) ? sort([i for c in g.children for i in intersect(c, r)], by=(i)->i.t) : [])
 
 function world_to_object(s::shape, p::VectorF)
     # not sure how this little bit of recursion could be
@@ -941,64 +953,6 @@ function normal_to_world(s::shape, n::VectorF)
     normalize!(n)
     if has_parent(s) n = normal_to_world(s.parent, n) end
     return n
-end
-
-mutable struct aabb # axially-aligned bounding box
-    min::VectorF # top-left point (not sure if z would be forward or back here)
-    max::VectorF # lower-right point
-    # could check min < max, but eh...
-end
-
-# untransformed (i.e. object-space) bounds for given shapes
-_bounds(s::sphere) = aabb(point(-1, -1, -1), point(1, 1, 1))
-_bounds(p::plane) = aabb(point(-Inf, 0, -Inf), point(Inf, 0, Inf))
-_bounds(c::cube) = aabb(point(-1, -1, -1), point(1, 1, 1))
-_bounds(c::cylinder) = aabb(point(-1, c.min, -1), point(1, c.max, 1))
-_bounds(c::cone) = aabb(point(-1, c.min, -1), point(1, c.max, 1))
-function _bounds(g::group)
-    bs = [bounds(c) for c in g.children]
-    mins, maxs = map(b -> b.min, bs), map(b -> b.max, bs)
-    minxs, maxxs = map(b -> b[1], mins), map(b -> b[1], maxs)
-    minys, maxys = map(b -> b[2], mins), map(b -> b[2], maxs)
-    minzs, maxzs = map(b -> b[3], mins), map(b -> b[3], maxs)
-    foreach(l -> map!(m -> (abs(m) != Inf) ? m : (m == Inf) ? 1 : -1, l, l), (minxs, maxxs, minys, maxys, minzs, maxzs))
-    return aabb(point(min(minxs...), min(minys...), min(minzs...)), point(max(maxxs...), max(maxys...), max(maxzs...)))
-end
-
-explode_aabb(bs::aabb) =
-    # goes around the top "counterclockwise" from min, then down, then around
-    # "clockwise" to max, giving us all 8 corners of the bounding box
-    (bs.min, point(bs.min[1], bs.min[2], bs.max[3]),
-    point(bs.max[1], bs.min[2], bs.max[3]), point(bs.max[1], bs.min[2], bs.min[3]),
-    point(bs.max[1], bs.max[2], bs.min[3]), point(bs.min[1], bs.max[2], bs.min[3]),
-    point(bs.min[1], bs.max[2], bs.max[3]), bs.max)
-
-function bounds(s::shape)
-    ps = explode_aabb(_bounds(s))
-
-    if !(s isa group) ps = map(p -> inherited_transform(s) * p, ps) end
-
-    # wondering if i could use slicing for this or for the group _bounds,
-    # might be a lot nicer but idk if i want to mess with that
-    xs, ys, zs = map(p -> p[1], ps), map(p -> p[2], ps), map(p -> p[3], ps)
-    return aabb(point(min(xs...), min(ys...), min(zs...)), point(max(xs...), max(ys...), max(zs...)))
-end
-
-
-hits_box(s::shape, r::ray) = (!(s isa group) || length(s.children) > 0) ? hits_box(bounds(s), r) : false
-function hits_box(b::aabb, r::ray)
-    # copy-paste of cube intersection, but calls check_axis
-    # differently and returns differently
-    xtmin, xtmax = check_axis(r.origin[1], r.velocity[1], b.min[1], b.max[1])
-    ytmin, ytmax = check_axis(r.origin[2], r.velocity[2], b.min[2], b.max[2])
-    ztmin, ztmax = check_axis(r.origin[3], r.velocity[3], b.min[3], b.max[3])
-
-    tmin = max(xtmin, ytmin, ztmin)
-    tmax = min(xtmax, ytmax, ztmax)
-
-    if tmin > tmax return false end
-
-    return true
 end
 
 #=
@@ -1095,6 +1049,8 @@ function csg_filter(c::csg, xs::Intersections)
 end
 
 function _intersect(c::csg, r::ray)
+    if !intersects(c, r) return Intersections([]) end
+
     leftxs = intersect(c.l, r)
     rightxs = intersect(c.r, r)
 
@@ -1284,7 +1240,143 @@ end
     bonus chapter 3 - http://raytracerchallenge.com/bonus/bounding-boxes.html
 =#
 
+# at this point i gave up trying to figure out which "chapter" stuff was supposed to go under
+function _intersect(t::test_shape, r::ray)
+    t.saved_ray = r
+    return Intersections([])
+end
 
+_normal_at(t::test_shape, p::VectorF; hit::optional{intersection} = nothing) = vector(p[1:3]...)
+
+# moved here from chapter 14 because...this turned
+# out to be where the actual test cases were
+mutable struct aabb # axially-aligned bounding box
+    min::VectorF # top-left point (not sure if z would be forward or back here)
+    max::VectorF # lower-right point
+    aabb() = new(point(Inf, Inf, Inf), point(-Inf, -Inf, -Inf))
+end
+
+function add_points!(b::aabb, ps::VectorF...)
+    b.min = point([min(b.min[i], [p[i] for p ∈ ps]...) for i=1:3]...)
+    b.max = point([max(b.max[i], [p[i] for p ∈ ps]...) for i=1:3]...)
+end
+
+add_points!(b::aabb, b2::aabb) = add_points!(b, b2.min, b2.max)
+
+add_points!(b::aabb, bs::aabb...) = foreach(b2 -> add_points!(b, b2), bs)
+
+function aabb(ps::VectorF...)
+    b = aabb()
+    add_points!(b, ps...)
+    return b
+end
+
+function aabb(bs::aabb...)
+    b = aabb()
+    add_points!(b, bs...)
+    return b
+end
+
+import Base.contains
+contains(b::aabb, p::VectorF) = all([b.min[i] <= p[i] <= b.max[i] for i=1:3])
+contains(b::aabb, b2::aabb) = contains(b, b2.min) && contains(b, b2.max)
+contains(b::aabb, s::shape) = contains(b, bounds(s))
+
+# untransformed (i.e. object-space) bounds for given shapes
+_bounds(t::test_shape) = aabb(point(-1, -1, -1), point(1, 1, 1))
+_bounds(s::sphere) = aabb(point(-1, -1, -1), point(1, 1, 1))
+_bounds(p::plane) = aabb(point(-Inf, 0, -Inf), point(Inf, 0, Inf))
+_bounds(c::cube) = aabb(point(-1, -1, -1), point(1, 1, 1))
+_bounds(c::cylinder) = aabb(point(-1, c.min, -1), point(1, c.max, 1))
+function _bounds(c::cone)
+    a = abs(c.min)
+    b = abs(c.max)
+    lim = max(a, b)
+    return aabb(point(-lim, c.min, -lim), point(lim, c.max, lim))
+end
+_bounds(g::group) = aabb([bounds(c) for c in g.children]...)
+_bounds(c::csg) = aabb(bounds(c.l), bounds(c.r)) # no tests for this, unsure if correct
+_bounds(t::triangle) = aabb(t.p1, t.p2, t.p3)
+
+explode_aabb(bs::aabb) =
+    # goes around the top "counterclockwise" from min, then down, then around
+    # "clockwise" to max, giving us all 8 corners of the bounding box
+    (bs.min, point(bs.min[1], bs.min[2], bs.max[3]),
+    point(bs.max[1], bs.min[2], bs.max[3]), point(bs.max[1], bs.min[2], bs.min[3]),
+    point(bs.max[1], bs.max[2], bs.min[3]), point(bs.min[1], bs.max[2], bs.min[3]),
+    point(bs.min[1], bs.max[2], bs.max[3]), bs.max)
+
+function transform(b::aabb, mat::Transform)
+    ps = explode_aabb(b)
+    # remember that IEEE 754 defines Inf * 0 as NaN, which is
+    # not the behavior you'd normally expect in graphics-land,
+    # but is a highly probable occurrence when working specifically
+    # with bounding boxes. this next if statement looks like a
+    # small optimization, and it is, but its real purpose is to step
+    # around a few such occurrences.
+    if mat != I ps = map(p -> mat * p, ps) end
+    return aabb(ps...)
+end
+
+bounds(s::shape) = transform(_bounds(s), !(s isa group) ? inherited_transform(s) : DEFAULT_TRANSFORM)
+
+intersects(s::shape, r::ray) = (!(s isa group) || !isempty(s.children)) ? intersects(bounds(s), r) : false
+function intersects(b::aabb, r::ray)
+    # copy-paste of cube intersection, but calls check_axis
+    # differently and returns differently
+    xtmin, xtmax = check_axis(r.origin[1], r.velocity[1], b.min[1], b.max[1])
+    ytmin, ytmax = check_axis(r.origin[2], r.velocity[2], b.min[2], b.max[2])
+    ztmin, ztmax = check_axis(r.origin[3], r.velocity[3], b.min[3], b.max[3])
+
+    tmin = max(xtmin, ytmin, ztmin)
+    tmax = min(xtmax, ytmax, ztmax)
+
+    if tmin > tmax return false end
+
+    return true
+end
+
+# bounding volume hierarchies
+import Base.split
+function split(b::aabb)
+    dx, dy, dz = [b.max[i] - b.min[i] for i=1:3]
+    greatest = max(dx, dy, dz)
+    x0, y0, z0 = b.min[1:3]
+    x1, y1, z1 = b.max[1:3]
+    if greatest == dx x0 = x1 = x0 + dx / 2.0
+    elseif greatest == dy y0 = y1 = y0 + dy / 2.0
+    else z0 = z1 = z0 + dz / 2.0 end
+    mid_min = point(x0, y0, z0)
+    mid_max = point(x1, y1, z1)
+    return aabb(b.min, mid_max), aabb(mid_min, b.max)
+end
+
+function partition!(g::group)
+    lb, rb = split(bounds(g))
+    ls = findall(c -> contains(lb, c), g.children)
+    rs = findall(c -> contains(rb, c), g.children)
+    l = g.children[ls]
+    r = g.children[rs]
+    deleteat!(g.children, vcat(ls, rs))
+    return l, r
+end
+
+subgroup!(g::group, ss::shape...) = add_child!(g, group(children = [ss...]))
+
+function divide!(s::shape, thresh::Number)
+    # because i still can't figure out julia's type trees
+    if s isa group
+        if thresh <= length(s.children)
+            l, r = partition!(s)
+            if !isempty(l) subgroup!(s, l...) end
+            if !isempty(r) subgroup!(s, r...) end
+        end
+        foreach(c -> divide!(c, thresh), s.children)
+    elseif s isa csg
+        divide!(s.l, thresh)
+        divide!(s.r, thresh)
+    end
+end
 
 #=
     input and demos
@@ -1366,7 +1458,7 @@ function scene_demo(; width = 100, height = 50, fov = π/3)
 
     cam = camera(hsize=width, vsize=height, fov=π/3, transform=view_transform(point(0, 1.5, -5), point(0, 1, 0), vector(0, 1, 0)))
 
-    return render(cam, w)
+    return raytrace(cam, w)
 end
 
 function plane_demo(; width = 100, height = 50, fov = π/3)
@@ -1381,7 +1473,7 @@ function plane_demo(; width = 100, height = 50, fov = π/3)
 
     cam = camera(hsize=width, vsize=height, fov=π/3, transform=view_transform(point(0, 1.5, -5), point(0, 1, 0), vector(0, 1, 0)))
 
-    return render(cam, w)
+    return raytrace(cam, w)
 end
 
 end
