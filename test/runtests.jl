@@ -2065,7 +2065,10 @@ using Test
     @testset "bch 2 - texture mapping" begin
 
         #=
-
+            another tough chapter. this time the biggest hurdles were cube uv
+            mapping and, strangely, loading PPM files. my attempts to fix the
+            PPM issue seem to have led to an even stranger environment issue,
+            which i describe in a comment on the last few tests in this set.
         =#
 
         c = uv_checkers(2, 2, colorant"black", colorant"white")
@@ -2187,6 +2190,20 @@ using Test
         @test pattern_at(c, point(0.9, -1, 0.9)) == gr
         @test pattern_at(c, point(-0.9, -1, -0.9)) == bl
         @test pattern_at(c, point(0.9, -1, -0.9)) == wh
+
+        # apprently the working directory is pkg/test during test suite runs.
+        # also there's a weird issue where Pkg.test is using a different
+        # environment than my shell, because the tests pass when run in the
+        # suite but the PPM isn't loaded properly if i run them manually.
+        # something about ImageIO vs ImageMagick i think, it's nice that the
+        # tests are passing at all but not being able to run them manually
+        # kinda sucks. also idk how to change the canvas format nicely. nice
+        # that i don't have to leave these tests for later though.
+        img = image_map(load("./checkers2d.ppm"))
+        @test round_color(pattern_at(img, 0, 0), 1) == RGB(0.9f0, 0.9f0, 0.9f0)
+        @test round_color(pattern_at(img, 0.3, 0), 1) == RGB(0.2f0, 0.2f0, 0.2f0)
+        @test round_color(pattern_at(img, 0.6, 0.3), 1) == RGB(0.1f0, 0.1f0, 0.1f0)
+        @test round_color(pattern_at(img, 1, 1), 1) == RGB(0.9f0, 0.9f0, 0.9f0)
     end
 
     @testset "bch 3 - bounding boxes" begin

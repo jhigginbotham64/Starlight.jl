@@ -77,7 +77,7 @@ export csg, intersection_allowed, csg_filter
 export point_on_light, area_light, intensity_at, sequence, next
 
 # bonus chapter 2
-export uv_pattern, uv_checkers, uv_align_check, spherical_uv_map, texture_map, planar_uv_map, cylindrical_uv_map, faces, LEFT, RIGHT, FRONT, BACK, UP, DOWN, face, cubical_uv_map, cube_map
+export uv_pattern, uv_checkers, uv_align_check, spherical_uv_map, texture_map, planar_uv_map, cylindrical_uv_map, faces, LEFT, RIGHT, FRONT, BACK, UP, DOWN, face, cubical_uv_map, cube_map, image_map
 
 # demo
 export rsi_demo, light_demo, scene_demo, plane_demo
@@ -1044,8 +1044,6 @@ function _intersect(t::smooth_triangle, r::ray)
     return intersections(intersection(f * t.e2 ⋅ origin_cross_e1, t, u=u, v=v))
 end
 
-
-
 #=
     chapter 16
 =#
@@ -1270,6 +1268,17 @@ mutable struct cube_map <: pattern
 end
 
 pattern_at(c::cube_map, p::VectorF) = pattern_at(c.faces[Int(face(p))], cubical_uv_map(p)...)
+
+mutable struct image_map <: pattern
+    canvas
+end
+
+function pattern_at(img::image_map, u::Number, v::Number)
+    v = 1 - v
+    x = u * (width(img.canvas) - 1) + 1
+    y = v * (height(img.canvas) - 1) + 1
+    return pixel(img.canvas, Int(round(x)), Int(round(y)))
+end
 
 #=
     bonus chapter 3 - http://raytracerchallenge.com/bonus/bounding-boxes.html
