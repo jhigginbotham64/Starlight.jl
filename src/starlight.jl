@@ -4,6 +4,7 @@ using Reexport
 @reexport using Images
 @reexport using ColorVectorSpace
 @reexport using FileIO
+@reexport using DelimitedFiles
 @reexport using LinearAlgebra
 @reexport using SimpleDirectMediaLayer
 
@@ -39,7 +40,7 @@ export translation, scaling, reflection_x, reflection_y, reflection_z, rotation_
 export ray, sphere, intersect, _intersect, intersection, intersections, Intersections, hit, transform
 
 # chapter 6
-export normal_at, _normal_at, reflect, point_light, material, lighting, round_color, clamp_color
+export normal_at, _normal_at, reflect, point_light, material, lighting, round_color, clamp_color, normalize_color_component
 
 # chapter 7
 export world, default_world, prepare_computations, shade_hit, color_at, view_transform, camera, ray_for_pixel, raytrace
@@ -82,6 +83,9 @@ export uv_pattern, uv_checkers, uv_align_check, spherical_uv_map, texture_map, p
 # bonus chapter 3
 export add_points!, partition!, subgroup!, divide!
 
+# input/output
+export ppm, load_ppm, load_obj
+
 # demo
 export rsi_demo, light_demo, scene_demo, plane_demo
 
@@ -107,8 +111,8 @@ cross(x::VectorF, y::VectorF) = vector((y[1:3] × x[1:3])...)
 # width is number of columns, which in julia is the second dimension.
 # also you have to be careful about Color types if precision matters to you.
 canvas(w::Int, h::Int, c = RGB{Float64}(colorant"black")) = fill(c, (h, w))
-pixel(mat, x::Int, y::Int) = mat[x,y]
-pixel!(mat, x::Int, y::Int, c::Color) = mat[x,y] = c
+pixel(mat, x::Int, y::Int) = mat[y,x]
+pixel!(mat, x::Int, y::Int, c::Color) = mat[y,x] = c
 pixels(mat) = flat(mat)
 flat(mat) = reshape(mat, (prod(size(mat)), 1))
 # stopgap solution from https://github.com/JuliaGraphics/ColorVectorSpace.jl/issues/119#issuecomment-573167024
@@ -389,6 +393,7 @@ end
 
 round_color(c::Color, digits::Int = 5) = mapc(chan -> round(chan, digits=digits), c)
 clamp_color(c::Color) = mapc(chan -> clamp(chan, 0, 1), c)
+normalize_color_component(c::Number; scale=255) = clamp(c / scale, 0, 1) # added while working on input/output
 
 #=
     chapter 7
@@ -593,10 +598,7 @@ function raytrace(cam::camera, w::world)
         for x=1:cam.hsize
             r = ray_for_pixel(cam, x, y)
             c = color_at(w, r)
-            # idk why i have to swap x and y here, there's probably
-            # a really good mathematical reason for it and i can probably
-            # fix it...but i don't really want to right now...
-            pixel!(img, y, x, clamp_color(c))
+            pixel!(img, x, y, clamp_color(c))
         end
     end
     return img
@@ -1379,7 +1381,44 @@ function divide!(s::shape, thresh::Number)
 end
 
 #=
-    input and demos
+    input/output
+=#
+
+function load_ppm(source)
+    p = readdlm(source, comments=true) # i ❤ julia
+    if p[1,1] != "P3" error("magic id $(p[1,1]) is not P3") end
+    scale = p[3,1]
+    w, h = p[2,1:2]
+    c = canvas(w, h)
+    x = y = 1
+    r = g = b = -1
+    for i=4:height(p)
+        for j=1:width(p)
+            n = p[i,j]
+            if n isa Number
+                if r == -1 r = normalize_color_component(n, scale=scale)
+                elseif g == -1 g = normalize_color_component(n, scale=scale)
+                elseif b == -1
+                    b = normalize_color_component(n, scale=scale)
+                    pixel!(c, x, y, RGB(r, g, b))
+                    r = g = b = -1
+                    x += 1
+                    if x > width(c)
+                        x = 1
+                        y += 1
+                        if y > height(c) return c end
+                    end
+                end
+            end
+        end
+    end
+    error("bad image data, expected $w × $h, got $x × $y")
+end
+
+
+
+#=
+    demos
 =#
 
 function rsi_demo(; height=100, width=100, bg_color=colorant"black", c=colorant"red")
