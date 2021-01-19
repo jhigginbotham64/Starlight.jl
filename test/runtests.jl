@@ -1058,19 +1058,19 @@ using Test
         @test c1 == m.pattern.a
         @test c2 == m.pattern.b
 
-        obj = sphere(transform = scaling(2, 2, 2))
+        object = sphere(transform = scaling(2, 2, 2))
         pat = stripes()
-        c = pattern_at_object(pat, obj, point(1.5, 0, 0))
+        c = pattern_at_object(pat, object, point(1.5, 0, 0))
         @test c == colorant"white"
 
-        obj = sphere()
+        object = sphere()
         pat = stripes(transform = scaling(2, 2, 2))
-        c = pattern_at_object(pat, obj, point(1.5, 0, 0))
+        c = pattern_at_object(pat, object, point(1.5, 0, 0))
         @test c == colorant"white"
 
-        obj = sphere(transform = scaling(2, 2, 2))
+        object = sphere(transform = scaling(2, 2, 2))
         pat = stripes(transform = translation(0.5, 0, 0))
-        c = pattern_at_object(pat, obj, point(2.5, 0, 0))
+        c = pattern_at_object(pat, object, point(2.5, 0, 0))
         @test c == colorant"white"
 
         # chapter 11: wasn't expecting actually need this, but whatever.
@@ -1769,7 +1769,7 @@ using Test
     @testset "ch 15 - triangles" begin
 
         #=
-            yeeeeaaaaaaaaah triangles. decided to skip the obj parser
+            yeeeeaaaaaaaaah triangles. decided to skip the OBJ parser
             and move it into its own test set, will do after the bonus
             chapters when i will focus on making demo images and also
             do the yaml parser, which will not have associated test cases.
@@ -2076,12 +2076,12 @@ using Test
         pt = point(0, 0, -1)
         eyev = normalize(eye - pt)
         n = vector(pt[1:3]...)
-        res = lighting(s.material, l, pt, eyev, n, 1.0, obj=s)
+        res = lighting(s.material, l, pt, eyev, n, 1.0, object=s)
         @test round_color(res, 4) == RGB(0.9965, 0.9965, 0.9965)
         pt = point(0, 0.7071, -0.7071)
         eyev = normalize(eye - pt)
         n = vector(pt[1:3]...)
-        res = lighting(s.material, l, pt, eyev, n, 1.0, obj=s)
+        res = lighting(s.material, l, pt, eyev, n, 1.0, object=s)
         @test round_color(res, 4) == RGB(0.6232, 0.6232, 0.6232)
     end
 
@@ -2509,6 +2509,82 @@ using Test
         # s = ppm(c)
         # # check s is newline-terminated
 
+        # OBJ loading postponed from chapter 15
+        o = load_obj("/home/jhigginbotham64/.julia/dev/starlight/test/gibberish.obj")
+        @test o.ignored == 5
+
+        o = load_obj("/home/jhigginbotham64/.julia/dev/starlight/test/vertices.obj")
+        @test o.vertices[1] == point(-1, 1, 0)
+        @test o.vertices[2] == point(-1, 0.5, 0)
+        @test o.vertices[3] == point(1, 0, 0)
+        @test o.vertices[4] == point(1, 1, 0)
+
+        o = load_obj("/home/jhigginbotham64/.julia/dev/starlight/test/triangles.obj")
+        g = o.default_group
+        t1 = g.children[1]
+        t2 = g.children[2]
+        @test t1.p1 == o.vertices[1]
+        @test t1.p2 == o.vertices[2]
+        @test t1.p3 == o.vertices[3]
+        @test t2.p1 == o.vertices[1]
+        @test t2.p2 == o.vertices[3]
+        @test t2.p3 == o.vertices[4]
+
+        o = load_obj("/home/jhigginbotham64/.julia/dev/starlight/test/polygons.obj")
+        g = o.default_group
+        t1 = g.children[1]
+        t2 = g.children[2]
+        t3 = g.children[3]
+        @test t1.p1 == o.vertices[1]
+        @test t1.p2 == o.vertices[2]
+        @test t1.p3 == o.vertices[3]
+        @test t2.p1 == o.vertices[1]
+        @test t2.p2 == o.vertices[3]
+        @test t2.p3 == o.vertices[4]
+        @test t3.p1 == o.vertices[1]
+        @test t3.p2 == o.vertices[4]
+        @test t3.p3 == o.vertices[5]
+
+        o = load_obj("/home/jhigginbotham64/.julia/dev/starlight/test/groups.obj")
+        g1 = o.groups["FirstGroup"]
+        g2 = o.groups["SecondGroup"]
+        t1 = g1.children[1]
+        t2 = g2.children[1]
+        @test t1.p1 == o.vertices[1]
+        @test t1.p2 == o.vertices[2]
+        @test t1.p3 == o.vertices[3]
+        @test t2.p1 == o.vertices[1]
+        @test t2.p2 == o.vertices[3]
+        @test t2.p3 == o.vertices[4]
+
+        o = load_obj("/home/jhigginbotham64/.julia/dev/starlight/test/groups.obj")
+        g = group(o)
+        @test g.children[1] == o.groups["FirstGroup"]
+        @test g.children[2] == o.groups["SecondGroup"]
+        @test g.children[3] == o.default_group
+
+        o = load_obj("/home/jhigginbotham64/.julia/dev/starlight/test/normals.obj")
+        @test o.normals[1] == vector(0, 0, 1)
+        @test o.normals[2] == vector(0.707, 0, -0.707)
+        @test o.normals[3] == vector(1, 2, 3)
+
+        o = load_obj("/home/jhigginbotham64/.julia/dev/starlight/test/faces_with_normals.obj")
+        g = o.default_group
+        t1 = g.children[1]
+        t2 = g.children[2]
+        @test t1.p1 == o.vertices[1]
+        @test t1.p2 == o.vertices[2]
+        @test t1.p3 == o.vertices[3]
+        @test t1.n1 == o.normals[3]
+        @test t1.n2 == o.normals[1]
+        @test t1.n3 == o.normals[2]
+        @test t2.p1 == t1.p1
+        @test t2.p2 == t1.p2
+        @test t2.p3 == t1.p3
+        @test t2.n1 == t1.n1
+        @test t2.n2 == t1.n2
+        @test t2.n3 == t1.n3
+
         # PPM loading postponed from bonus chapter 2
         @test_throws ErrorException load_ppm("/home/jhigginbotham64/.julia/dev/starlight/test/bad.ppm")
 
@@ -2545,76 +2621,5 @@ using Test
         @test pattern_at(img, 0.3, 0) == RGB(0.2, 0.2, 0.2)
         @test pattern_at(img, 0.6, 0.3) == RGB(0.1, 0.1, 0.1)
         @test pattern_at(img, 1, 1) == RGB(0.9, 0.9, 0.9)
-
-        # OBJ loading postponed from chapter 15
-        # o = load_obj("/home/jhigginbotham64/.julia/dev/starlight/test/gibberish.obj")
-        # @test o.ignored == 5
-        #
-        # o = load_obj("/home/jhigginbotham64/.julia/dev/starlight/test/vertices.obj")
-        # @test o.vertices[1] == point(-1, 1, 0)
-        # @test o.vertices[2] == point(-1, 0.5, 0)
-        # @test o.vertices[3] == point(1, 0, 0)
-        # @test o.vertices[4] == point(1, 1, 0)
-        #
-        # o = load_obj("/home/jhigginbotham64/.julia/dev/starlight/test/triangles.obj")
-        # g = o.default_group
-        # t1 = g.children[1]
-        # t2 = g.children[2]
-        # @test t1.p1 == o.vertices[1]
-        # @test t1.p2 == o.vertices[2]
-        # @test t1.p3 == o.vertices[3]
-        # @test t2.p1 == o.vertices[1]
-        # @test t2.p2 == o.vertices[3]
-        # @test t2.p3 == o.vertices[4]
-        #
-        # o = load_obj("/home/jhigginbotham64/.julia/dev/starlight/test/polygons.obj")
-        # g = o.default_group
-        # t1 = g.children[1]
-        # t2 = g.children[2]
-        # t3 = g.children[3]
-        # @test t1.p1 == o.vertices[1]
-        # @test t1.p2 == o.vertices[2]
-        # @test t1.p3 == o.vertices[3]
-        # @test t2.p1 == o.vertices[1]
-        # @test t2.p2 == o.vertices[3]
-        # @test t2.p3 == o.vertices[4]
-        # @test t3.p1 == o.vertices[1]
-        # @test t3.p2 == o.vertices[4]
-        # @test t3.p3 == o.vertices[5]
-        #
-        # o = load_obj("/home/jhigginbotham64/.julia/dev/starlight/test/groups.obj")
-        # g1 = o.groups["FirstGroup"]
-        # g2 = o.groups["SecondGroup"]
-        # t1 = g1.children[1]
-        # t2 = g2.children[1]
-        # @test t1.p1 == o.vertices[1]
-        # @test t1.p2 == o.vertices[2]
-        # @test t1.p3 == o.vertices[3]
-        # @test t2.p1 == o.vertices[1]
-        # @test t2.p2 == o.vertices[3]
-        # @test t2.p3 == o.vertices[4]
-        #
-        # o = load_obj("/home/jhigginbotham64/.julia/dev/starlight/test/groups.obj")
-        # g = group(o)
-        # @test g.children[1] == o.groups["FirstGroup"]
-        # @test g.children[2] == o.groups["SecondGroup"]
-        #
-        # o = load_obj("/home/jhigginbotham64/.julia/dev/starlight/test/normals.obj")
-        # @test o.normals[1] == vector(0, 0, 1)
-        # @test o.normals[2] == vector(0.707, 0, -0.707)
-        # @test o.normals[3] == vector(1, 2, 3)
-        #
-        # o = load_obj("/home/jhigginbotham64/.julia/dev/starlight/test/faces_with_normals.obj")
-        # g = o.default_group
-        # t1 = g.children[1]
-        # t2 = g.children[2]
-        # @test t1.p1 == o.vertices[1]
-        # @test t1.p2 == o.vertices[2]
-        # @test t1.p3 == o.vertices[3]
-        # @test t1.n1 == o.normals[3]
-        # @test t1.n2 == o.normals[1]
-        # @test t1.n3 == o.normals[2]
-        # @test t2.vertices == t1.vertices
-        # @test t2.normals == t1.normals
     end
 end

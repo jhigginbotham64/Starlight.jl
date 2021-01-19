@@ -84,7 +84,7 @@ export uv_pattern, uv_checkers, uv_align_check, spherical_uv_map, texture_map, p
 export add_points!, partition!, subgroup!, divide!
 
 # input/output
-export ppm, load_ppm, load_obj
+export PPM, load_ppm, load_obj, OBJ, fan
 
 # demo
 export rsi_demo, light_demo, scene_demo, plane_demo
@@ -361,8 +361,8 @@ end
 
 reflect(v::VectorF, n::VectorF) = v - (n * (2 * (v ⋅ n)))
 
-function lighting(m, l, p, eyev, normalv, intensity = 1.0; obj::optional{shape} = nothing)
-    c = (exists(m.pattern)) ? pattern_at_object(m.pattern, obj, p) : m.color # chapter 10
+function lighting(m, l, p, eyev, normalv, intensity = 1.0; object::optional{shape} = nothing)
+    c = (exists(m.pattern)) ? pattern_at_object(m.pattern, object, p) : m.color # chapter 10
     effective_color = hadamard(c, l.intensity)
     ambient = effective_color * m.ambient
     dssum = colorant"black"
@@ -432,10 +432,10 @@ end
 
 function prepare_computations(i::intersection, r::ray, xs::optional{Intersections} = nothing)
     t = i.t
-    obj = i.object
+    object = i.object
     p = position(r, t)
     eyev = -r.velocity
-    normalv = normal_at(obj, p, hit=hit((exists(xs)) ? xs : Intersections([])))
+    normalv = normal_at(object, p, hit=hit((exists(xs)) ? xs : Intersections([])))
     inside = false
     if normalv ⋅ eyev < 0
         normalv = -normalv
@@ -489,10 +489,10 @@ function prepare_computations(i::intersection, r::ray, xs::optional{Intersection
         end
     end
 
-    return computations(t, obj, p, eyev, normalv, inside, over_point, under_point, reflectv, n1, n2)
+    return computations(t, object, p, eyev, normalv, inside, over_point, under_point, reflectv, n1, n2)
 end
 
-function shade_hit(w::world, c::computations, remaining::Int = DEFAULT_RECURSION_LIMIT; obj::optional{shape} = nothing)
+function shade_hit(w::world, c::computations, remaining::Int = DEFAULT_RECURSION_LIMIT; object::optional{shape} = nothing)
     #=
         chapter 8
 
@@ -519,7 +519,7 @@ function shade_hit(w::world, c::computations, remaining::Int = DEFAULT_RECURSION
         area lights and soft shadows made this function a lot simpler.
     =#
 
-    surface = sum(map(l -> lighting(c.object.material, l, c.point, c.eyev, c.normalv, intensity_at(l, c.over_point, w), obj = obj), w.lights))
+    surface = sum(map(l -> lighting(c.object.material, l, c.point, c.eyev, c.normalv, intensity_at(l, c.over_point, w), object = object), w.lights))
 
     # chapter 11
     reflected = reflected_color(w, c, remaining)
@@ -707,7 +707,7 @@ function pattern_at(pat::gradient, p::VectorF)
 end
 pattern_at(pat::rings, p::VectorF) = (floor(√(p[1]^2 + p[3]^2)) % 2 == 0) ? pat.a : pat.b
 pattern_at(pat::checkers, p::VectorF) = (sum(floor.(p[1:3])) % 2 == 0) ? pat.a : pat.b
-pattern_at_object(pat::pattern, obj::optional{shape}, wp::VectorF) = (exists(obj)) ? pattern_at(pat, inv(pat.transform) * world_to_object(obj, wp)) : pattern_at(pat, wp)
+pattern_at_object(pat::pattern, object::optional{shape}, wp::VectorF) = (exists(object)) ? pattern_at(pat, inv(pat.transform) * world_to_object(object, wp)) : pattern_at(pat, wp)
 
 #=
     chapter 11
@@ -1415,7 +1415,76 @@ function load_ppm(source)
     error("bad image data, expected $w × $h, got $x × $y")
 end
 
+mutable struct OBJ
+    ignored::Int
+    vertices::Vector{VectorF}
+    default_group::group
+    groups::Dict{String, group}
+    normals::Vector{VectorF}
+end
 
+function fan(vs::Vector{VectorF}, ns::Vector{VectorF} = Vector{VectorF}([]))
+    ts = Vector{Union{triangle, smooth_triangle}}([])
+    for i=2:length(vs)-1
+        if length(ns) == 0
+            t = triangle(p1=vs[1], p2=vs[i], p3=vs[i+1])
+        else
+            t = smooth_triangle(p1=vs[1], p2=vs[i], p3=vs[i+1], n1=ns[1], n2=ns[i], n3=ns[i+1])
+        end
+        push!(ts, t)
+    end
+    return ts
+end
+
+function load_obj(source)
+    o = readdlm(source, comments=true)
+    ignored = 0
+    vertices = Vector{VectorF}([])
+    default_group = group()
+    groups = Dict{String, group}([])
+    normals = Vector{VectorF}([])
+    active_group = default_group
+
+    for i=1:height(o)
+        if o[i,1] == "v"
+            push!(vertices, point(o[i,2:4]...))
+        elseif o[i,1] == "f"
+            j = findfirst(n -> !(n isa Number), o[i,2:width(o)])
+            if isnothing(j)
+                j = width(o)
+                if j >= 4
+                    add_child!(active_group, fan(vertices[o[i,2:j]])...)
+                elseif j < 4
+                    error("invalid face $(o[i,:]): not enough vertices")
+                end
+            else
+                vsind = []
+                nsind = []
+                for j=2:width(o)
+                    v = parse.(Int, split(o[i,j], '/')[[1,3]]) # ignoring 2nd value, the texture vertex, which i haven't implemented yet, also assumes normal is always defined
+                    push!(vsind, v[1])
+                    push!(nsind, v[2])
+                end
+                if length(vsind) < 3
+                    error("invalid face $(o[i,:]): not enough vertices")
+                end
+                add_child!(active_group, fan(vertices[vsind], normals[nsind])...)
+            end
+        elseif o[i,1] == "g"
+            g = o[i,2]
+            if !haskey(groups, g) groups[g] = group() end
+            active_group = groups[g]
+        elseif o[i,1] == "vn"
+            push!(normals, vector(o[i,2:4]...))
+        else
+            ignored += 1
+        end
+    end
+
+    return OBJ(ignored, vertices, default_group, groups, normals)
+end
+
+group(o::OBJ) = group(children = [values(o.groups)..., o.default_group])
 
 #=
     demos
