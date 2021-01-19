@@ -1461,7 +1461,11 @@ function load_obj(source)
                 vsind = []
                 nsind = []
                 for j=2:width(o)
-                    v = parse.(Int, split(o[i,j], '/')[[1,3]]) # ignoring 2nd value, the texture vertex, which i haven't implemented yet, also assumes normal is always defined
+                    # ignoring 2nd value, the texture vertex, which i haven't
+                    # implemented yet, also assumes normal is always defined.
+                    # this bit would have to be completely redone if i decided
+                    # to do texture vertices.
+                    v = parse.(Int, split(o[i,j], '/')[[1,3]])
                     push!(vsind, v[1])
                     push!(nsind, v[2])
                 end
