@@ -40,7 +40,7 @@ export translation, scaling, reflection_x, reflection_y, reflection_z, rotation_
 export ray, sphere, intersect, _intersect, intersection, intersections, Intersections, hit, transform
 
 # chapter 6
-export normal_at, _normal_at, reflect, point_light, material, lighting, round_color, clamp_color, normalize_color_component
+export normal_at, _normal_at, reflect, point_light, material, lighting, round_color, clamp_color, scale_color_component, descale_color_component
 
 # chapter 7
 export world, default_world, prepare_computations, shade_hit, color_at, view_transform, camera, ray_for_pixel, raytrace
@@ -84,7 +84,7 @@ export uv_pattern, uv_checkers, uv_align_check, spherical_uv_map, texture_map, p
 export add_points!, partition!, subgroup!, divide!
 
 # input/output
-export PPM, load_ppm, load_obj, OBJ, fan
+export advance_xy, nice_str, ppm_mat, save_ppm, load_ppm, load_obj, OBJ, fan
 
 # demo
 export rsi_demo, light_demo, scene_demo, plane_demo
@@ -393,7 +393,8 @@ end
 
 round_color(c::Color, digits::Int = 5) = mapc(chan -> round(chan, digits=digits), c)
 clamp_color(c::Color) = mapc(chan -> clamp(chan, 0, 1), c)
-normalize_color_component(c::Number; scale=255) = clamp(c / scale, 0, 1) # added while working on input/output
+scale_color_component(c::Number; scale=255) = Int(round(clamp(c * scale, 0, scale))) # added while working on input/output
+descale_color_component(c::Number; scale=255) = clamp(c / scale, 0, 1) # added while working on input/output
 
 #=
     chapter 7
@@ -1384,6 +1385,63 @@ end
     input/output
 =#
 
+# helper for translating between PPM files and canvases within loops
+function advance_xy(x,y,xlim)
+    x += 1
+    if x > xlim
+        y += 1
+        x = 1
+    end
+    return x,y
+end
+
+# helper for formatting "PPM matrices"
+nice_str(mat, r) = strip(join(mat[r,:], " "))
+
+function ppm_mat(can)
+    # a single matrix cell (the scaled value of a single color channel)
+    # written to file will require at most this many characters
+    scale = "255"
+    cell_size = length(scale) + 1
+    # could be different if we were writing grayscale, but this is really
+    # just for convenience and readability
+    num_channels = 3
+    # worst-case line length in chars for a given canvas =>
+    # num_channels * cell_size * width(canvas) = 12 * width(can) (in our case)
+    # max width of writeable matrix inferred from max line length, which is 70
+    can_cells = width(can) * num_channels
+    w = Int(min(can_cells, floor(70 / cell_size)))
+    lines_per_row = ceil(can_cells / w)
+    h = Int(height(can) * lines_per_row + 3) # magic val, dims, and scale get one line each
+
+    mat = fill("", (h, w))
+    mat[1,1] = "P3" # the magic val. accept no substitutes.
+    mat[2,1:2] = string.([width(can), height(can)])
+    mat[3,1] = "255"
+
+    # x is horizontal, y is vertical, which means x is column, y is row
+    y = 4
+    for i=1:height(can)
+        # start at beginning on each new canvas row
+        x = 1
+        for j=1:width(can)
+            c = can[i,j]
+            r, g, b = string.(scale_color_component.([red(c), green(c), blue(c)]))
+            mat[y,x] = r
+            x,y = advance_xy(x,y,w)
+            mat[y,x] = g
+            x,y = advance_xy(x,y,w)
+            mat[y,x] = b
+            x,y = advance_xy(x,y,w)
+            if j == width(can) && x != 1 y += 1 end
+        end
+    end
+
+    return mat
+end
+
+save_ppm(f, can) = writedlm(f, ppm_mat(can), " ")
+
 function load_ppm(source)
     p = readdlm(source, comments=true) # i ❤ julia
     if p[1,1] != "P3" error("magic id $(p[1,1]) is not P3") end
@@ -1396,18 +1454,14 @@ function load_ppm(source)
         for j=1:width(p)
             n = p[i,j]
             if n isa Number
-                if r == -1 r = normalize_color_component(n, scale=scale)
-                elseif g == -1 g = normalize_color_component(n, scale=scale)
+                if r == -1 r = descale_color_component(n, scale=scale)
+                elseif g == -1 g = descale_color_component(n, scale=scale)
                 elseif b == -1
-                    b = normalize_color_component(n, scale=scale)
+                    b = descale_color_component(n, scale=scale)
                     pixel!(c, x, y, RGB(r, g, b))
                     r = g = b = -1
-                    x += 1
-                    if x > width(c)
-                        x = 1
-                        y += 1
-                        if y > height(c) return c end
-                    end
+                    x,y = advance_xy(x,y,width(c))
+                    if y > height(c) return c end
                 end
             end
         end

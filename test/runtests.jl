@@ -2476,38 +2476,39 @@ using Test
             https://docs.julialang.org/en/v1/stdlib/DelimitedFiles/#DelimitedFiles.readdlm-Tuple{Any,AbstractChar,Type,AbstractChar}
         =#
 
-        # # PPM saving postponed from chapter 2
-        # c = canvas(5, 3)
-        # s = ppm(c)
-        # # test lines 1-3 of s are:
-        # # P3
-        # # 5 3
-        # # 255
-        #
-        # c = canvas(5, 3)
-        # c1 = RGB(1.5, 0.0, 0.0)
-        # c2 = RGB(0.0, 0.5, 0.0)
-        # c3 = RGB(-0.5, 0.0, 1.0)
-        # pixel!(c, 1, 1, c1)
-        # pixel!(c, 3, 2, c2)
-        # pixel!(c, 5, 3, c3)
-        # s = ppm(c)
-        # # test lines 4-6 of s are:
-        # # 255 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-        # # 0 0 0 0 0 0 0 255 0 0 0 0 0 0 0
-        # # 0 0 0 0 0 0 0 0 0 0 0 0 0 0 255
-        #
-        # c = canvas(10, 2, RGB(1.0, 0.8, 0.6))
-        # s = ppm(c)
-        # # test lines 4-7 of s are:
-        # # 255 204 153 255 204 153 255 204 153 255 204 153 255 204 153 255 204
-        # # 153 255 204 153 255 204 153 255 204 153 255 204 153
-        # # 255 204 153 255 204 153 255 204 153 255 204 153 255 204 153 255 204
-        # # 153 255 204 153 255 204 153 255 204 153 255 204 153
-        #
-        # c = canvas(5, 3)
-        # s = ppm(c)
-        # # check s is newline-terminated
+        # PPM saving postponed from chapter 2
+        c = canvas(5, 3)
+        mat = ppm_mat(c)
+        @test nice_str(mat, 1) == "P3"
+        @test nice_str(mat, 2) == "5 3"
+        @test nice_str(mat, 3) == "255"
+
+        c = canvas(5, 3)
+        c1 = RGB(1.5, 0.0, 0.0)
+        c2 = RGB(0.0, 0.5, 0.0)
+        c3 = RGB(-0.5, 0.0, 1.0)
+        pixel!(c, 1, 1, c1)
+        pixel!(c, 3, 2, c2)
+        pixel!(c, 5, 3, c3)
+        mat = ppm_mat(c)
+        @test nice_str(mat, 4) == "255 0 0 0 0 0 0 0 0 0 0 0 0 0 0"
+        @test nice_str(mat, 5) == "0 0 0 0 0 0 0 128 0 0 0 0 0 0 0"
+        @test nice_str(mat, 6) == "0 0 0 0 0 0 0 0 0 0 0 0 0 0 255"
+
+        c = canvas(10, 2, RGB(1.0, 0.8, 0.6))
+        mat = ppm_mat(c)
+        @test nice_str(mat, 4) == "255 204 153 255 204 153 255 204 153 255 204 153 255 204 153 255 204"
+        @test nice_str(mat, 5) == "153 255 204 153 255 204 153 255 204 153 255 204 153"
+        @test nice_str(mat, 6) == "255 204 153 255 204 153 255 204 153 255 204 153 255 204 153 255 204"
+        @test nice_str(mat, 7) == "153 255 204 153 255 204 153 255 204 153 255 204 153"
+
+        # the book has a test for files being newline-terminated.
+        # i let writedlm take care of that. more important for me
+        # is that save_ppm and load_ppm "understand each other".
+        c = canvas(5, 3)
+        save_ppm("./test.ppm", c)
+        @test load_ppm("./test.ppm") == c
+        rm("./test.ppm")
 
         # OBJ loading postponed from chapter 15
         o = load_obj("/home/jhigginbotham64/.julia/dev/starlight/test/gibberish.obj")
