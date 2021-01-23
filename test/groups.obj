@@ -1,0 +1,9 @@
+v -1 1 0
+v -1 0 0
+v 1 0 0
+v 1 1 0
+
+g FirstGroup
+f 1 2 3
+g SecondGroup
+f 1 3 4
