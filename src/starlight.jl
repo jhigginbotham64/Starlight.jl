@@ -1945,36 +1945,3 @@ raytrace_scene(scn::scene) = scn, raytrace(scn)
 raytrace_scene(f) = raytrace_scene(load_scene(f))
 
 end
-
-# TODO: look into refactoring shapes and patterns with macros or something
-# TODO: refactor test suite so that test names correspond to ones from the book
-# TODO: reimagine and rewrite to not be organized by chapters
-# TODO: programatically find good resolution for "final" render (based on fov?)
-# TODO: refactor into modules (i.e. fir_branch probably shouldn't have it's own case in parse_entity along with geometric primitives)
-# TODO: torus primitive
-# TODO: pyramid primitive
-# TODO: curves
-# TODO: 2D drawing
-# TODO: text drawing
-# TODO: fonts
-# TODO: anti-aliasing/supersampling
-# TODO: multiprocess the raytrace function by canvas regions
-# TODO: see about parallelizing divide!
-# TODO: quaternions and animation
-# TODO: fix whatever's keeping you from parsing the standford bunny OBJ file
-# TODO: profile performance
-# TODO: OBJ texture coordinates
-# TODO: MTL parsing
-# TODO: full OBJ spec
-# TODO: full MTL spec
-# TODO: YAML scenes referencing other scenes
-# TODO: OBJ export
-# TODO: MTL export
-# TODO: YAML export
-# TODO: rasterization
-# TODO: real-time stuff
-# TODO: more sophisticated lighting model
-# BUG: csg transforms and bounding boxes completely broken (orrery.yml)
-# BUG: ring pattern not working on csg (orrery.yml)
-# NOTE: can work on those bugs by creating your own scenes that use csg and [ring] patterns
-# NOTE: same goes for OBJ files
