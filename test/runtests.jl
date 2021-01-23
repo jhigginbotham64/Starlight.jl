@@ -847,7 +847,7 @@ using Test
         up = vector(0, 1, 0)
         c = camera(hsize=11, vsize=11, fov=π/2, transform=view_transform(from, to, up))
         img = raytrace(c, w)
-        @test round_color(pixel(img, 5, 5)) == round_color(RGB(0.38066, 0.47583, 0.2855))
+        @test round_color(pixel(img, 5, 5)) == RGB(0.38066, 0.47583, 0.2855)
     end
 
     @testset "ch 8 - shadows" begin
@@ -884,7 +884,7 @@ using Test
         s = sphere(transform = translation(0, 0, 1))
         i = intersection(5, s)
         comps = prepare_computations(i, r)
-        @test comps.over_point[3] < -eps()/2
+        @test comps.over_point[3] < -my_eps/2
         @test comps.point[3] > comps.over_point[3]
     end
 
@@ -1124,8 +1124,6 @@ using Test
     @testset "ch 11 - reflection and refraction" begin
 
         #=
-            TODO: refactor this test suite so that test names correspond to ones from the book
-
             after incorporating fixes that i did while working on other chapters,
             this is the first one where i have to round any result past the book's.
             fortunately i've never had to round more than 2 places, so if there's
@@ -1241,7 +1239,7 @@ using Test
         i = intersection(5, s)
         xs = intersections(i)
         comps = prepare_computations(i, r, xs)
-        @test comps.under_point[3] > eps() / 2
+        @test comps.under_point[3] > my_eps/2
         @test comps.point[3] < comps.under_point[3]
 
         w = default_world()
@@ -1461,8 +1459,6 @@ using Test
     @testset "ch 13 - cylinders" begin
 
         #=
-            TODO: reimagine and rewrite to not be organized by chapters
-
             easy to lose track of stuff at this point, beat my head on a
             few test cases that were failing due to silly mistakes, but
             got through them. now that i've had a bit more experience
@@ -1762,7 +1758,7 @@ using Test
         g1 = group(transform = scaling(1, 2, 3), children = [s])
         g2 = group(transform = rotation_y(π/2), children = [g1])
         @test round.(normal_to_world(s, vector(√3/3, √3/3, √3/3)), digits=4) == vector(0.2857, 0.4286, -0.8571)
-        # don't like having to round past where the book does, but whatever
+        # NOTE rounds past the book
         @test round.(normal_at(s, point(1.7321, 1.1547, -5.5774)), digits=3) == round.(vector(0.2857, 0.4286, -0.8571), digits=3)
     end
 
@@ -2236,49 +2232,40 @@ using Test
         add_points!(b, p1, p2)
         @test b.min == point(-5, 0, -3)
         @test b.max == point(7, 2, 0)
-
         b = aabb()
-        p1 = point(-5, 2, 0)
-        p2 = point(7, 0, -3)
         add_points!(b, p2, p1)
         @test b.min == point(-5, 0, -3)
         @test b.max == point(7, 2, 0)
 
-        b = bounds(sphere())
-        @test b.min == point(-1, -1, -1)
-        @test b.max == point(1, 1, 1)
+        @test sphere().bbox.min == point(-1, -1, -1)
+        @test sphere().bbox.max == point(1, 1, 1)
 
-        b = bounds(plane())
-        @test b.min == point(-Inf, 0, -Inf)
-        @test b.max == point(Inf, 0, Inf)
+        @test plane().bbox.min == point(-Inf, 0, -Inf)
+        @test plane().bbox.max == point(Inf, 0, Inf)
 
-        b = bounds(cube())
-        @test b.min == point(-1, -1, -1)
-        @test b.max == point(1, 1, 1)
+        @test cube().bbox.min == point(-1, -1, -1)
+        @test cube().bbox.max == point(1, 1, 1)
 
-        b = bounds(cylinder())
-        @test b.min == point(-1, -Inf, -1)
-        @test b.max == point(1, Inf, 1)
+        @test cylinder().bbox.min == point(-1, -Inf, -1)
+        @test cylinder().bbox.max == point(1, Inf, 1)
 
-        b = bounds(cylinder(min = -5, max = 3))
-        @test b.min == point(-1, -5, -1)
-        @test b.max == point(1, 3, 1)
+        b = cylinder(min = -5, max = 3).bbox
+        @test cylinder(min = -5, max = 3).bbox.min == point(-1, -5, -1)
+        @test cylinder(min = -5, max = 3).bbox.max == point(1, 3, 1)
 
-        b = bounds(cone())
-        @test b.min == point(-Inf, -Inf, -Inf)
-        @test b.max == point(Inf, Inf, Inf)
+        @test cone().bbox.min == point(-Inf, -Inf, -Inf)
+        @test cone().bbox.max == point(Inf, Inf, Inf)
 
-        b = bounds(cone(min = -5, max = 3))
+        b = cone(min = -5, max = 3).bbox
         @test b.min == point(-5, -5, -5)
         @test b.max == point(5, 3, 5)
 
-        b = bounds(triangle(p1 = point(-3, 7, 2), p2 = point(6, 2, -4), p3 = point(2, -1, -1)))
+        b = triangle(p1 = point(-3, 7, 2), p2 = point(6, 2, -4), p3 = point(2, -1, -1)).bbox
         @test b.min == point(-3, -1, -4)
         @test b.max == point(6, 7, 2)
 
-        b = bounds(test_shape())
-        @test b.min == point(-1, -1, -1)
-        @test b.max == point(1, 1, 1)
+        @test test_shape().bbox.min == point(-1, -1, -1)
+        @test test_shape().bbox.max == point(1, 1, 1)
 
         b1 = aabb(point(-5, -2, 0), point(7, 4, 4))
         b2 = aabb(point(8, -7, -2), point(14, 2, 8))
@@ -2308,17 +2295,19 @@ using Test
         @test round.(b2.min, digits=4) == point(-1.4142, -1.7071, -1.7071)
         @test round.(b2.max, digits=4) == point(1.4142, 1.7071, 1.7071)
 
-        s = sphere(transform = translation(1, -3, 5) * scaling(0.5, 2, 4))
-        b = bounds(s)
+        b = sphere(transform = translation(1, -3, 5) * scaling(0.5, 2, 4)).bbox
         @test b.min == point(0.5, -5, 1)
         @test b.max == point(1.5, -1, 9)
 
         s = sphere(transform = translation(2, 5, -3) * scaling(2, 2, 2))
         c = cylinder(min = -2, max = 2, transform = translation(-4, -1, 4) * scaling(0.5, 1, 0.5))
         g = group(children = [s, c])
-        b = bounds(g)
-        @test b.min == point(-4.5, -3, -5)
-        @test b.max == point(4, 7, 4.5)
+        @test g.bbox.min == point(-4.5, -3, -5)
+        @test g.bbox.max == point(4, 7, 4.5)
+
+        c = csg(:difference, sphere(), sphere(transform = translation(2, 3, 4)))
+        @test c.bbox.min == point(-1, -1, -1)
+        @test c.bbox.max == point(3, 4, 5)
 
         b = aabb(point(-1, -1, -1), point(1, 1, 1))
         @test intersects(b, ray(point(5, 0.5, 0), normalize(vector(-1, 0, 0))))
