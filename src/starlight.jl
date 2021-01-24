@@ -20,84 +20,53 @@ Transform = Array{Float64, 2}
 export Transform
 VectorF = Vector{Float64}
 export VectorF
-optional{T} = Union{Nothing, T}
+optional{T} = Union{Nothing, T} # found myself doing this a lot
 export optional
-# found myself doing this a lot
-exists(thing) = !isnothing(thing)
+exists(thing) = !isnothing(thing) # and this
 export exists
 
+# important values
+DEFAULT_RECURSION_LIMIT = 5 # number of reflections/refractions for a single ray
+export DEFAULT_RECURSION_LIMIT
+DEFAULT_BVH_THRESHOLD = 500 # https://forum.raytracerchallenge.com/post/1029/thread
+export DEFAULT_BVH_THRESHOLD
 my_eps = eps() * 1e8
 my_floor(x::Number) = (abs(x) <= my_eps) ? 0.0 : floor(x)
 export my_eps, my_floor
 
-# chapter 1
 export point, vector, cross
-
-# chapter 2
 export canvas, pixel, pixel!, pixels, flat, hadamard
-
-# chapter 3
-export submatrix, minor, cofactor, invertible
-
-# chapter 4
-export translation, scaling, reflection_x, reflection_y, reflection_z, rotation_x, rotation_y, rotation_z, shearing
-
-# chapter 5
-export ray, sphere, intersect, _intersect, intersection, intersections, Intersections, hit, transform
-
-# chapter 6
-export normal_at, _normal_at, reflect, point_light, material, lighting, round_color, clamp_color, scale_color_component, descale_color_component
-
-# chapter 7
-export world, default_world, prepare_computations, shade_hit, color_at, view_transform, camera, ray_for_pixel, raytrace
-
-# chapter 8
+export translation, scaling, reflection_x, reflection_y, reflection_z
+export rotation_x, rotation_y, rotation_z, shearing
+export ray, sphere, intersect, _intersect, intersection
+export intersections, Intersections, hit, transform
+export normal_at, _normal_at, reflect, point_light, material, lighting
+export round_color, clamp_color, scale_color_component, descale_color_component
+export world, default_world, prepare_computations, shade_hit, color_at
+export view_transform, camera, ray_for_pixel, raytrace
 export is_shadowed
-
-# chapter 9
 export shape, test_shape, plane
-
-# chapter 10
-export pattern, pattern_at, pattern_at_object, test_pattern, stripes, gradient, rings, checkers
-
-# chapter 11
+export pattern, pattern_at, pattern_at_object
+export test_pattern, stripes, gradient, rings, checkers
 export glass_sphere, reflected_color, refracted_color, schlick
-DEFAULT_RECURSION_LIMIT = 5
-export DEFAULT_RECURSION_LIMIT
-
-# chapter 12
 export cube, check_axis
-
-# chapter 13
 export cylinder, intersect_caps!, check_cap, cone
-
-# chapter 14
-export group, propagate_material!, add_child!, has_child, has_children, inherited_transform, world_to_object, normal_to_world, aabb, _bounds, explode_aabb, bounds, intersects
-
-# chapter 15
-export triangle, smooth_triangle
-
-# chapter 16
-export csg, intersection_allowed, csg_filter
-
-# bonus chapter 1
-export point_on_light, area_light, intensity_at, sequence, next
-
-# bonus chapter 2
-export uv_pattern, uv_checkers, uv_align_check, spherical_uv_map, texture_map, planar_uv_map, cylindrical_uv_map, faces, LEFT, RIGHT, FRONT, BACK, UP, DOWN, face, cubical_uv_map, cube_map, image_map
-
-# bonus chapter 3
+export group, propagate_material!, add_child!, has_child
+export inherited_transform, world_to_object, normal_to_world
+export aabb, _bounds, explode_aabb, bounds, intersects
 export add_points!, partition!, subgroup!, divide!
-
-# input/output
+export triangle, smooth_triangle
+export csg, intersection_allowed, csg_filter
+export point_on_light, area_light, intensity_at, sequence, next
+export uv_pattern, uv_checkers, uv_align_check, texture_map, cube_map, image_map
+export spherical_uv_map, planar_uv_map, cylindrical_uv_map
+export cubical_uv_map, faces, LEFT, RIGHT, FRONT, BACK, UP, DOWN, face
 export advance_xy, nice_str, ppm_mat, save_ppm, load_ppm, load_obj, OBJ, fan
+export is_aggregate, scene, load_scene, update_cache!, chain_transforms
+export parse_uvpat, apply_material!, parse_entity, add_entity!, raytrace_scene
+export fir_branch
 
-# demo
-export DEFAULT_GROUP_SIZE, scene, load_scene, update_cache!, chain_transforms, parse_uvpat, apply_material!, fir_branch, parse_entity, add_entity!, raytrace_scene
-
-#=
-    chapter 1
-=#
+#= BASIC MATH STUFF =#
 
 # point and vector are just length-4 arrays with particular valuesin the last
 # index. x, y, z, and w are kept consistently in the same index by convention
@@ -108,10 +77,10 @@ vector(x, y, z) = [x, y, z, 0.0]
 # cross(x, y) == y × x, NOT x × y. this is due to matching up test
 # cases with the expectations of julia's cross product function.
 cross(x::VectorF, y::VectorF) = vector((y[1:3] × x[1:3])...)
+# reflect v over n
+reflect(v::VectorF, n::VectorF) = v - (n * (2 * (v ⋅ n)))
 
-#=
-    chapter 2
-=#
+#= CANVAS AND COLOR OPERATIONS =#
 
 # height is number of rows, which in julia is the first dimension.
 # width is number of columns, which in julia is the second dimension.
@@ -126,27 +95,10 @@ flat(mat) = reshape(mat, (prod(size(mat)), 1))
 hadamard(c1, c2) = mapc(*, c1, c2)
 round_color(c::Color, digits::Int = 5) = mapc(chan -> round(chan, digits=digits), c)
 clamp_color(c::Color) = mapc(chan -> clamp(chan, 0, 1), c)
-scale_color_component(c::Number; scale=255) = Int(round(clamp(c * scale, 0, scale))) # added while working on input/output
-descale_color_component(c::Number; scale=255) = clamp(c / scale, 0, 1) # added while working on input/output
+scale_color_component(c::Number; scale=255) = Int(round(clamp(c * scale, 0, scale)))
+descale_color_component(c::Number; scale=255) = clamp(c / scale, 0, 1)
 
-#=
-    chapter 3
-=#
-
-function submatrix(mat, r::Int, c::Int)
-    h = height(mat)
-    w = width(mat)
-    mask = [row != r && col != c for row=1:h, col=1:w]
-    return reshape(mat[mask], (h-1,w-1))
-end
-
-minor(mat, r::Int, c::Int) = det(submatrix(mat, r, c))
-cofactor(mat, r::Int, c::Int) = minor(mat, r, c) * (-1)^(r+c)
-invertible(mat) = det(mat) != 0
-
-#=
-    chapter 4
-=#
+#= TRANSFORMATION MATRICES =#
 
 translation(x, y, z) = [
     1 0 0 x
@@ -162,9 +114,9 @@ scaling(x, y, z) = [
     0 0 0 1
 ]
 
-reflection_x = scaling(-1, 1, 1)
-reflection_y = scaling(1, -1, 1)
-reflection_z = scaling(1, 1, -1)
+reflection_x() = scaling(-1, 1, 1)
+reflection_y() = scaling(1, -1, 1)
+reflection_z() = scaling(1, 1, -1)
 
 rotation_x(r) = [
     1 0 0 0
@@ -194,215 +146,100 @@ shearing(xy, xz, yx, yz, zx, zy) = [
     0 0 0 1
 ]
 
-#=
-    chapter 5
-=#
+#= ABSTRACT TYPES =#
 
-# axially-aligned bounding box, created in chapter 14,
-# polished and extended in bonus chapter 3, further
-# refined (and moved here) while working on demos
+abstract type pattern end
+abstract type shape end
+
+#= AXIALLY-ALIGNED BOUNDING BOXES =#
+
 mutable struct aabb
-    min::VectorF # top-left point (not sure if z would be forward or back here)
-    max::VectorF # lower-right point
+    min::VectorF
+    max::VectorF
     aabb() = new(point(Inf, Inf, Inf), point(-Inf, -Inf, -Inf))
 end
+
+aabb(ps::VectorF...) = add_points!(aabb(), ps...)
+aabb(bs::aabb...) = add_points!(aabb(), bs...)
 
 function add_points!(b::aabb, ps::VectorF...)
     b.min = point([min(b.min[i], [p[i] for p ∈ ps]...) for i=1:3]...)
     b.max = point([max(b.max[i], [p[i] for p ∈ ps]...) for i=1:3]...)
+    return b
 end
 
 add_points!(b::aabb, b2::aabb) = add_points!(b, b2.min, b2.max)
-add_points!(b::aabb, bs::aabb...) = foreach(b2 -> add_points!(b, b2), bs)
 
-function aabb(ps::VectorF...)
-    b = aabb()
-    add_points!(b, ps...)
+function add_points!(b::aabb, bs::aabb...)
+    foreach(b2 -> add_points!(b, b2), bs)
     return b
 end
 
-function aabb(bs::aabb...)
-    b = aabb()
-    add_points!(b, bs...)
-    return b
+import Base.contains
+contains(b::aabb, p::VectorF) = all([b.min[i] <= p[i] <= b.max[i] for i=1:3])
+contains(b::aabb, b2::aabb) = contains(b, b2.min) && contains(b, b2.max)
+contains(b::aabb, s::shape) = contains(b, s.bbox)
+
+explode_aabb(bs::aabb) =
+    # goes around the top "counterclockwise" from min, then down, then around
+    # "clockwise" to max, giving us all 8 corners of the bounding box
+    (bs.min, point(bs.min[1], bs.min[2], bs.max[3]),
+    point(bs.max[1], bs.min[2], bs.max[3]), point(bs.max[1], bs.min[2], bs.min[3]),
+    point(bs.max[1], bs.max[2], bs.min[3]), point(bs.min[1], bs.max[2], bs.min[3]),
+    point(bs.min[1], bs.max[2], bs.max[3]), bs.max)
+
+function transform(b::aabb, mat::Transform)
+    ps = explode_aabb(b)
+    # remember that IEEE 754 defines Inf * 0 as NaN, which is
+    # not the behavior you'd normally expect in graphics-land,
+    # but is a highly probable occurrence when working specifically
+    # with bounding boxes. this next if statement looks like a
+    # small optimization, and it is, but its real purpose is to step
+    # around a few such occurrences.
+    if mat != I ps = map(p -> mat * p, ps) end
+    return aabb(ps...)
 end
+
+#= CACHING TRANSFORMS AND BOUNDING BOXES =#
+
+is_aggregate(s::shape) = s isa group || s isa csg
+
+inherited_transform(s::shape)::Transform = ((exists(s.parent)) ? inherited_transform(s.parent) : DEFAULT_TRANSFORM) * s.transform
+bounds(s::shape) = transform(_bounds(s), !(is_aggregate(s)) ? s.inherited_transform : DEFAULT_TRANSFORM)
+
+function update_cache!(s, t = nothing)
+    if !exists(t) t = s.transform end
+    st = typeof(s)
+    if hasfield(st, :transform)
+        s.transform = t
+        if hasfield(st, :inverse_transform)
+            s.inverse_transform = inv(s.transform)
+        end
+        if hasfield(st, :inherited_transform)
+            s.inherited_transform = inherited_transform(s)
+            if hasfield(st, :inverse_inherited_transform)
+                s.inverse_inherited_transform = inv(s.inherited_transform)
+            end
+        end
+    end
+    if s isa group foreach(c -> update_cache!(c), s.children)
+    elseif s isa csg
+        update_cache!(s.l)
+        update_cache!(s.r)
+    end
+    # this has to go after children are updated, or shapes
+    # that depend on child transforms for their bounding boxes
+    # will not update correctly
+    if hasfield(st, :bbox) s.bbox = bounds(s) end
+    return s
+end
+
+#= RAYS AND INTERSECTIONS =#
 
 mutable struct ray
     origin::VectorF
-    # the book calls this field "direction", but in my mind direction
-    # is a unit vector which you combine with a magnitude (speed)
-    # to get velocity, and the book uses direction mathematically
-    # like a velocity, so i'm calling it velocity.
     velocity::VectorF
 end
-
-abstract type pattern end # chapter 10
-
-# material added in chapter 6, put here for compilation
-mutable struct material
-    color::Color
-    ambient::Float64
-    diffuse::Float64
-    specular::Float64
-    shininess::Float64
-    pattern::optional{pattern}
-    reflective::Float64 # chapter 11
-    transparency::Float64 # chapter 11
-    refractive_index::Float64 # chapter 11
-    material(; color = colorant"white", ambient = 0.1, diffuse = 0.9, specular = 0.9, shininess = 200.0, pattern = nothing, reflective = 0.0, transparency = 0.0, refractive_index = 1.0) = new(color, ambient, diffuse, specular, shininess, pattern, reflective, transparency, refractive_index)
-end
-
-abstract type shape end # chapter 9
-
-mutable struct test_shape <: shape
-    transform::Transform
-    material::material
-    parent::optional{shape}
-    saved_ray::optional{ray}
-    shadow::Bool
-    inverse_transform::Transform
-    inherited_transform::Transform
-    inverse_inherited_transform::Transform
-    bbox::aabb
-    test_shape(; transform = DEFAULT_TRANSFORM, material = material(), parent = nothing, r = nothing, shadow = true) = update_cache!(new(transform, material, parent, r, shadow, DEFAULT_TRANSFORM, DEFAULT_TRANSFORM, DEFAULT_TRANSFORM, aabb()))
-end
-
-# chapter 14
-mutable struct group <: shape
-    transform::Transform
-    material::optional{material}
-    children::Vector{<:shape}
-    parent::optional{shape}
-    inverse_transform::Transform
-    inherited_transform::Transform
-    inverse_inherited_transform::Transform
-    bbox::aabb
-    function group(; transform = DEFAULT_TRANSFORM, children = Vector{shape}([]), material = nothing, parent = nothing)
-        g = new(transform, material, Vector{shape}([]), parent, DEFAULT_TRANSFORM, DEFAULT_TRANSFORM, DEFAULT_TRANSFORM, aabb())
-        add_child!(g, children...)
-        return g
-    end
-end
-
-mutable struct sphere <: shape # chapter 9
-    transform::Transform
-    material::material
-    parent::optional{shape}
-    shadow::Bool
-    inverse_transform::Transform
-    inherited_transform::Transform
-    inverse_inherited_transform::Transform
-    bbox::aabb
-    sphere(; transform = DEFAULT_TRANSFORM, material = material(), parent = nothing, shadow = true) = update_cache!(new(transform, material, parent, shadow, DEFAULT_TRANSFORM, DEFAULT_TRANSFORM, DEFAULT_TRANSFORM, aabb()))
-end
-
-# chapter 9; literally exactly the same as sphere,
-# the only purpose of this struct is to facilitate
-# dispatch. unsure how to refactor though.
-mutable struct plane <: shape
-    transform::Transform
-    material::material
-    parent::optional{shape}
-    shadow::Bool
-    inverse_transform::Transform
-    inherited_transform::Transform
-    inverse_inherited_transform::Transform
-    bbox::aabb
-    plane(; transform = DEFAULT_TRANSFORM, material = material(), parent = nothing, shadow = true) = update_cache!(new(transform, material, parent, shadow, DEFAULT_TRANSFORM, DEFAULT_TRANSFORM, DEFAULT_TRANSFORM, aabb()))
-end
-
-# chapter 12
-mutable struct cube <: shape
-    transform::Transform
-    material::material
-    parent::optional{shape}
-    shadow::Bool
-    inverse_transform::Transform
-    inherited_transform::Transform
-    inverse_inherited_transform::Transform
-    bbox::aabb
-    cube(; transform = DEFAULT_TRANSFORM, material = material(), parent = nothing, shadow = true) = update_cache!(new(transform, material, parent, shadow, DEFAULT_TRANSFORM, DEFAULT_TRANSFORM, DEFAULT_TRANSFORM, aabb()))
-end
-
-# chapter 13
-mutable struct cylinder <: shape
-    transform::Transform
-    material::material
-    min::Float64
-    max::Float64
-    closed::Bool
-    parent::optional{shape}
-    shadow::Bool
-    inverse_transform::Transform
-    inherited_transform::Transform
-    inverse_inherited_transform::Transform
-    bbox::aabb
-    cylinder(; transform = DEFAULT_TRANSFORM, material = material(), min = -Inf, max = Inf, closed = false, parent = nothing, shadow = true) = update_cache!(new(transform, material, min, max, closed, parent, shadow, DEFAULT_TRANSFORM, DEFAULT_TRANSFORM, DEFAULT_TRANSFORM, aabb()))
-end
-
-# chapter 13
-mutable struct cone <: shape
-    transform::Transform
-    material::material
-    min::Float64
-    max::Float64
-    closed::Bool
-    parent::optional{shape}
-    shadow::Bool
-    inverse_transform::Transform
-    inherited_transform::Transform
-    inverse_inherited_transform::Transform
-    bbox::aabb
-    cone(; transform = DEFAULT_TRANSFORM, material = material(), min = -Inf, max = Inf, closed = false, parent = nothing, shadow = true) = update_cache!(new(transform, material, min, max, closed, parent, shadow, DEFAULT_TRANSFORM, DEFAULT_TRANSFORM, DEFAULT_TRANSFORM, aabb()))
-end
-
-# chapter 15
-mutable struct triangle <: shape
-    p1::VectorF # p == point, i.e. vertex
-    p2::VectorF
-    p3::VectorF
-    e1::VectorF # e == edge, i.e. side
-    e2::VectorF
-    n::VectorF # n == normal, i.e. pre-calculated surface normal
-    transform::Transform
-    material::material
-    parent::optional{shape}
-    shadow::Bool
-    inverse_transform::Transform
-    inherited_transform::Transform
-    inverse_inherited_transform::Transform
-    bbox::aabb
-    function triangle(; p1::VectorF, p2::VectorF, p3::VectorF, transform::Transform = DEFAULT_TRANSFORM, material = material(), parent = nothing, shadow = true)
-        e1 = p2 - p1
-        e2 = p3 - p1
-        n = normalize(cross(e2, e1))
-        return update_cache!(new(p1, p2, p3, p2 - p1, p3 - p1, n, transform, material, parent, shadow, DEFAULT_TRANSFORM, DEFAULT_TRANSFORM, DEFAULT_TRANSFORM, aabb()))
-    end
-end
-
-# chapter 15
-mutable struct smooth_triangle <: shape
-    p1::VectorF
-    p2::VectorF
-    p3::VectorF
-    e1::VectorF
-    e2::VectorF
-    n1::VectorF
-    n2::VectorF
-    n3::VectorF
-    transform::Transform
-    material::material
-    parent::optional{shape}
-    shadow::Bool
-    inverse_transform::Transform
-    inherited_transform::Transform
-    inverse_inherited_transform::Transform
-    bbox::aabb
-    smooth_triangle(; p1::VectorF, p2::VectorF, p3::VectorF, n1::VectorF, n2::VectorF, n3::VectorF, transform::Transform = DEFAULT_TRANSFORM, material = material(), parent = nothing, shadow = true) = update_cache!(new(p1, p2, p3, p2 - p1, p3 - p1, n1, n2, n3, transform, material, parent, shadow, DEFAULT_TRANSFORM, DEFAULT_TRANSFORM, DEFAULT_TRANSFORM, aabb()))
-end
-
-# remember, can't use our cached transforms here because this is where they are calculated
-inherited_transform(s::shape)::Transform = ((exists(s.parent)) ? inherited_transform(s.parent) : DEFAULT_TRANSFORM) * s.transform
 
 mutable struct intersection
     t::Number
@@ -422,57 +259,42 @@ import Base.position
 position(r::ray, t::Number) = r.origin + r.velocity * t
 
 import Base.intersect
-intersect(s::shape, r::ray) = _intersect(s, (s isa group) ? r : transform(r, s.inverse_inherited_transform)) # chapter 9 and chapter 14
+intersect(s::shape, r::ray) = _intersect(s, (is_aggregate(s)) ? r : transform(r, s.inverse_inherited_transform))
 
 hit(is::Intersections) = (all(map(i -> i.t < 0, is))) ? nothing : is[argmin(map(i -> (i.t < 0) ? Inf : i.t, is))]
 
-#=
-    chapter 6
-=#
+intersects(s::shape, r::ray) = (!(s isa group) || !isempty(s.children)) ? intersects(s.bbox, r) : false
 
-function normal_at(s::shape, p::VectorF; hit::optional{intersection} = nothing)
-    # chapter 14 onwards
-    lp = world_to_object(s, p)
-    ln = _normal_at(s, lp, hit=hit)
-    return normal_to_world(s, ln)
-end
+function check_axis(origin::Float64, direction::Float64, axmin::Float64=-1.0, axmax::Float64=1.0)
+    tmin_numerator = (axmin - origin)
+    tmax_numerator = (axmax - origin)
 
-reflect(v::VectorF, n::VectorF) = v - (n * (2 * (v ⋅ n)))
+    tmin = tmin_numerator * Inf
+    tmax = tmax_numerator * Inf
 
-function lighting(m, l, p, eyev, normalv, intensity = 1.0; object::optional{shape} = nothing)
-    # this convoluted expression is necessary for lighting test cases where you have a material without an object
-    c = (exists(m.pattern)) ? ((exists(object)) ? pattern_at_object(m.pattern, object, p) : pattern_at(m.pattern, p)) : m.color # chapter 10
-    effective_color = hadamard(c, l.intensity)
-    ambient = effective_color * m.ambient
-    dssum = colorant"black"
-    for v=0:l.vsteps-1
-        for u=0:l.usteps-1
-            diffuse = colorant"black"
-            specular = colorant"black"
-
-            pos = point_on_light(l, u, v)
-            lightv = normalize(pos - p)
-            light_dot_normal = lightv ⋅ normalv
-            if light_dot_normal >= 0
-                diffuse = effective_color * m.diffuse * light_dot_normal
-                reflectv = reflect(-lightv, normalv)
-                reflect_dot_eye = reflectv ⋅ eyev
-                if reflect_dot_eye > 0
-                    factor = reflect_dot_eye ^ m.shininess
-                    specular = l.intensity * m.specular * factor
-                end
-            end
-
-            dssum += diffuse + specular
-        end
+    if abs(direction) >= my_eps
+        tmin = tmin_numerator / direction
+        tmax = tmax_numerator / direction
     end
 
-    return ambient + (dssum / l.samples) * intensity
+    return min(tmin, tmax), max(tmin, tmax)
 end
 
-#=
-    chapter 7
-=#
+function intersects(b::aabb, r::ray)
+    # almost identical to cube intersection
+    xtmin, xtmax = check_axis(r.origin[1], r.velocity[1], b.min[1], b.max[1])
+    ytmin, ytmax = check_axis(r.origin[2], r.velocity[2], b.min[2], b.max[2])
+    ztmin, ztmax = check_axis(r.origin[3], r.velocity[3], b.min[3], b.max[3])
+
+    tmin = max(xtmin, ytmin, ztmin)
+    tmax = min(xtmax, ytmax, ztmax)
+
+    if tmin > tmax return false end
+
+    return true
+end
+
+#= WORLDS =#
 
 mutable struct world
     lights
@@ -480,7 +302,30 @@ mutable struct world
     world(; lights = [], objects = []) = new(lights, objects)
 end
 
-function default_world(; light = point_light(point(-10, 10, -10), colorant"white"), t1 = DEFAULT_TRANSFORM, m1 = material(color = RGB(0.8, 1.0, 0.6), diffuse = 0.7, specular = 0.2), t2 = scaling(0.5, 0.5, 0.5), m2 = material())
+intersect(w::world, r::ray) = Intersections(sort([i for o in w.objects for i in intersect(o, r)], by=(i)->i.t))
+
+world_to_object(s::shape, p::VectorF) = s.inverse_inherited_transform * p
+
+function normal_to_world(s::shape, n::VectorF)
+    n = s.inverse_inherited_transform' * n
+    n[4] = 0
+    normalize!(n)
+    return n
+end
+
+function normal_at(s::shape, p::VectorF; hit::optional{intersection} = nothing)
+    lp = world_to_object(s, p)
+    ln = _normal_at(s, lp, hit=hit)
+    return normal_to_world(s, ln)
+end
+
+function default_world(;
+    light = point_light(point(-10, 10, -10), colorant"white"),
+    t1 = DEFAULT_TRANSFORM,
+    m1 = material(color = RGB(0.8, 1.0, 0.6), diffuse = 0.7, specular = 0.2),
+    t2 = scaling(0.5, 0.5, 0.5),
+    m2 = material())
+
     s1 = sphere(transform = t1, material = m1)
     s2 = sphere(transform = t2, material = m2)
     w = world()
@@ -489,7 +334,73 @@ function default_world(; light = point_light(point(-10, 10, -10), colorant"white
     return w
 end
 
-intersect(w::world, r::ray) = Intersections(sort([i for o in w.objects for i in intersect(o, r)], by=(i)->i.t))
+#= CAMERAS =#
+
+mutable struct camera
+    hsize::Number
+    vsize::Number
+    fov::Number
+    transform::Transform
+    half_view::Number
+    aspect::Number
+    half_width::Number
+    half_height::Number
+    pixel_size::Number
+    inverse_transform::Transform
+    function camera(; hsize = 160, vsize = 120, fov = π / 2, transform = DEFAULT_TRANSFORM)
+        half_view = tan(fov / 2)
+        aspect = hsize / vsize
+        half_width = half_view
+        half_height = half_view
+        if aspect >= 1
+            half_height /= aspect
+        else
+            half_width *= aspect
+        end
+        pixel_size = (half_width * 2) / hsize
+        return update_cache!(new(hsize, vsize, fov, transform, half_view, aspect, half_width, half_height, pixel_size, DEFAULT_TRANSFORM))
+    end
+end
+
+# almost always used to intialize a camera transform
+function view_transform(from, to, up)
+    forward = normalize(to - from)
+    upn = normalize(up)
+    left = cross(upn, forward)
+    true_up = cross(forward, left)
+    ornt = [
+        left[1] left[2] left[3] 0
+        true_up[1] true_up[2] true_up[3] 0
+        -forward[1] -forward[2] -forward[3] 0
+        0 0 0 1
+    ]
+    return ornt * translation(-from[1], -from[2], -from[3])
+end
+
+function ray_for_pixel(c::camera, px::Int, py::Int)
+    xoff = (px + 0.5) * c.pixel_size
+    yoff = (py + 0.5) * c.pixel_size
+    wx = c.half_width - xoff
+    wy = c.half_height - yoff
+    pix = c.inverse_transform * point(wx, wy, -1)
+    orgn = c.inverse_transform * point(0, 0, 0)
+    dir = normalize(pix - orgn)
+    return ray(orgn, dir)
+end
+
+#= RAY TRACING =#
+
+function raytrace(cam::camera, w::world)
+    img = canvas(cam.hsize, cam.vsize)
+    for y=1:cam.vsize
+        for x=1:cam.hsize
+            r = ray_for_pixel(cam, x, y)
+            c = color_at(w, r)
+            pixel!(img, x, y, clamp_color(c))
+        end
+    end
+    return img
+end
 
 mutable struct computations
     t::Number
@@ -498,9 +409,9 @@ mutable struct computations
     eyev::VectorF
     normalv::VectorF
     inside::Bool
-    over_point::VectorF # chapter 8
-    under_point::VectorF # chapter 11
-    reflectv::VectorF # chapter 11
+    over_point::VectorF
+    under_point::VectorF
+    reflectv::VectorF
     n1::Float64
     n2::Float64
 end
@@ -516,18 +427,8 @@ function prepare_computations(i::intersection, r::ray, xs::optional{Intersection
         normalv = -normalv
         inside = true
     end
-    #=
-        chapter 8
 
-        the book has us adjusting only by ϵ, but that doesn't appear
-        to be enough for me. so i added zeros until the "fleas" went
-        away, and i'll revisit my approach later if it breaks somehow.
-    =#
-    over_point = p + (normalv * my_eps)
-
-    #=
-        chapter 11
-    =#
+    over_point = p + (normalv * my_eps) # add zeros until the fleas go away
 
     under_point = p - (normalv * my_eps)
 
@@ -566,47 +467,6 @@ function prepare_computations(i::intersection, r::ray, xs::optional{Intersection
     return computations(t, object, p, eyev, normalv, inside, over_point, under_point, reflectv, n1, n2)
 end
 
-function shade_hit(w::world, c::computations, remaining::Int = DEFAULT_RECURSION_LIMIT)
-    #=
-        chapter 8
-
-        doing shadows with multiple lights is sorta weird.
-        something in shadow from one light may not be in shadow
-        from a different light, but the expected lighting result
-        for a point in shadow is always the ambient color of the
-        object's material, so in a scene with multiple lights an
-        object that is unlit by several of them will have its ambient
-        color added multiple times, which doesn't seem right, and
-        this isn't a case the book tests. nor is it simple to do this
-        inside the lighting function. my solution for this is to do
-        all the shadow calculations before the lighting calculations
-        and either use the results in the sum or straight-up return
-        the object's ambient color.
-        unsure how to handle the object's ambient color being added multiple
-        times from multiple light sources, but for now i'll assume that will
-        be handled by the blending that occurs in the lighting function.
-        i guess for several lit vs unlit sources, i'd need to sum the results
-        from only the lit ones.
-
-        bonus chapter 1
-
-        area lights and soft shadows made this function a lot simpler.
-    =#
-
-    surface = sum(map(l -> lighting(c.object.material, l, c.over_point, c.eyev, c.normalv, intensity_at(l, c.over_point, w), object = c.object), w.lights))
-
-    # chapter 11
-    reflected = reflected_color(w, c, remaining)
-    refracted = refracted_color(w, c, remaining)
-    m = c.object.material
-    if m.reflective > 0 && m.transparency > 0
-        reflectance = schlick(c)
-        return surface + reflected * reflectance + refracted * (1 - reflectance)
-    else
-        return surface + reflected + refracted
-    end
-end
-
 function color_at(w::world, r::ray, remaining::Int = DEFAULT_RECURSION_LIMIT)
     is = intersect(w, r)
     h = hit(is)
@@ -617,187 +477,18 @@ function color_at(w::world, r::ray, remaining::Int = DEFAULT_RECURSION_LIMIT)
     return c
 end
 
-function view_transform(from, to, up)
-    forward = normalize(to - from)
-    upn = normalize(up)
-    left = cross(upn, forward)
-    true_up = cross(forward, left)
-    ornt = [
-        left[1] left[2] left[3] 0
-        true_up[1] true_up[2] true_up[3] 0
-        -forward[1] -forward[2] -forward[3] 0
-        0 0 0 1
-    ]
-    return ornt * translation(-from[1], -from[2], -from[3])
-end
-
-mutable struct camera <: shape
-    hsize::Number
-    vsize::Number
-    fov::Number
-    transform::Transform
-    material::optional{material}
-    parent::optional{shape}
-    half_view::Number
-    aspect::Number
-    half_width::Number
-    half_height::Number
-    pixel_size::Number
-    inverse_transform::Transform
-    inherited_transform::Transform
-    inverse_inherited_transform::Transform
-    bbox::aabb
-    function camera(; hsize = 160, vsize = 120, fov = π / 2, transform = DEFAULT_TRANSFORM)
-        half_view = tan(fov / 2)
-        aspect = hsize / vsize
-        half_width = half_view
-        half_height = half_view
-        if aspect >= 1
-            half_height /= aspect
-        else
-            half_width *= aspect
-        end
-        pixel_size = (half_width * 2) / hsize
-        return update_cache!(new(hsize, vsize, fov, transform, nothing, nothing, half_view, aspect, half_width, half_height, pixel_size, DEFAULT_TRANSFORM, DEFAULT_TRANSFORM, DEFAULT_TRANSFORM, aabb()))
+function shade_hit(w::world, c::computations, remaining::Int = DEFAULT_RECURSION_LIMIT)
+    surface = sum(map(l -> lighting(c.object.material, l, c.over_point, c.eyev, c.normalv, intensity_at(l, c.over_point, w), object = c.object), w.lights))
+    reflected = reflected_color(w, c, remaining)
+    refracted = refracted_color(w, c, remaining)
+    m = c.object.material
+    if m.reflective > 0 && m.transparency > 0
+        reflectance = schlick(c)
+        return surface + reflected * reflectance + refracted * (1 - reflectance)
+    else
+        return surface + reflected + refracted
     end
 end
-
-function ray_for_pixel(c::camera, px::Int, py::Int)
-    xoff = (px + 0.5) * c.pixel_size
-    yoff = (py + 0.5) * c.pixel_size
-    wx = c.half_width - xoff
-    wy = c.half_height - yoff
-    pix = c.inverse_transform * point(wx, wy, -1)
-    orgn = c.inverse_transform * point(0, 0, 0)
-    dir = normalize(pix - orgn)
-    return ray(orgn, dir)
-end
-
-function raytrace(cam::camera, w::world)
-    img = canvas(cam.hsize, cam.vsize)
-    for y=1:cam.vsize
-        for x=1:cam.hsize
-            r = ray_for_pixel(cam, x, y)
-            c = color_at(w, r)
-            pixel!(img, x, y, clamp_color(c))
-        end
-    end
-    return img
-end
-
-#=
-    chapter 8
-=#
-
-function is_shadowed(w::world, lpos::VectorF, p::VectorF)
-    v = lpos - p
-    dist = norm(v)
-    dir = normalize(v)
-    r = ray(p, dir)
-    is = intersect(w, r)
-    return any(i -> i.t < dist && i.t > 0 && i.object.shadow, is)
-end
-
-#=
-    chapter 9
-=#
-
-# algorithm written in chapter 5 and refactored to here in chapter 9
-function _intersect(s::sphere, r::ray)
-    sphere_to_ray = r.origin - point(0, 0, 0) # all spheres centered at origin for now
-    a = r.velocity ⋅ r.velocity
-    b = 2 * r.velocity ⋅ sphere_to_ray
-    c = sphere_to_ray ⋅ sphere_to_ray - 1
-
-    discriminant = b^2 - 4 * a * c
-
-    if discriminant < 0
-        return Intersections([])
-    end
-
-    t1 = (-b - √discriminant) / 2a
-    t2 = (-b + √discriminant) / 2a
-
-    return intersections(intersection(t1, s), intersection(t2, s))
-end
-
-# algorithm written in chapter 6 and refactored to here in chapter 9
-_normal_at(s::sphere, op::VectorF; hit::optional{intersection} = nothing) = op - point(0, 0, 0)
-
-function _intersect(p::plane, r::ray)
-    if abs(r.velocity[2]) < my_eps
-        return Intersections([])
-    end
-
-    t = -r.origin[2] / r.velocity[2]
-    return intersections(intersection(t, p))
-end
-
-_normal_at(p::plane, op::VectorF; hit::optional{intersection} = nothing) = vector(0, 1, 0) # we're in object space, and the normal is the same everywhere...
-
-#=
-    chapter 10
-=#
-
-# chapter 11
-mutable struct test_pattern <: pattern
-    transform::Transform
-    inverse_transform::Transform
-    test_pattern(; a = colorant"white", b = colorant"black", transform = DEFAULT_TRANSFORM) = update_cache!(new(transform, DEFAULT_TRANSFORM))
-end
-
-mutable struct stripes <: pattern
-    a::Color
-    b::Color
-    transform::Transform
-    inverse_transform::Transform
-    stripes(; a = colorant"white", b = colorant"black", transform = DEFAULT_TRANSFORM) = update_cache!(new(a, b, transform, DEFAULT_TRANSFORM))
-end
-
-mutable struct gradient <: pattern
-    a::Color
-    b::Color
-    transform::Transform
-    inverse_transform::Transform
-    gradient(; a = colorant"white", b = colorant"black", transform = DEFAULT_TRANSFORM) = update_cache!(new(a, b, transform, DEFAULT_TRANSFORM))
-end
-
-mutable struct rings <: pattern
-    a::Color
-    b::Color
-    transform::Transform
-    inverse_transform::Transform
-    rings(; a = colorant"white", b = colorant"black", transform = DEFAULT_TRANSFORM) = update_cache!(new(a, b, transform, DEFAULT_TRANSFORM))
-end
-
-mutable struct checkers <: pattern
-    a::Color
-    b::Color
-    transform::Transform
-    inverse_transform::Transform
-    checkers(; a = colorant"white", b = colorant"black", transform = DEFAULT_TRANSFORM) = update_cache!(new(a, b, transform, DEFAULT_TRANSFORM))
-end
-
-pattern_at(pat::test_pattern, p::VectorF) = RGB(Float64.(p[1:3])...)
-pattern_at(pat::stripes, p::VectorF) = (floor(p[1]) % 2 == 0) ? pat.a : pat.b
-function pattern_at(pat::gradient, p::VectorF)
-    # when you want to handle "negative" colors differently than your library
-    a, b = pat.a, pat.b
-    ar, ag, ab = Float64.([red(a), green(a), blue(a)])
-    br, bg, bb = Float64.([red(b), green(b), blue(b)])
-    dr, dg, db = [br - ar, bg - ag, bb - ab] * (p[1] - floor(p[1]))
-    return RGB(red(pat.a) + dr, green(pat.a) + dg, blue(pat.a) + db)
-end
-pattern_at(pat::rings, p::VectorF) = (floor(√(p[1]^2 + p[3]^2)) % 2 == 0) ? pat.a : pat.b
-pattern_at(pat::checkers, p::VectorF) = (sum(floor.(p[1:3])) % 2 ≈ 0) ? pat.a : pat.b
-pattern_at_object(pat::pattern, object::shape, p::VectorF) = pattern_at(pat, pat.inverse_transform * world_to_object(object, p))
-
-#=
-    chapter 11
-=#
-
-# a helper the book uses, without which some test cases are confusing to transcribe
-glass_sphere() = sphere(material = material(transparency = 1.0, refractive_index = 1.5))
 
 function reflected_color(w::world, comps::computations, remaining::Int = DEFAULT_RECURSION_LIMIT)
     if comps.object.material.reflective == 0 || remaining <= 0 return colorant"black" end
@@ -839,24 +530,434 @@ function schlick(c::computations)
     return r0 + (1 - r0) * (1 - _cos)^5
 end
 
-#=
-    chapter 12
-=#
+#= LIGHTING =#
 
-function check_axis(origin::Float64, direction::Float64, axmin::Float64=-1.0, axmax::Float64=1.0)
-    tmin_numerator = (axmin - origin)
-    tmax_numerator = (axmax - origin)
+function lighting(m, l, p, eyev, normalv, intensity = 1.0; object::optional{shape} = nothing)
+    # this convoluted expression is necessary for lighting test cases where you have a material without an object
+    c = (exists(m.pattern)) ? ((exists(object)) ? pattern_at_object(m.pattern, object, p) : pattern_at(m.pattern, p)) : m.color
+    effective_color = hadamard(c, l.intensity)
+    ambient = effective_color * m.ambient
+    dssum = colorant"black"
+    for v=0:l.vsteps-1
+        for u=0:l.usteps-1
+            diffuse = colorant"black"
+            specular = colorant"black"
 
-    tmin = tmin_numerator * Inf
-    tmax = tmax_numerator * Inf
+            pos = point_on_light(l, u, v)
+            lightv = normalize(pos - p)
+            light_dot_normal = lightv ⋅ normalv
+            if light_dot_normal >= 0
+                diffuse = effective_color * m.diffuse * light_dot_normal
+                reflectv = reflect(-lightv, normalv)
+                reflect_dot_eye = reflectv ⋅ eyev
+                if reflect_dot_eye > 0
+                    factor = reflect_dot_eye ^ m.shininess
+                    specular = l.intensity * m.specular * factor
+                end
+            end
 
-    if abs(direction) >= my_eps
-        tmin = tmin_numerator / direction
-        tmax = tmax_numerator / direction
+            dssum += diffuse + specular
+        end
     end
 
-    return min(tmin, tmax), max(tmin, tmax)
+    return ambient + (dssum / l.samples) * intensity
 end
+
+function is_shadowed(w::world, lpos::VectorF, p::VectorF)
+    v = lpos - p
+    dist = norm(v)
+    dir = normalize(v)
+    r = ray(p, dir)
+    is = intersect(w, r)
+    return any(i -> i.t < dist && i.t > 0 && i.object.shadow, is)
+end
+
+mutable struct sequence
+    elems::VectorF
+    pos::Int
+    sequence(elems::Float64...) = new([elems...], 1)
+end
+
+sequence(elems::Number...) = sequence(Float64.(elems)...)
+
+function next(s::sequence)
+    if length(s.elems) > 0
+        e = s.elems[s.pos]
+        s.pos += 1
+        if s.pos > length(s.elems) s.pos = 1 end
+    else e = rand() end
+    return e
+end
+
+mutable struct area_light
+    corner::VectorF
+    uvec::VectorF
+    usteps::Number
+    vvec::VectorF
+    vsteps::Number
+    samples::Number
+    intensity::Color
+    jitter_by::sequence # will need to be refactored for "real" renders
+    area_light(corner, uvec, usteps, vvec, vsteps, intensity = colorant"white", seq = sequence(0.5)) = new(corner, uvec / usteps, usteps, vvec / vsteps, vsteps, usteps * vsteps, intensity, seq)
+end
+
+point_light(pos::VectorF, intensity::Color) = area_light(pos, point(0, 0, 0), 1, point(0, 0, 0), 1, intensity, sequence(0))
+
+point_on_light(l, u, v) = l.corner + l.uvec * (u + next(l.jitter_by)) + l.vvec * (v + next(l.jitter_by))
+
+function intensity_at(l::area_light, p::VectorF, w::world)
+    total = 0.0
+
+    for v=0:l.vsteps-1
+        for u=0:l.usteps-1
+            if !is_shadowed(w, point_on_light(l, u, v), p) total += 1.0 end
+        end
+    end
+
+    return total / l.samples
+end
+
+#= MATERIALS =#
+
+mutable struct material
+    color::Color
+    ambient::Float64
+    diffuse::Float64
+    specular::Float64
+    shininess::Float64
+    pattern::optional{pattern}
+    reflective::Float64
+    transparency::Float64
+    refractive_index::Float64
+    material(;
+        color = colorant"white",
+        ambient = 0.1,
+        diffuse = 0.9,
+        specular = 0.9,
+        shininess = 200.0,
+        pattern = nothing,
+        reflective = 0.0,
+        transparency = 0.0,
+        refractive_index = 1.0
+    ) = new(color, ambient, diffuse, specular, shininess, pattern, reflective, transparency, refractive_index)
+end
+
+function propagate_material!(s::shape)
+    if exists(s.material)
+        if s isa group
+            for c ∈ s.children
+                c.material = s.material
+                propagate_material!(c)
+            end
+        elseif s isa csg
+            s.l.material = s.material
+            s.r.material = s.material
+            propagate_material!(s.l)
+            propagate_material!(s.r)
+        end
+    end
+end
+
+#= PATTERNS =#
+
+pattern_at_object(pat::pattern, object::shape, p::VectorF) = pattern_at(pat, pat.inverse_transform * world_to_object(object, p))
+
+mutable struct test_pattern <: pattern
+    transform::Transform
+    inverse_transform::Transform
+    test_pattern(; a = colorant"white", b = colorant"black", transform = DEFAULT_TRANSFORM) = update_cache!(new(transform, DEFAULT_TRANSFORM))
+end
+
+pattern_at(pat::test_pattern, p::VectorF) = RGB(Float64.(p[1:3])...)
+
+mutable struct stripes <: pattern
+    a::Color
+    b::Color
+    transform::Transform
+    inverse_transform::Transform
+    stripes(; a = colorant"white", b = colorant"black", transform = DEFAULT_TRANSFORM) = update_cache!(new(a, b, transform, DEFAULT_TRANSFORM))
+end
+
+pattern_at(pat::stripes, p::VectorF) = (floor(p[1]) % 2 == 0) ? pat.a : pat.b
+
+mutable struct gradient <: pattern
+    a::Color
+    b::Color
+    transform::Transform
+    inverse_transform::Transform
+    gradient(; a = colorant"white", b = colorant"black", transform = DEFAULT_TRANSFORM) = update_cache!(new(a, b, transform, DEFAULT_TRANSFORM))
+end
+
+function pattern_at(pat::gradient, p::VectorF)
+    # when you want to handle "negative" colors differently than your library
+    a, b = pat.a, pat.b
+    ar, ag, ab = Float64.([red(a), green(a), blue(a)])
+    br, bg, bb = Float64.([red(b), green(b), blue(b)])
+    dr, dg, db = [br - ar, bg - ag, bb - ab] * (p[1] - floor(p[1]))
+    return RGB(red(pat.a) + dr, green(pat.a) + dg, blue(pat.a) + db)
+end
+
+mutable struct rings <: pattern
+    a::Color
+    b::Color
+    transform::Transform
+    inverse_transform::Transform
+    rings(; a = colorant"white", b = colorant"black", transform = DEFAULT_TRANSFORM) = update_cache!(new(a, b, transform, DEFAULT_TRANSFORM))
+end
+
+pattern_at(pat::rings, p::VectorF) = (floor(√(p[1]^2 + p[3]^2)) % 2 == 0) ? pat.a : pat.b
+
+mutable struct checkers <: pattern
+    a::Color
+    b::Color
+    transform::Transform
+    inverse_transform::Transform
+    checkers(; a = colorant"white", b = colorant"black", transform = DEFAULT_TRANSFORM) = update_cache!(new(a, b, transform, DEFAULT_TRANSFORM))
+end
+
+pattern_at(pat::checkers, p::VectorF) = (sum(floor.(p[1:3])) % 2 ≈ 0) ? pat.a : pat.b
+
+#= TEXTURE MAPPING =#
+
+mutable struct texture_map <: pattern
+    pat::pattern
+    uvmap # should be a function that takes a point and returns a u,v pair
+    transform::Transform
+    inverse_transform::Transform
+    texture_map(pat::pattern, uvmap; transform = DEFAULT_TRANSFORM) = update_cache!(new(pat, uvmap, transform, DEFAULT_TRANSFORM))
+end
+
+pattern_at(tmap::texture_map, p::VectorF) = pattern_at(tmap.pat, tmap.uvmap(p)...)
+
+mutable struct cube_map <: pattern
+    faces::Vector{pattern}
+    transform::Transform
+    inverse_transform::Transform
+    # must pass faces in order L, F, R, B, U, D for pattern_at to work
+    cube_map(faces::pattern...; transform = DEFAULT_TRANSFORM) = update_cache!(new([faces...], transform, DEFAULT_TRANSFORM))
+end
+
+pattern_at(c::cube_map, p::VectorF) = pattern_at(c.faces[Int(face(p))], cubical_uv_map(p)...)
+
+mutable struct uv_checkers <: pattern
+    width::Number
+    height::Number
+    a::Color
+    b::Color
+    transform::Transform
+    inverse_transform::Transform
+    uv_checkers(w::Number, h::Number, a::Color, b::Color; transform = DEFAULT_TRANSFORM) = update_cache!(new(w, h, a, b, transform, DEFAULT_TRANSFORM))
+end
+
+pattern_at(pat::uv_checkers, u::Number, v::Number) = ((floor(u * pat.width) + floor(v * pat.height)) % 2 == 0) ? pat.a : pat.b
+
+mutable struct uv_align_check <: pattern
+    main::Color
+    ul::Color
+    ur::Color
+    bl::Color
+    br::Color
+    transform::Transform
+    inverse_transform::Transform
+    uv_align_check(main::Color, ul::Color, ur::Color, bl::Color, br::Color; transform = DEFAULT_TRANSFORM) = update_cache!(new(main, ul, ur, bl, br, transform, DEFAULT_TRANSFORM))
+end
+
+function pattern_at(pat::uv_align_check, u::Number, v::Number)
+    if v > 0.8
+        if u < 0.2 return pat.ul end
+        if u > 0.8 return pat.ur end
+    elseif v < 0.2
+        if u < 0.2 return pat.bl end
+        if u > 0.8 return pat.br end
+    end
+
+    return pat.main
+end
+
+mutable struct image_map <: pattern
+    canvas
+    transform::Transform
+    inverse_transform::Transform
+    image_map(canvas; transform = DEFAULT_TRANSFORM) = update_cache!(new(canvas, transform, DEFAULT_TRANSFORM))
+end
+
+function pattern_at(img::image_map, u::Number, v::Number)
+    v = 1 - v
+    x = u * (width(img.canvas) - 1) + 1
+    y = v * (height(img.canvas) - 1) + 1
+    return pixel(img.canvas, Int(round(x)), Int(round(y)))
+end
+
+function spherical_uv_map(p::VectorF)
+    θ = atan(p[1], p[3])
+    v = vector(p[1:3]...)
+    r = norm(v)
+    ϕ = acos(p[2] / r)
+
+    u = 1 - ((θ / 2π) + 0.5)
+    v = 1 - ϕ/π
+
+    return (u, v)
+end
+
+function planar_uv_map(p::VectorF)
+    u = p[1] % 1
+    if u < 0 u += 1 end
+    v = p[3] % 1
+    if v < 0 v += 1 end
+    return (u, v)
+end
+
+function cylindrical_uv_map(p::VectorF)
+    θ = atan(p[1], p[3])
+    u = 1 - ((θ / 2π) + 0.5)
+    v = p[2] % 1
+    if v < 0 v += 1 end
+
+    return (u, v)
+end
+
+@enum faces LEFT=1 FRONT=2 RIGHT=3 BACK=4 UP=5 DOWN=6
+
+function face(p::VectorF)
+    coord = max(abs.(p[1:3])...)
+
+    if coord == p[1] return RIGHT
+    elseif coord == -p[1] return LEFT
+    elseif coord == p[2] return UP
+    elseif coord == -p[2] return DOWN
+    elseif coord == p[3] return FRONT
+    else return BACK end
+end
+
+function cubical_uv_map(p::VectorF)
+    u = 0.0
+    v = 0.0
+
+    f = face(p)
+
+    if f == FRONT
+        u = ((p[1] + 1) % 2.0) / 2.0
+        v = ((p[2] + 1) % 2.0) / 2.0
+    elseif f == BACK
+        u = ((1 - p[1]) % 2.0) / 2.0
+        v = ((p[2] + 1) % 2.0) / 2.0
+    elseif f == LEFT
+        u = ((p[3] + 1) % 2.0) / 2.0
+        v = ((p[2] + 1) % 2.0) / 2.0
+    elseif f == RIGHT
+        u = ((1 - p[3]) % 2.0) / 2.0
+        v = ((p[2] + 1) % 2.0) / 2.0
+    elseif f == DOWN
+        u = ((p[1] + 1) % 2.0) / 2.0
+        v = ((p[3] + 1) % 2.0) / 2.0
+    else
+        u = ((p[1] + 1) % 2.0) / 2.0
+        v = ((1 - p[3]) % 2.0) / 2.0
+    end
+
+    return (u, v)
+end
+
+#= SHAPES =#
+
+mutable struct test_shape <: shape
+    transform::Transform
+    material::material
+    parent::optional{shape}
+    saved_ray::optional{ray}
+    shadow::Bool
+    inverse_transform::Transform
+    inherited_transform::Transform
+    inverse_inherited_transform::Transform
+    bbox::aabb
+    test_shape(; transform = DEFAULT_TRANSFORM, material = material(), parent = nothing, r = nothing, shadow = true) = update_cache!(new(transform, material, parent, r, shadow, DEFAULT_TRANSFORM, DEFAULT_TRANSFORM, DEFAULT_TRANSFORM, aabb()))
+end
+
+_bounds(t::test_shape) = aabb(point(-1, -1, -1), point(1, 1, 1))
+
+function _intersect(t::test_shape, r::ray)
+    t.saved_ray = r
+    return Intersections([])
+end
+
+_normal_at(t::test_shape, p::VectorF; hit::optional{intersection} = nothing) = vector(p[1:3]...)
+
+mutable struct sphere <: shape
+    transform::Transform
+    material::material
+    parent::optional{shape}
+    shadow::Bool
+    inverse_transform::Transform
+    inherited_transform::Transform
+    inverse_inherited_transform::Transform
+    bbox::aabb
+    sphere(; transform = DEFAULT_TRANSFORM, material = material(), parent = nothing, shadow = true) = update_cache!(new(transform, material, parent, shadow, DEFAULT_TRANSFORM, DEFAULT_TRANSFORM, DEFAULT_TRANSFORM, aabb()))
+end
+
+_bounds(s::sphere) = aabb(point(-1, -1, -1), point(1, 1, 1))
+
+function _intersect(s::sphere, r::ray)
+    sphere_to_ray = r.origin - point(0, 0, 0)
+    a = r.velocity ⋅ r.velocity
+    b = 2 * r.velocity ⋅ sphere_to_ray
+    c = sphere_to_ray ⋅ sphere_to_ray - 1
+
+    discriminant = b^2 - 4 * a * c
+
+    if discriminant < 0
+        return Intersections([])
+    end
+
+    t1 = (-b - √discriminant) / 2a
+    t2 = (-b + √discriminant) / 2a
+
+    return intersections(intersection(t1, s), intersection(t2, s))
+end
+
+_normal_at(s::sphere, op::VectorF; hit::optional{intersection} = nothing) = op - point(0, 0, 0)
+
+# makes it easier to write test cases
+glass_sphere() = sphere(material = material(transparency = 1.0, refractive_index = 1.5))
+
+mutable struct plane <: shape
+    transform::Transform
+    material::material
+    parent::optional{shape}
+    shadow::Bool
+    inverse_transform::Transform
+    inherited_transform::Transform
+    inverse_inherited_transform::Transform
+    bbox::aabb
+    plane(; transform = DEFAULT_TRANSFORM, material = material(), parent = nothing, shadow = true) = update_cache!(new(transform, material, parent, shadow, DEFAULT_TRANSFORM, DEFAULT_TRANSFORM, DEFAULT_TRANSFORM, aabb()))
+end
+
+_bounds(p::plane) = aabb(point(-Inf, 0, -Inf), point(Inf, 0, Inf))
+
+function _intersect(p::plane, r::ray)
+    if abs(r.velocity[2]) < my_eps
+        return Intersections([])
+    end
+
+    t = -r.origin[2] / r.velocity[2]
+    return intersections(intersection(t, p))
+end
+
+_normal_at(p::plane, op::VectorF; hit::optional{intersection} = nothing) = vector(0, 1, 0)
+
+mutable struct cube <: shape
+    transform::Transform
+    material::material
+    parent::optional{shape}
+    shadow::Bool
+    inverse_transform::Transform
+    inherited_transform::Transform
+    inverse_inherited_transform::Transform
+    bbox::aabb
+    cube(; transform = DEFAULT_TRANSFORM, material = material(), parent = nothing, shadow = true) = update_cache!(new(transform, material, parent, shadow, DEFAULT_TRANSFORM, DEFAULT_TRANSFORM, DEFAULT_TRANSFORM, aabb()))
+end
+
+_bounds(c::cube) = aabb(point(-1, -1, -1), point(1, 1, 1))
 
 function _intersect(c::cube, r::ray)
     xtmin, xtmax = check_axis(r.origin[1], r.velocity[1])
@@ -879,9 +980,22 @@ function _normal_at(c::cube, op::VectorF; hit::optional{intersection} = nothing)
     else return vector(0, 0, op[3]) end
 end
 
-#=
-    chapter 13
-=#
+mutable struct cylinder <: shape
+    transform::Transform
+    material::material
+    min::Float64
+    max::Float64
+    closed::Bool
+    parent::optional{shape}
+    shadow::Bool
+    inverse_transform::Transform
+    inherited_transform::Transform
+    inverse_inherited_transform::Transform
+    bbox::aabb
+    cylinder(; transform = DEFAULT_TRANSFORM, material = material(), min = -Inf, max = Inf, closed = false, parent = nothing, shadow = true) = update_cache!(new(transform, material, min, max, closed, parent, shadow, DEFAULT_TRANSFORM, DEFAULT_TRANSFORM, DEFAULT_TRANSFORM, aabb()))
+end
+
+_bounds(c::cylinder) = aabb(point(-1, c.min, -1), point(1, c.max, 1))
 
 function check_cap(r::ray, t::Float64)
     x = r.origin[1] + t * r.velocity[1]
@@ -938,6 +1052,28 @@ function _normal_at(c::cylinder, op::VectorF; hit::optional{intersection} = noth
     else
         return vector(op[1], 0, op[3])
     end
+end
+
+mutable struct cone <: shape
+    transform::Transform
+    material::material
+    min::Float64
+    max::Float64
+    closed::Bool
+    parent::optional{shape}
+    shadow::Bool
+    inverse_transform::Transform
+    inherited_transform::Transform
+    inverse_inherited_transform::Transform
+    bbox::aabb
+    cone(; transform = DEFAULT_TRANSFORM, material = material(), min = -Inf, max = Inf, closed = false, parent = nothing, shadow = true) = update_cache!(new(transform, material, min, max, closed, parent, shadow, DEFAULT_TRANSFORM, DEFAULT_TRANSFORM, DEFAULT_TRANSFORM, aabb()))
+end
+
+function _bounds(c::cone)
+    a = abs(c.min)
+    b = abs(c.max)
+    lim = max(a, b)
+    return aabb(point(-lim, c.min, -lim), point(lim, c.max, lim))
 end
 
 function check_cap(r::ray, t::Float64, y::Float64)
@@ -1005,60 +1141,30 @@ function _normal_at(c::cone, op::VectorF; hit::optional{intersection} = nothing)
     end
 end
 
-#=
-    chapter 14
-=#
-
-function propagate_material!(s::shape)
-    if exists(s.material)
-        if s isa group
-            for c ∈ s.children
-                c.material = s.material
-                propagate_material!(c)
-            end
-        elseif s isa csg
-            s.l.material = s.material
-            s.r.material = s.material
-            propagate_material!(s.l)
-            propagate_material!(s.r)
-        end
+mutable struct triangle <: shape
+    p1::VectorF # p == point, i.e. vertex
+    p2::VectorF
+    p3::VectorF
+    e1::VectorF # e == edge, i.e. side
+    e2::VectorF
+    n::VectorF # n == normal, i.e. pre-calculated surface normal
+    transform::Transform
+    material::material
+    parent::optional{shape}
+    shadow::Bool
+    inverse_transform::Transform
+    inherited_transform::Transform
+    inverse_inherited_transform::Transform
+    bbox::aabb
+    function triangle(; p1::VectorF, p2::VectorF, p3::VectorF, transform::Transform = DEFAULT_TRANSFORM, material = material(), parent = nothing, shadow = true)
+        e1 = p2 - p1
+        e2 = p3 - p1
+        n = normalize(cross(e2, e1))
+        return update_cache!(new(p1, p2, p3, p2 - p1, p3 - p1, n, transform, material, parent, shadow, DEFAULT_TRANSFORM, DEFAULT_TRANSFORM, DEFAULT_TRANSFORM, aabb()))
     end
 end
 
-function add_child!(g::group, ss::shape...)
-    foreach(s -> s.parent = g, ss)
-    push!(g.children, ss...)
-    propagate_material!(g)
-    update_cache!(g)
-end
-
-has_parent(s::shape) = exists(s.parent)
-has_child(g::group, s::shape) = any(c -> (c isa group) ? c == s || has_child(c, s) : c == s, g.children)
-has_children(g::group, ss::shape...) = all(s -> has_child(g, s), ss)
-
-# copy-pasted from world intersection with name changes. no need to think
-# too hard about the work being done to sort intersections, sorting them
-# at this level will make sorting at a higher level faster, especially in
-# worlds with multiple groups.
-_intersect(g::group, r::ray) = Intersections((intersects(g, r)) ? sort([i for c in g.children for i in intersect(c, r)], by=(i)->i.t) : [])
-
-world_to_object(s::shape, p::VectorF) = s.inverse_inherited_transform * p
-
-function normal_to_world(s::shape, n::VectorF)
-    n = s.inverse_inherited_transform' * n
-    n[4] = 0
-    normalize!(n)
-    return n
-end
-
-#=
-    chapter 15
-=#
-
-_normal_at(t::triangle, p::VectorF; hit::optional{intersection} = nothing) = t.n
-
-# only _normal_at for which hit is non-optional
-_normal_at(tri::smooth_triangle, p::VectorF; hit::intersection) = tri.n2 * hit.u + tri.n3 * hit.v + tri.n1 * (1 - hit.u - hit.v)
+_bounds(t::triangle) = aabb(t.p1, t.p2, t.p3)
 
 function _intersect(t::triangle, r::ray)
     dir_cross_e2 = cross(r.velocity, t.e2)
@@ -1077,6 +1183,30 @@ function _intersect(t::triangle, r::ray)
     return intersections(intersection(f * t.e2 ⋅ origin_cross_e1, t))
 end
 
+_normal_at(t::triangle, p::VectorF; hit::optional{intersection} = nothing) = t.n
+
+mutable struct smooth_triangle <: shape
+    p1::VectorF
+    p2::VectorF
+    p3::VectorF
+    e1::VectorF
+    e2::VectorF
+    n1::VectorF
+    n2::VectorF
+    n3::VectorF
+    transform::Transform
+    material::material
+    parent::optional{shape}
+    shadow::Bool
+    inverse_transform::Transform
+    inherited_transform::Transform
+    inverse_inherited_transform::Transform
+    bbox::aabb
+    smooth_triangle(; p1::VectorF, p2::VectorF, p3::VectorF, n1::VectorF, n2::VectorF, n3::VectorF, transform::Transform = DEFAULT_TRANSFORM, material = material(), parent = nothing, shadow = true) = update_cache!(new(p1, p2, p3, p2 - p1, p3 - p1, n1, n2, n3, transform, material, parent, shadow, DEFAULT_TRANSFORM, DEFAULT_TRANSFORM, DEFAULT_TRANSFORM, aabb()))
+end
+
+_bounds(t::smooth_triangle) = aabb(t.p1, t.p2, t.p3)
+
 function _intersect(t::smooth_triangle, r::ray)
     dir_cross_e2 = cross(r.velocity, t.e2)
     det = t.e1 ⋅ dir_cross_e2
@@ -1094,16 +1224,46 @@ function _intersect(t::smooth_triangle, r::ray)
     return intersections(intersection(f * t.e2 ⋅ origin_cross_e1, t, u=u, v=v))
 end
 
-#=
-    chapter 16
-=#
+# only _normal_at for which hit is non-optional
+_normal_at(tri::smooth_triangle, p::VectorF; hit::intersection) = tri.n2 * hit.u + tri.n3 * hit.v + tri.n1 * (1 - hit.u - hit.v)
+
+#= GROUPS =#
+
+mutable struct group <: shape
+    transform::Transform
+    material::optional{material}
+    children::Vector{<:shape}
+    parent::optional{shape}
+    inverse_transform::Transform
+    inherited_transform::Transform
+    inverse_inherited_transform::Transform
+    bbox::aabb
+    function group(; transform = DEFAULT_TRANSFORM, children = Vector{shape}([]), material = nothing, parent = nothing)
+        g = new(transform, material, Vector{shape}([]), parent, DEFAULT_TRANSFORM, DEFAULT_TRANSFORM, DEFAULT_TRANSFORM, aabb())
+        add_child!(g, children...)
+        return g
+    end
+end
+
+_bounds(g::group) = aabb([c.bbox for c in g.children]...)
+
+function add_child!(g::group, ss::shape...)
+    foreach(s -> s.parent = g, ss)
+    push!(g.children, ss...)
+    propagate_material!(g)
+    update_cache!(g)
+end
+
+_intersect(g::group, r::ray) = Intersections((intersects(g, r)) ? sort([i for c in g.children for i in intersect(c, r)], by=(i)->i.t) : [])
+
+#= CONSTRUCTIVE SOLID GEOMETRY =#
 
 mutable struct csg <: shape
     op::Symbol # could probably make this an enum
     l::shape
     r::shape
     transform::Transform
-    material::optional{material} # added during demo chapter for convenience, not because it means anything
+    material::optional{material}
     parent::optional{shape}
     inverse_transform::Transform
     inherited_transform::Transform
@@ -1119,12 +1279,16 @@ mutable struct csg <: shape
     end
 end
 
+_bounds(c::csg) = aabb(c.l.bbox, c.r.bbox)
+
 function intersection_allowed(op::Symbol, lhit::Bool, inl::Bool, inr::Bool)
     if op == :union return (lhit && !inr) || (!lhit && !inl)
     elseif op == :intersect return (lhit && inr) || (!lhit && inl)
     elseif op == :difference return (lhit && !inr) || (!lhit && inl)
     else return false end
 end
+
+has_child(g::group, s::shape) = any(c -> (c isa group) ? c == s || has_child(c, s) : c == s, g.children)
 
 function includes(a::shape, b::shape)
     if a == b return true
@@ -1162,285 +1326,8 @@ function _intersect(c::csg, r::ray)
     return csg_filter(c, xs)
 end
 
-#=
-    bonus chapter 1 - http://raytracerchallenge.com/bonus/area-light.html
-=#
+#= BOUNDING VOLUME HIERARCHIES =#
 
-mutable struct sequence
-    elems::VectorF
-    pos::Int
-    sequence(elems::Float64...) = new([elems...], 1)
-end
-
-sequence(elems::Number...) = sequence(Float64.(elems)...)
-
-function next(s::sequence)
-    if length(s.elems) > 0
-        e = s.elems[s.pos]
-        s.pos += 1
-        if s.pos > length(s.elems) s.pos = 1 end
-    else e = rand() end
-    return e
-end
-
-mutable struct area_light
-    corner::VectorF
-    uvec::VectorF
-    usteps::Number
-    vvec::VectorF
-    vsteps::Number
-    samples::Number
-    intensity::Color
-    jitter_by::sequence # will need to be refactored for "real" renders
-    area_light(corner, uvec, usteps, vvec, vsteps, intensity = colorant"white", seq = sequence(0.5)) = new(corner, uvec / usteps, usteps, vvec / vsteps, vsteps, usteps * vsteps, intensity, seq)
-end
-
-point_light(pos::VectorF, intensity::Color) = area_light(pos, point(0, 0, 0), 1, point(0, 0, 0), 1, intensity, sequence(0))
-
-point_on_light(l, u, v) = l.corner + l.uvec * (u + next(l.jitter_by)) + l.vvec * (v + next(l.jitter_by))
-
-function intensity_at(l::area_light, p::VectorF, w::world)
-    total = 0.0
-
-    for v=0:l.vsteps-1
-        for u=0:l.usteps-1
-            if !is_shadowed(w, point_on_light(l, u, v), p) total += 1.0 end
-        end
-    end
-
-    return total / l.samples
-end
-
-# scene added for demo "chapter"
-mutable struct scene
-    w::world
-    cam::optional{camera}
-    materials::Dict{String, material}
-    transforms::Dict{String, Transform}
-    entities::Dict{String, Union{camera, area_light, shape}}
-    scene(; w = world(), cam = nothing, materials = Dict{String, material}([]), transforms = Dict{String, Transform}([]), entities = Dict{String, Union{camera, area_light, shape}}([])) = new(w, cam, materials, transforms, entities)
-end
-
-raytrace(scn::scene) = raytrace(scn.cam, scn.w)
-
-#=
-    bonus chapter 2 - http://raytracerchallenge.com/bonus/texture-mapping.html
-=#
-
-mutable struct uv_checkers <: pattern
-    width::Number
-    height::Number
-    a::Color
-    b::Color
-    transform::Transform
-    inverse_transform::Transform
-    uv_checkers(w::Number, h::Number, a::Color, b::Color; transform = DEFAULT_TRANSFORM) = update_cache!(new(w, h, a, b, transform, DEFAULT_TRANSFORM))
-end
-
-pattern_at(pat::uv_checkers, u::Number, v::Number) = ((floor(u * pat.width) + floor(v * pat.height)) % 2 == 0) ? pat.a : pat.b
-
-function spherical_uv_map(p::VectorF)
-    θ = atan(p[1], p[3])
-    v = vector(p[1:3]...)
-    r = norm(v)
-    ϕ = acos(p[2] / r)
-
-    u = 1 - ((θ / 2π) + 0.5)
-    v = 1 - ϕ/π
-
-    return (u, v)
-end
-
-mutable struct texture_map <: pattern
-    pat::pattern
-    uvmap # should be a function that takes a point and returns a u,v pair
-    transform::Transform
-    inverse_transform::Transform
-    texture_map(pat::pattern, uvmap; transform = DEFAULT_TRANSFORM) = update_cache!(new(pat, uvmap, transform, DEFAULT_TRANSFORM))
-end
-
-pattern_at(tmap::texture_map, p::VectorF) = pattern_at(tmap.pat, tmap.uvmap(p)...)
-
-function planar_uv_map(p::VectorF)
-    u = p[1] % 1
-    if u < 0 u += 1 end
-    v = p[3] % 1
-    if v < 0 v += 1 end
-    return (u, v)
-end
-
-function cylindrical_uv_map(p::VectorF)
-    θ = atan(p[1], p[3])
-    u = 1 - ((θ / 2π) + 0.5)
-    v = p[2] % 1
-    if v < 0 v += 1 end
-
-    return (u, v)
-end
-
-mutable struct uv_align_check <: pattern
-    main::Color
-    ul::Color
-    ur::Color
-    bl::Color
-    br::Color
-    transform::Transform
-    inverse_transform::Transform
-    uv_align_check(main::Color, ul::Color, ur::Color, bl::Color, br::Color; transform = DEFAULT_TRANSFORM) = update_cache!(new(main, ul, ur, bl, br, transform, DEFAULT_TRANSFORM))
-end
-
-function pattern_at(pat::uv_align_check, u::Number, v::Number)
-    if v > 0.8
-        if u < 0.2 return pat.ul end
-        if u > 0.8 return pat.ur end
-    elseif v < 0.2
-        if u < 0.2 return pat.bl end
-        if u > 0.8 return pat.br end
-    end
-
-    return pat.main
-end
-
-@enum faces LEFT=1 FRONT=2 RIGHT=3 BACK=4 UP=5 DOWN=6
-
-function face(p::VectorF)
-    coord = max(abs.(p[1:3])...)
-
-    if coord == p[1] return RIGHT
-    elseif coord == -p[1] return LEFT
-    elseif coord == p[2] return UP
-    elseif coord == -p[2] return DOWN
-    elseif coord == p[3] return FRONT
-    else return BACK end
-end
-
-function cubical_uv_map(p::VectorF)
-    u = 0.0
-    v = 0.0
-
-    f = face(p)
-
-    if f == FRONT
-        u = ((p[1] + 1) % 2.0) / 2.0
-        v = ((p[2] + 1) % 2.0) / 2.0
-    elseif f == BACK
-        u = ((1 - p[1]) % 2.0) / 2.0
-        v = ((p[2] + 1) % 2.0) / 2.0
-    elseif f == LEFT
-        u = ((p[3] + 1) % 2.0) / 2.0
-        v = ((p[2] + 1) % 2.0) / 2.0
-    elseif f == RIGHT
-        u = ((1 - p[3]) % 2.0) / 2.0
-        v = ((p[2] + 1) % 2.0) / 2.0
-    elseif f == DOWN
-        u = ((p[1] + 1) % 2.0) / 2.0
-        v = ((p[3] + 1) % 2.0) / 2.0
-    else
-        u = ((p[1] + 1) % 2.0) / 2.0
-        v = ((1 - p[3]) % 2.0) / 2.0
-    end
-
-    return (u, v)
-end
-
-mutable struct cube_map <: pattern
-    faces::Vector{pattern}
-    transform::Transform
-    inverse_transform::Transform
-    # must pass faces in order L, F, R, B, U, D for pattern_at to work
-    cube_map(faces::pattern...; transform = DEFAULT_TRANSFORM) = update_cache!(new([faces...], transform, DEFAULT_TRANSFORM))
-end
-
-pattern_at(c::cube_map, p::VectorF) = pattern_at(c.faces[Int(face(p))], cubical_uv_map(p)...)
-
-mutable struct image_map <: pattern
-    canvas
-    transform::Transform
-    inverse_transform::Transform
-    image_map(canvas; transform = DEFAULT_TRANSFORM) = update_cache!(new(canvas, transform, DEFAULT_TRANSFORM))
-end
-
-function pattern_at(img::image_map, u::Number, v::Number)
-    v = 1 - v
-    x = u * (width(img.canvas) - 1) + 1
-    y = v * (height(img.canvas) - 1) + 1
-    return pixel(img.canvas, Int(round(x)), Int(round(y)))
-end
-
-#=
-    bonus chapter 3 - http://raytracerchallenge.com/bonus/bounding-boxes.html
-=#
-
-# at this point i gave up trying to figure out which "chapter" stuff was supposed to go under
-function _intersect(t::test_shape, r::ray)
-    t.saved_ray = r
-    return Intersections([])
-end
-
-_normal_at(t::test_shape, p::VectorF; hit::optional{intersection} = nothing) = vector(p[1:3]...)
-
-import Base.contains
-contains(b::aabb, p::VectorF) = all([b.min[i] <= p[i] <= b.max[i] for i=1:3])
-contains(b::aabb, b2::aabb) = contains(b, b2.min) && contains(b, b2.max)
-contains(b::aabb, s::shape) = contains(b, s.bbox)
-
-# untransformed (i.e. object-space) bounds for given shapes
-_bounds(t::test_shape) = aabb(point(-1, -1, -1), point(1, 1, 1))
-_bounds(s::sphere) = aabb(point(-1, -1, -1), point(1, 1, 1))
-_bounds(p::plane) = aabb(point(-Inf, 0, -Inf), point(Inf, 0, Inf))
-_bounds(c::cube) = aabb(point(-1, -1, -1), point(1, 1, 1))
-_bounds(c::cylinder) = aabb(point(-1, c.min, -1), point(1, c.max, 1))
-function _bounds(c::cone)
-    a = abs(c.min)
-    b = abs(c.max)
-    lim = max(a, b)
-    return aabb(point(-lim, c.min, -lim), point(lim, c.max, lim))
-end
-_bounds(g::group) = aabb([c.bbox for c in g.children]...)
-_bounds(c::csg) = aabb(c.l.bbox, c.r.bbox)
-_bounds(t::triangle) = aabb(t.p1, t.p2, t.p3)
-_bounds(t::smooth_triangle) = aabb(t.p1, t.p2, t.p3)
-_bounds(c::camera) = aabb() # cameras have no volume, they are "imaginary"
-
-explode_aabb(bs::aabb) =
-    # goes around the top "counterclockwise" from min, then down, then around
-    # "clockwise" to max, giving us all 8 corners of the bounding box
-    (bs.min, point(bs.min[1], bs.min[2], bs.max[3]),
-    point(bs.max[1], bs.min[2], bs.max[3]), point(bs.max[1], bs.min[2], bs.min[3]),
-    point(bs.max[1], bs.max[2], bs.min[3]), point(bs.min[1], bs.max[2], bs.min[3]),
-    point(bs.min[1], bs.max[2], bs.max[3]), bs.max)
-
-function transform(b::aabb, mat::Transform)
-    ps = explode_aabb(b)
-    # remember that IEEE 754 defines Inf * 0 as NaN, which is
-    # not the behavior you'd normally expect in graphics-land,
-    # but is a highly probable occurrence when working specifically
-    # with bounding boxes. this next if statement looks like a
-    # small optimization, and it is, but its real purpose is to step
-    # around a few such occurrences.
-    if mat != I ps = map(p -> mat * p, ps) end
-    return aabb(ps...)
-end
-
-bounds(s::shape) = transform(_bounds(s), !(s isa group || s isa csg) ? s.inherited_transform : DEFAULT_TRANSFORM)
-
-intersects(s::shape, r::ray) = (!(s isa group) || !isempty(s.children)) ? intersects(s.bbox, r) : false
-function intersects(b::aabb, r::ray)
-    # copy-paste of cube intersection, but calls check_axis
-    # differently and returns differently
-    xtmin, xtmax = check_axis(r.origin[1], r.velocity[1], b.min[1], b.max[1])
-    ytmin, ytmax = check_axis(r.origin[2], r.velocity[2], b.min[2], b.max[2])
-    ztmin, ztmax = check_axis(r.origin[3], r.velocity[3], b.min[3], b.max[3])
-
-    tmin = max(xtmin, ytmin, ztmin)
-    tmax = min(xtmax, ytmax, ztmax)
-
-    if tmin > tmax return false end
-
-    return true
-end
-
-# bounding volume hierarchies
 import Base.split
 function split(b::aabb)
     dx, dy, dz = [b.max[i] - b.min[i] for i=1:3]
@@ -1470,8 +1357,7 @@ end
 
 subgroup!(g::group, ss::shape...) = add_child!(g, group(children = [ss...]))
 
-function divide!(s::shape, thresh::Number)
-    # because i still can't figure out julia's type trees
+function divide!(s::shape, thresh::Number = DEFAULT_BVH_THRESHOLD)
     if s isa group
         if thresh <= length(s.children)
             l, r = partition!(s)
@@ -1485,11 +1371,9 @@ function divide!(s::shape, thresh::Number)
     end
 end
 
-#=
-    input/output
-=#
+#= FILE IMPORT/EXPORT =#
 
-# helper for translating between PPM files and canvases within loops
+# helper for translating between delimited files and canvases within loops
 function advance_xy(x,y,xlim)
     x += 1
     if x > xlim
@@ -1498,6 +1382,8 @@ function advance_xy(x,y,xlim)
     end
     return x,y
 end
+
+#= PPM =#
 
 # helper for formatting "PPM matrices"
 nice_str(mat, r) = strip(join(mat[r,:], " "))
@@ -1572,6 +1458,8 @@ function load_ppm(source)
     end
     error("bad image data, expected $w × $h, got $x × $y")
 end
+
+#= OBJ =#
 
 mutable struct OBJ
     ignored::Int
@@ -1648,38 +1536,20 @@ end
 
 group(o::OBJ) = group(children = [values(o.groups)..., o.default_group])
 
-#=
-    demos
-=#
+#= YAML (scenes) =#
 
-DEFAULT_GROUP_SIZE = 500 # someone on some forum post suggested that 500 was a good number
-
-function update_cache!(s, t = nothing)
-    if !exists(t) t = s.transform end
-    st = typeof(s)
-    if hasfield(st, :transform)
-        s.transform = t
-        if hasfield(st, :inverse_transform)
-            s.inverse_transform = inv(s.transform)
-        end
-        if hasfield(st, :inherited_transform)
-            s.inherited_transform = inherited_transform(s)
-            if hasfield(st, :inverse_inherited_transform)
-                s.inverse_inherited_transform = inv(s.inherited_transform)
-            end
-        end
-    end
-    if s isa group foreach(c -> update_cache!(c), s.children)
-    elseif s isa csg
-        update_cache!(s.l)
-        update_cache!(s.r)
-    end
-    # this has to go after children are updated, or shapes
-    # that depend on child transforms for their bounding boxes
-    # will not update correctly
-    if hasfield(st, :bbox) s.bbox = bounds(s) end
-    return s
+mutable struct scene
+    w::world
+    cam::optional{camera}
+    materials::Dict{String, material}
+    transforms::Dict{String, Transform}
+    entities::Dict{String, Union{camera, area_light, shape}}
+    scene(; w = world(), cam = nothing, materials = Dict{String, material}([]), transforms = Dict{String, Transform}([]), entities = Dict{String, Union{camera, area_light, shape}}([])) = new(w, cam, materials, transforms, entities)
 end
+
+raytrace(scn::scene) = raytrace(scn.cam, scn.w)
+raytrace_scene(scn::scene) = scn, raytrace(scn)
+raytrace_scene(f) = raytrace_scene(load_scene(f))
 
 function chain_transforms(ts, scn::scene = scene())
     s = DEFAULT_TRANSFORM
@@ -1690,9 +1560,9 @@ function chain_transforms(ts, scn::scene = scene())
         elseif t[1] == "rotate-x" s = rotation_x(t[2]) * s
         elseif t[1] == "rotate-y" s = rotation_y(t[2]) * s
         elseif t[1] == "rotate-z" s = rotation_z(t[2]) * s
-        elseif t[1] == "reflect-x" s = reflection_x * s
-        elseif t[1] == "reflect-y" s = reflection_y * s
-        elseif t[1] == "reflect-z" s = reflection_z * s
+        elseif t[1] == "reflect-x" s = reflection_x() * s
+        elseif t[1] == "reflect-y" s = reflection_y() * s
+        elseif t[1] == "reflect-z" s = reflection_z() * s
         elseif t[1] == "shear" s = shearing(t[2:7]...) * s
         end
     end
@@ -1765,77 +1635,6 @@ function apply_material!(s::material, m::Dict{Any, Any}, scn::scene = scene())
     end
 end
 
-# for the christmas scene:
-# https://forum.raytracerchallenge.com/thread/16/merry-christmas-scene-description
-function fir_branch()
-    # the length of the branch
-    len = 2.0
-    # the radius of the branch
-    radius = 0.025
-    # how many groups of needles cover the branch
-    segments = 20
-    # how needles per group, or segment
-    per_segment = 24
-    # the branch itself, just a cylinder
-    branch = cylinder(
-        min=0, max=len,
-        transform=scaling(radius, 1, radius),
-        material=material(color=RGB(0.5, 0.35, 0.26), ambient=0.2, specular=0, diffuse=0.6)
-    )
-    # how much branch each segment gets
-    seg_size = len / (segments - 1)
-    # the radial distance, in radians, between adjacent needles
-    # in a group
-    θ = 2.1 * π / per_segment
-    # the maximum length of each needle
-    max_len = 20.0 * radius
-    # the group that will contain the branch and all needles
-    object = group(children=[branch])
-
-    for y=0:segments-1
-        # create a subgroup for each segment of needles
-        subgrp = group()
-        for i=0:per_segment-1
-            # each needle is a triangle.
-            # y_base y coordinate of the base of the triangle
-            y_base = seg_size * y + rand() * seg_size
-
-            # y_tip is the y coordinate of the tip of the triangle
-            y_tip = y_base - rand() * seg_size
-
-            # y_angle is angle (in radians) that the needle should be
-            # rotated around the branch.
-            y_angle = i * θ + rand() * θ
-
-            # how long is the needle?
-            needle_len = max_len / 2 * (1 + rand())
-
-            # how much is the needle offset from the center of the branch?
-            ofs = radius / 2
-
-            # the three points of the triangle that form the needle
-            p1 = point(ofs, y_base, ofs)
-            p2 = point(-ofs, y_base, ofs)
-            p3 = point(0.0, y_tip, needle_len)
-
-            # create, transform, and texture the needle
-            tri = triangle(
-                p1=p1, p2=p2, p3=p3,
-                transform=rotation_y(y_angle),
-                material=material(color=RGB(0.26, 0.36, 0.16), specular=0.1)
-            )
-
-            add_child!(subgrp, tri)
-        end
-
-        add_child!(object, subgrp)
-    end
-
-    divide!(object, DEFAULT_GROUP_SIZE)
-
-    return object
-end
-
 function parse_entity(scn::scene, e::Dict{Any, Any})
     if haskey(e, "add") o = e["add"]
     elseif haskey(e, "type") o = e["type"] end
@@ -1862,8 +1661,7 @@ function parse_entity(scn::scene, e::Dict{Any, Any})
         end
     else
         if o ∈ keys(scn.entities) s = deepcopy(scn.entities[o])
-        elseif o == "obj"
-            s = group(load_obj(e["file"]))
+        elseif o == "obj" s = group(load_obj(e["file"]))
         elseif o == "sphere" s = sphere()
         elseif o == "plane" s = plane()
         elseif o == "cube" s = cube()
@@ -1941,7 +1739,75 @@ function load_scene(f)
     return scn
 end
 
-raytrace_scene(scn::scene) = scn, raytrace(scn)
-raytrace_scene(f) = raytrace_scene(load_scene(f))
+#= PROCEDURAL GEOMETRY =#
+
+# for the christmas scene:
+# https://forum.raytracerchallenge.com/thread/16/merry-christmas-scene-description
+function fir_branch()
+    # the length of the branch
+    len = 2.0
+    # the radius of the branch
+    radius = 0.025
+    # how many groups of needles cover the branch
+    segments = 20
+    # how needles per group, or segment
+    per_segment = 24
+    # the branch itself, just a cylinder
+    branch = cylinder(
+        min=0, max=len,
+        transform=scaling(radius, 1, radius),
+        material=material(color=RGB(0.5, 0.35, 0.26), ambient=0.2, specular=0, diffuse=0.6)
+    )
+    # how much branch each segment gets
+    seg_size = len / (segments - 1)
+    # the radial distance, in radians, between adjacent needles
+    # in a group
+    θ = 2.1 * π / per_segment
+    # the maximum length of each needle
+    max_len = 20.0 * radius
+    # the group that will contain the branch and all needles
+    object = group(children=[branch])
+
+    for y=0:segments-1
+        # create a subgroup for each segment of needles
+        subgrp = group()
+        for i=0:per_segment-1
+            # each needle is a triangle.
+            # y_base y coordinate of the base of the triangle
+            y_base = seg_size * y + rand() * seg_size
+
+            # y_tip is the y coordinate of the tip of the triangle
+            y_tip = y_base - rand() * seg_size
+
+            # y_angle is angle (in radians) that the needle should be
+            # rotated around the branch.
+            y_angle = i * θ + rand() * θ
+
+            # how long is the needle?
+            needle_len = max_len / 2 * (1 + rand())
+
+            # how much is the needle offset from the center of the branch?
+            ofs = radius / 2
+
+            # the three points of the triangle that form the needle
+            p1 = point(ofs, y_base, ofs)
+            p2 = point(-ofs, y_base, ofs)
+            p3 = point(0.0, y_tip, needle_len)
+
+            # create, transform, and texture the needle
+            tri = triangle(
+                p1=p1, p2=p2, p3=p3,
+                transform=rotation_y(y_angle),
+                material=material(color=RGB(0.26, 0.36, 0.16), specular=0.1)
+            )
+
+            add_child!(subgrp, tri)
+        end
+
+        add_child!(object, subgrp)
+    end
+
+    return object
+end
 
 end

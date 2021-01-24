@@ -108,6 +108,17 @@ using Test
             mostly learning and exercising julia's native types again.
         =#
 
+        function submatrix(mat, r::Int, c::Int)
+            h = height(mat)
+            w = width(mat)
+            mask = [row != r && col != c for row=1:h, col=1:w]
+            return reshape(mat[mask], (h-1,w-1))
+        end
+
+        minor(mat, r::Int, c::Int) = det(submatrix(mat, r, c))
+        cofactor(mat, r::Int, c::Int) = minor(mat, r, c) * (-1)^(r+c)
+        invertible(mat) = det(mat) != 0
+
         M = [
             1 2 3 4
             5.5 6.5 7.5 8.5
@@ -394,9 +405,9 @@ using Test
         @test inv(transform) * v == vector(-2, 2, 2)
 
         p = point(2, 3, 4)
-        @test reflection_x * p == point(-2, 3, 4)
-        @test reflection_y * p == point(2, -3, 4)
-        @test reflection_z * p == point(2, 3, -4)
+        @test reflection_x() * p == point(-2, 3, 4)
+        @test reflection_y() * p == point(2, -3, 4)
+        @test reflection_z() * p == point(2, 3, -4)
 
         p = point(0, 1, 0)
         half_quarter = rotation_x(π / 4)
@@ -1724,7 +1735,7 @@ using Test
 
         shapes = [sphere(), plane(), cube(), cylinder(), cone(), group()]
         g = group(children = shapes)
-        @test has_children(g, shapes...)
+        @test all(c -> has_child(g, c), shapes)
 
         g = group()
         r = ray(point(0, 0, 0), vector(0, 0, 1))
