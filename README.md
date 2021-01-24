@@ -17,7 +17,7 @@ My garden/playground for Julia and computer graphics.
 - [ ] refactor test suite so that test names correspond to ones from the book
 - [X] reimagine and rewrite module to not be organized by chapters
 - [ ] reimagine and rewrite test suite to not be organized by chapters
-- [ ] programatically find good resolution for "final" render (based on fov?)
+- [ ] audit intersection sorting
 - [ ] modularize (i.e. fir_branch probably shouldn't have it's own case in parse_entity along with geometric primitives)
 - [ ] torus primitive
 - [ ] pyramid primitive
