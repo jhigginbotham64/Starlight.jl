@@ -1,4 +1,4 @@
-using starlight
+using Starlight
 using Test
 
 @testset "ray tracer challenge" begin
