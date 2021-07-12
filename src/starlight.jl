@@ -1,4 +1,4 @@
-module starlight
+module Starlight
 
 using Reexport
 @reexport using FileIO
