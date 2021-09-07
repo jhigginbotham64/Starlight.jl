@@ -8,10 +8,6 @@ using Reexport
 @reexport using LinearAlgebra
 @reexport using Images
 @reexport using ColorVectorSpace
-@reexport using SimpleDirectMediaLayer
-
-SDL2 = SimpleDirectMediaLayer
-export SDL2
 
 # helpers
 DEFAULT_TRANSFORM = Array{Float64, 2}(I(4))
