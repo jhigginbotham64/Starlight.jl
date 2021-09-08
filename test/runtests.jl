@@ -2,6 +2,7 @@ using Starlight
 using Test
 
 # NOTE need to break into multiple files if possible
+# NOTE need to set up CI/CD (and include detect_ambiguities)
 
 @testset "ray tracer challenge" begin
 
