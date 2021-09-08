@@ -1,5 +1,7 @@
 module Starlight
 
+# NOTE need to break up into multiple files
+
 using Reexport
 @reexport using FileIO
 @reexport using DelimitedFiles
@@ -146,6 +148,7 @@ shearing(xy, xz, yx, yz, zx, zy) = [
 #= ABSTRACT TYPES =#
 
 # NOTE could improve related code with type contracts and/or holy traits
+# NOTE need more abstract types / a larger type tree
 abstract type shape end
 abstract type pattern end
 

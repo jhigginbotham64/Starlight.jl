@@ -1,6 +1,8 @@
 using Starlight
 using Test
 
+# NOTE need to break into multiple files if possible
+
 @testset "ray tracer challenge" begin
 
     @testset "ch 1 - tuples, points, and vectors" begin
