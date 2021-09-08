@@ -11,23 +11,24 @@ using Reexport
 
 # helpers
 DEFAULT_TRANSFORM = Array{Float64, 2}(I(4))
-export DEFAULT_TRANSFORM
 Transform = Array{Float64, 2}
-export Transform
 VectorF = Vector{Float64}
-export VectorF
 optional{T} = Union{Nothing, T} # found myself doing this a lot
-export optional
 exists(thing) = !isnothing(thing) # and this
-export exists
 
 # important values
 DEFAULT_RECURSION_LIMIT = 5 # number of reflections/refractions for a single ray
-export DEFAULT_RECURSION_LIMIT
 DEFAULT_BVH_THRESHOLD = 500 # https://forum.raytracerchallenge.com/post/1029/thread
-export DEFAULT_BVH_THRESHOLD
 my_eps = eps() * 1e8
 my_floor(x::Number) = (abs(x) <= my_eps) ? 0.0 : floor(x)
+
+export DEFAULT_TRANSFORM
+export Transform
+export VectorF
+export optional
+export exists
+export DEFAULT_RECURSION_LIMIT
+export DEFAULT_BVH_THRESHOLD
 export my_eps, my_floor
 
 export point, vector, cross
@@ -84,8 +85,8 @@ reflect(v::VectorF, n::VectorF) = v - (n * (2 * (v ⋅ n)))
 canvas(w::Int, h::Int, c = RGB{Float64}(colorant"black")) = fill(c, (h, w))
 pixel(mat, x::Int, y::Int) = mat[y,x]
 pixel!(mat, x::Int, y::Int, c::Color) = mat[y,x] = c
-pixels(mat) = flat(mat)
 flat(mat) = reshape(mat, (prod(size(mat)), 1))
+pixels(mat) = flat(mat)
 # stopgap solution from https://github.com/JuliaGraphics/ColorVectorSpace.jl/issues/119#issuecomment-573167024
 # while waiting for long-term solution from https://github.com/JuliaGraphics/ColorVectorSpace.jl/issues/126
 hadamard(c1, c2) = mapc(*, c1, c2)
@@ -144,8 +145,9 @@ shearing(xy, xz, yx, yz, zx, zy) = [
 
 #= ABSTRACT TYPES =#
 
-abstract type pattern end
+# NOTE could improve related code with type contracts and/or holy traits
 abstract type shape end
+abstract type pattern end
 
 #= AXIALLY-ALIGNED BOUNDING BOXES =#
 
@@ -184,6 +186,9 @@ explode_aabb(bs::aabb) =
     point(bs.max[1], bs.max[2], bs.min[3]), point(bs.min[1], bs.max[2], bs.min[3]),
     point(bs.min[1], bs.max[2], bs.max[3]), bs.max)
 
+# this transform takes an aabb and a Transform,
+# explodes the aabb, transforms the points, and
+# returns a new aabb with the new points
 function transform(b::aabb, mat::Transform)
     ps = explode_aabb(b)
     # remember that IEEE 754 defines Inf * 0 as NaN, which is

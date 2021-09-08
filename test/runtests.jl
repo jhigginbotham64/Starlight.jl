@@ -2511,16 +2511,17 @@ using Test
         rm("./test.ppm")
 
         # OBJ loading postponed from chapter 15
-        o = load_obj("/home/jhigginbotham64/.julia/dev/starlight/test/gibberish.obj")
+        # NOTE need some way to encode and load test files without using absolute paths from my personal device
+        o = load_obj("/home/jhigginbotham64/.julia/dev/Starlight/test/gibberish.obj")
         @test o.ignored == 5
 
-        o = load_obj("/home/jhigginbotham64/.julia/dev/starlight/test/vertices.obj")
+        o = load_obj("/home/jhigginbotham64/.julia/dev/Starlight/test/vertices.obj")
         @test o.vertices[1] == point(-1, 1, 0)
         @test o.vertices[2] == point(-1, 0.5, 0)
         @test o.vertices[3] == point(1, 0, 0)
         @test o.vertices[4] == point(1, 1, 0)
 
-        o = load_obj("/home/jhigginbotham64/.julia/dev/starlight/test/triangles.obj")
+        o = load_obj("/home/jhigginbotham64/.julia/dev/Starlight/test/triangles.obj")
         g = o.default_group
         t1 = g.children[1]
         t2 = g.children[2]
@@ -2531,7 +2532,7 @@ using Test
         @test t2.p2 == o.vertices[3]
         @test t2.p3 == o.vertices[4]
 
-        o = load_obj("/home/jhigginbotham64/.julia/dev/starlight/test/polygons.obj")
+        o = load_obj("/home/jhigginbotham64/.julia/dev/Starlight/test/polygons.obj")
         g = o.default_group
         t1 = g.children[1]
         t2 = g.children[2]
@@ -2546,7 +2547,7 @@ using Test
         @test t3.p2 == o.vertices[4]
         @test t3.p3 == o.vertices[5]
 
-        o = load_obj("/home/jhigginbotham64/.julia/dev/starlight/test/groups.obj")
+        o = load_obj("/home/jhigginbotham64/.julia/dev/Starlight/test/groups.obj")
         g1 = o.groups["FirstGroup"]
         g2 = o.groups["SecondGroup"]
         t1 = g1.children[1]
@@ -2558,18 +2559,18 @@ using Test
         @test t2.p2 == o.vertices[3]
         @test t2.p3 == o.vertices[4]
 
-        o = load_obj("/home/jhigginbotham64/.julia/dev/starlight/test/groups.obj")
+        o = load_obj("/home/jhigginbotham64/.julia/dev/Starlight/test/groups.obj")
         g = group(o)
         @test g.children[1] == o.groups["FirstGroup"]
         @test g.children[2] == o.groups["SecondGroup"]
         @test g.children[3] == o.default_group
 
-        o = load_obj("/home/jhigginbotham64/.julia/dev/starlight/test/normals.obj")
+        o = load_obj("/home/jhigginbotham64/.julia/dev/Starlight/test/normals.obj")
         @test o.normals[1] == vector(0, 0, 1)
         @test o.normals[2] == vector(0.707, 0, -0.707)
         @test o.normals[3] == vector(1, 2, 3)
 
-        o = load_obj("/home/jhigginbotham64/.julia/dev/starlight/test/faces_with_normals.obj")
+        o = load_obj("/home/jhigginbotham64/.julia/dev/Starlight/test/faces_with_normals.obj")
         g = o.default_group
         t1 = g.children[1]
         t2 = g.children[2]
@@ -2587,13 +2588,13 @@ using Test
         @test t2.n3 == t1.n3
 
         # PPM loading postponed from bonus chapter 2
-        @test_throws ErrorException load_ppm("/home/jhigginbotham64/.julia/dev/starlight/test/bad.ppm")
+        @test_throws ErrorException load_ppm("/home/jhigginbotham64/.julia/dev/Starlight/test/bad.ppm")
 
-        c = load_ppm("/home/jhigginbotham64/.julia/dev/starlight/test/canvas_dims.ppm")
+        c = load_ppm("/home/jhigginbotham64/.julia/dev/Starlight/test/canvas_dims.ppm")
         @test width(c) == 10
         @test height(c) == 2
 
-        c = load_ppm("/home/jhigginbotham64/.julia/dev/starlight/test/pixel_check.ppm")
+        c = load_ppm("/home/jhigginbotham64/.julia/dev/Starlight/test/pixel_check.ppm")
         @test round_color(pixel(c, 1, 1), 3) == RGB(1.0, 0.498, 0.0)
         @test round_color(pixel(c, 2, 1), 3) == RGB(0.0, 0.498, 1.0)
         @test round_color(pixel(c, 3, 1), 3) == RGB(0.498, 1.0, 0.0)
@@ -2607,17 +2608,17 @@ using Test
         @test pixel(c, 3, 3) == RGB(1.0, 0.0, 1.0)
         @test round_color(pixel(c, 4, 3), 3) == RGB(0.498, 0.498, 0.498)
 
-        c = load_ppm("/home/jhigginbotham64/.julia/dev/starlight/test/comments.ppm")
+        c = load_ppm("/home/jhigginbotham64/.julia/dev/Starlight/test/comments.ppm")
         @test pixel(c, 1, 1) == RGB(1.0, 1.0, 1.0)
         @test pixel(c, 2, 1) == RGB(1.0, 0.0, 1.0)
 
-        c = load_ppm("/home/jhigginbotham64/.julia/dev/starlight/test/linespan.ppm")
+        c = load_ppm("/home/jhigginbotham64/.julia/dev/Starlight/test/linespan.ppm")
         @test pixel(c, 1, 1) == RGB(0.2, 0.6, 0.8)
 
-        c = load_ppm("/home/jhigginbotham64/.julia/dev/starlight/test/scale.ppm")
+        c = load_ppm("/home/jhigginbotham64/.julia/dev/Starlight/test/scale.ppm")
         @test pixel(c, 1, 2) == RGB(0.75, 0.5, 0.25)
 
-        img = image_map(load_ppm("/home/jhigginbotham64/.julia/dev/starlight/test/checkers2d.ppm"))
+        img = image_map(load_ppm("/home/jhigginbotham64/.julia/dev/Starlight/test/checkers2d.ppm"))
         @test pattern_at(img, 0, 0) == RGB(0.9, 0.9, 0.9)
         @test pattern_at(img, 0.3, 0) == RGB(0.2, 0.2, 0.2)
         @test pattern_at(img, 0.6, 0.3) == RGB(0.1, 0.1, 0.1)
