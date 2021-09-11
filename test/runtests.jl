@@ -1,10 +1,10 @@
-using Starlight
+using Starlight.RayTracing
 using Test
 
 # NOTE need to break into multiple files if possible
 # NOTE need to set up CI/CD (and include detect_ambiguities)
 
-@testset "ray tracer challenge" begin
+@testset "Starlight.RayTracing (from Ray Tracer Challenge)" begin
 
     @testset "ch 1 - tuples, points, and vectors" begin
 
