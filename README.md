@@ -4,10 +4,6 @@ My garden/playground for Julia and computer graphics.
 
 Currently just a simple ray tracing module. Planning to expand it into a full game engine with ray tracing as a submodule (which will probably need to be completely rewritten).
 
-## NOTES
-~~- current bugs can be approached by trying to render simpler CSG scenes~~
-- something similar can be done for OBJ loading and rendering
-
 ## BUGS
 - [X] csg transforms and bounding boxes are completely broken
 - [X] ring pattern not working on csg cylinder
