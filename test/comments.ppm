@@ -1,9 +1,0 @@
-P3
-# this is a comment
-2 1
-# this, too
-255
-# another comment
-255 255 255
-# oh, no, comments in the pixel data!
-255 0 255
