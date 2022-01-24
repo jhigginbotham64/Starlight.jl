@@ -1,7 +1,5 @@
 module RayTracing
 
-# NOTE need to break up into multiple files
-
 using Reexport
 @reexport using FileIO
 @reexport using DelimitedFiles
