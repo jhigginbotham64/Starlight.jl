@@ -71,7 +71,7 @@ function tick(Δ)
   @debug "tick"
 end
 
-function add_job!(c::Clock, f, arg=1)
+function job!(c::Clock, f, arg=1)
   function job()
     Base.wait(c.started)
     while !c.stopped
@@ -82,12 +82,12 @@ function add_job!(c::Clock, f, arg=1)
 end
 
 function awake(c::Clock)
-  if c.fire_sec add_job!(c, ssleep) end
-  if c.fire_msec add_job!(c, msleep) end
-  if c.fire_usec add_job!(c, usleep) end
-  if c.fire_nsec add_job!(c, nsleep) end
+  if c.fire_sec job!(c, ssleep) end
+  if c.fire_msec job!(c, msleep) end
+  if c.fire_usec job!(c, usleep) end
+  if c.fire_nsec job!(c, nsleep) end
 
-  add_job!(c, tick, c.freq)
+  job!(c, tick, c.freq)
 
   c.stopped = false
 

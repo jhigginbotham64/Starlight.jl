@@ -7,9 +7,9 @@ using SimpleDirectMediaLayer
 using SimpleDirectMediaLayer.LibSDL2
 
 export priority, id, handleMessage, sendMessage, listenFor, dispatchMessages
-export System, App, awake, shutdown, add_system!
+export System, App, awake, shutdown, system!
 export Clock, RT_SEC, RT_MSEC, RT_USEC, RT_NSEC, TICK, SLEEP_TIME
-export nsleep, usleep, msleep, ssleep, tick, add_job!
+export nsleep, usleep, msleep, ssleep, tick, job!
 
 import DotEnv
 cfg = DotEnv.config()
@@ -79,13 +79,20 @@ abstract type Event end
 awake(s::System) = nothing
 shutdown(s::System) = nothing
 
+include("Clock.jl")
+include("Rendering.jl")
+include("Physics.jl")
+include("AI.jl")
+include("Audio.jl")
+include("Scene.jl")
+include("Input.jl")
+
 mutable struct App <: System
-  systems::Vector{System}
+  systems::Dict{DataType, System}
   function App(ymlf::String="")
-    a = new([])
+    a = new(Dict())
     c = Clock()
-    add_system!(a, c)
-    add_job!(c, dispatchMessage)
+    system!(a, c)
   
     if isfile(ymlf)
       yml = YAML.load_file(ymlf)
@@ -103,16 +110,11 @@ mutable struct App <: System
   end
 end
 
-add_system!(a::App, s::System) = push!(a.systems, s) 
-awake(a::App) = map(awake, a.systems)
-shutdown(a::App) = map(shutdown, a.systems)
-
-include("Clock.jl")
-include("Rendering.jl")
-include("Physics.jl")
-include("AI.jl")
-include("Audio.jl")
-include("Scene.jl")
-include("Input.jl")
+system!(a::App, s::System) = a.systems[typeof(s)] = s
+function awake(a::App) 
+  job!(a.systems[Clock], dispatchMessage)
+  map(awake, values(a.systems))
+end
+shutdown(a::App) = map(shutdown, values(a.systems))
 
 end
