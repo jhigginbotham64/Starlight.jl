@@ -104,9 +104,7 @@ mutable struct App <: System
 end
 
 add_system!(a::App, s::System) = push!(a.systems, s) 
-function awake(a::App) 
-  map(awake, a.systems)
-end
+awake(a::App) = map(awake, a.systems)
 shutdown(a::App) = map(shutdown, a.systems)
 
 include("Clock.jl")
