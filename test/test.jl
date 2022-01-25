@@ -4,13 +4,8 @@ using Starlight
 # load test file
 a = App("test/test.yml")
 
-# make sure we didn't silently fail
+# make sure we didn't silently fail be verifying config values
 print(a)
 
 # kick off
 awake(a)
-
-# keep process alive but invoke scheduler
-while true
-  yield()
-end

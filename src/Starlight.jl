@@ -114,6 +114,10 @@ system!(a::App, s::System) = a.systems[typeof(s)] = s
 function awake(a::App) 
   job!(a.systems[Clock], dispatchMessage)
   map(awake, values(a.systems))
+  # if running as script, keep alive
+  if !isinteractive()
+    while true yield() end
+  end
 end
 shutdown(a::App) = map(shutdown, values(a.systems))
 
