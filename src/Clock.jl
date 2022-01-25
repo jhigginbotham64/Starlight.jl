@@ -59,7 +59,6 @@ end
 function ssleep(Δ)
   δ =  sleep(SLEEP_TIME(Δ * 1e9))
   Starlight.sendMessage(RT_SEC(δ / 1e9))
-  @debug "second"
 end
 
 function tick(Δ)
