@@ -1,30 +1,30 @@
-mutable struct Clock <: System
+mutable struct Clock <: Starlight.System
+  started::Base.Event
   stopped::Bool
   fire_sec::Bool
   fire_msec::Bool
   fire_usec::Bool
   fire_nsec::Bool
   freq::AbstractFloat
-  jobs::Vector{Task}
 end
 
-Clock() = Clock(true, false, false, false, false, 0.01667, []) # default frequency of approximately 60 Hz
+Clock() = Clock(Base.Event(), true, false, false, false, false, 0.01667) # default frequency of approximately 60 Hz
 
 # RT == "real time"
 # Δ carries the "actual" number of given time units elapsed
-struct RT_SEC <: Event
+struct RT_SEC <: Starlight.Event
   Δ::AbstractFloat
 end
-struct RT_MSEC <: Event
+struct RT_MSEC <: Starlight.Event
   Δ::AbstractFloat
 end
-struct RT_USEC <: Event
+struct RT_USEC <: Starlight.Event
   Δ::AbstractFloat
 end
-struct RT_NSEC <: Event
+struct RT_NSEC <: Starlight.Event
   Δ::AbstractFloat
 end
-struct TICK <: Event
+struct TICK <: Starlight.Event
   Δ::AbstractFloat # seconds, but is a distinct event from RT_SEC
 end
 
@@ -43,30 +43,40 @@ end
 
 function nsleep(Δ)
   δ = sleep(SLEEP_TIME(Δ))
-  sendMessage(RT_NSEC(δ))
+  Starlight.sendMessage(RT_NSEC(δ))
 end
 
 function usleep(Δ)
   δ = sleep(SLEEP_TIME(Δ * 1e3))
-  sendMessage(RT_USEC(δ / 1e3))
+  Starlight.sendMessage(RT_USEC(δ / 1e3))
 end
 
 function msleep(Δ)
   δ = sleep(SLEEP_TIME(Δ * 1e6))
-  sendMessage(RT_MSEC(δ / 1e6))
+  Starlight.sendMessage(RT_MSEC(δ / 1e6))
 end
 
 function ssleep(Δ)
   δ =  sleep(SLEEP_TIME(Δ * 1e9))
-  sendMessage(RT_SEC(δ / 1e9))
+  Starlight.sendMessage(RT_SEC(δ / 1e9))
+  @debug "second"
 end
 
 function tick(Δ)
   δ = sleep(SLEEP_TIME(Δ * 1e9))
-  sendMessage(TICK(δ / 1e9))
+  Starlight.sendMessage(TICK(δ / 1e9))
+  @debug "tick"
 end
 
-add_job!(c::Clock, f, arg=1) = push!(c.jobs, Task(() -> while !c.stopped f(arg) end))
+function add_job!(c::Clock, f, arg=1)
+  function job()
+    Base.wait(c.started)
+    while !c.stopped
+      f(arg)
+    end
+  end
+  schedule(Task(job))
+end
 
 function awake(c::Clock)
   if c.fire_sec add_job!(c, ssleep) end
@@ -78,7 +88,7 @@ function awake(c::Clock)
 
   c.stopped = false
 
-  map(schedule, c.jobs)
+  Base.notify(c.started)
 end
 
 function shutdown(c::Clock)
