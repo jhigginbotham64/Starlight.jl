@@ -44,21 +44,25 @@ end
 function nsleep(Δ)
   δ = sleep(SLEEP_TIME(Δ))
   Starlight.sendMessage(RT_NSEC(δ))
+  @debug "nanosecond"
 end
 
 function usleep(Δ)
   δ = sleep(SLEEP_TIME(Δ * 1e3))
   Starlight.sendMessage(RT_USEC(δ / 1e3))
+  @debug "microsecond"
 end
 
 function msleep(Δ)
   δ = sleep(SLEEP_TIME(Δ * 1e6))
   Starlight.sendMessage(RT_MSEC(δ / 1e6))
+  @debug "millisecond"
 end
 
 function ssleep(Δ)
   δ =  sleep(SLEEP_TIME(Δ * 1e9))
   Starlight.sendMessage(RT_SEC(δ / 1e9))
+  @debug "second"
 end
 
 function tick(Δ)

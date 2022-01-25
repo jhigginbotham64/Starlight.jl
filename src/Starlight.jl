@@ -16,7 +16,6 @@ cfg = DotEnv.config()
 
 DEFAULT_PRIORITY = parse(Int, get(ENV, "DEFAULT_PRIORITY", 0))
 DEFAULT_ID = parse(Int, get(ENV, "DEFAULT_ID", 0))
-DISPATCHER_BATCH_SIZE = parse(Int, get(ENV, "DISPATCHER_BATCH_SIZE", 1))
 MQUEUE_SIZE = parse(Int, get(ENV, "MQUEUE_SIZE", 1000))
 
 entities = Dict{Int, Any}()
@@ -60,18 +59,18 @@ function listenFor(d::DataType, e)
   release(listener_lock)
 end
 
-function dispatchMessages(n)
-  n = min(n, length(messages))
-  for i in 1:n
-    acquire(msg_ready)
-    acquire(mqueue_lock)
-    m = dequeue_pair!(messages)
+function dispatchMessage(arg)
+  acquire(msg_ready)
+  acquire(mqueue_lock)
+  m = dequeue_pair!(messages)
+  @debug "dequeued message"
+  if haskey(listeners, typeof(m))
     for l in listeners[typeof(m)]
       handleMessage(l, m)
     end
-    release(mqueue_lock)
-    release(slot_available)
   end
+  release(mqueue_lock)
+  release(slot_available)
 end
 
 abstract type System end
@@ -86,7 +85,7 @@ mutable struct App <: System
     a = new([])
     c = Clock()
     add_system!(a, c)
-    add_job!(c, dispatchMessages, DISPATCHER_BATCH_SIZE)
+    add_job!(c, dispatchMessage)
   
     if isfile(ymlf)
       yml = YAML.load_file(ymlf)
@@ -105,7 +104,9 @@ mutable struct App <: System
 end
 
 add_system!(a::App, s::System) = push!(a.systems, s) 
-awake(a::App) = map(awake, a.systems)
+function awake(a::App) 
+  map(awake, a.systems)
+end
 shutdown(a::App) = map(shutdown, a.systems)
 
 include("Clock.jl")
