@@ -8,4 +8,5 @@ a = App("test/test.yml")
 print(a)
 
 # kick off
+# run with JULIA_DEBUG=all to see clock messages
 awake(a)
