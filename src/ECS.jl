@@ -71,6 +71,28 @@ get_entity_row_by_id(e::ECS, id::Int) = e.df[Base.getproperty(e.df, ID) .== id, 
 get_df_row_prop(r, s) = r[!, s][1]
 set_df_row_prop!(r, s, x) = r[!, s][1] = x
 
+function Base.propertynames(ent::Entity)
+  return (
+    ENT,
+    TYPE,
+    ID,
+    CHILDREN,
+    PARENT,
+    POSITION,
+    ROTATION,
+    ABSOLUTE_POSITION,
+    ABSOLUTE_ROTATION,
+    ACTIVE,
+    HIDDEN,
+    PROPS,
+    [n for n in keys(Base.getproperty(ent, PROPS))]...
+  )
+end
+
+function Base.hasproperty(ent::Entity, s::Symbol)
+  return s in Base.propertynames(ent)
+end
+
 function accumulate_XYZ(r, s)
   acc = XYZ(0, 0, 0)
   while true
@@ -91,6 +113,8 @@ function Base.getproperty(ent::Entity, s::Symbol)
   end
 end
 
+ecs_lock = Semaphore(1)
+
 function Base.setproperty!(ent::Entity, s::Symbol, x)
   e = get_entity_row(ecs, ent)
   if s in [
@@ -101,11 +125,15 @@ function Base.setproperty!(ent::Entity, s::Symbol, x)
     ABSOLUTE_ROTATION # computed
   ]
     error("cannot set property $(s) on Entity")
-  elseif s in keys(components) && s != PROPS
+  end
+  
+  acquire(ecs_lock)
+  if s in keys(components) && s != PROPS
     set_df_row_prop!(e, s, x)
   else
     get_df_row_prop(e, PROPS)[s] = x
   end
+  release(ecs_lock)
 end
 
 # you can iterate over an ECS!
