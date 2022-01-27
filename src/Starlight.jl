@@ -39,11 +39,14 @@ end
 handleMessage(l, m) = nothing
 
 function sendMessage(m)
-  acquire(slot_available)
-  acquire(mqueue_lock)
-  enqueue!(messages, m, priority(m))
-  release(mqueue_lock)
-  release(msg_ready)
+  # drop if no one's listening
+  if haskey(listeners, typeof(m))
+    acquire(slot_available)
+    acquire(mqueue_lock)
+    enqueue!(messages, m, priority(m))
+    release(mqueue_lock)
+    release(msg_ready)
+  end
 end
 
 function listenFor(e::Any, d::DataType)
