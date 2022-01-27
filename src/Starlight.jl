@@ -1,24 +1,30 @@
 module Starlight
 
-using Base: Semaphore, acquire, release
-using DataStructures
-using YAML
-using SimpleDirectMediaLayer
-using SimpleDirectMediaLayer.LibSDL2
+using Reexport
+@reexport using Base: Semaphore, acquire, release
+@reexport using DataStructures: PriorityQueue
+@reexport using DataFrames
+@reexport using YAML
+@reexport using LinearAlgebra
+@reexport using StaticArrays
+@reexport using SimpleDirectMediaLayer
+@reexport using SimpleDirectMediaLayer.LibSDL2
 
-export priority, id, handleMessage, sendMessage, listenFor, dispatchMessages
+SDL = SimpleDirectMediaLayer
+export SDL
+export priority, handleMessage, sendMessage, listenFor, dispatchMessages
 export System, App, awake, shutdown, system!
+export Event, Entity, Shape, bds
 export Clock, RT_SEC, RT_MSEC, RT_USEC, RT_NSEC, TICK, SLEEP_TIME
 export nsleep, usleep, msleep, ssleep, tick, job!
+export ECS, XYZ
 
 import DotEnv
 cfg = DotEnv.config()
 
 DEFAULT_PRIORITY = parse(Int, get(ENV, "DEFAULT_PRIORITY", 0))
-DEFAULT_ID = parse(Int, get(ENV, "DEFAULT_ID", 0))
 MQUEUE_SIZE = parse(Int, get(ENV, "MQUEUE_SIZE", 1000))
 
-entities = Dict{Int, Any}()
 listeners = Dict{DataType, Vector{Any}}()
 messages = PriorityQueue{Any, Int}()
 
@@ -34,10 +40,6 @@ end
 
 function priority(e)
   (hasproperty(e, :priority)) ? e.priority : DEFAULT_PRIORITY
-end
-
-function id(e)
-  (hasproperty(e, :id)) ? e.id : DEFAULT_ID
 end
 
 function handleMessage(l, m)
@@ -75,17 +77,19 @@ end
 
 abstract type System end
 abstract type Event end
+abstract type Shape end
 
+bounds(s::Shape) = nothing
 awake(s::System) = nothing
 shutdown(s::System) = nothing
 
 include("Clock.jl")
+include("ECS.jl")
+include("Input.jl")
+include("Audio.jl")
+include("AI.jl")
 include("Rendering.jl")
 include("Physics.jl")
-include("AI.jl")
-include("Audio.jl")
-include("Scene.jl")
-include("Input.jl")
 
 mutable struct App <: System
   systems::Dict{DataType, System}
@@ -93,6 +97,7 @@ mutable struct App <: System
     a = new(Dict())
     c = Clock()
     system!(a, c)
+    system!(a, ecs)
   
     if isfile(ymlf)
       yml = YAML.load_file(ymlf)
