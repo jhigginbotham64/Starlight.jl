@@ -2,12 +2,14 @@ export Entity, update
 export ECS, XYZ, accumulate_XYZ, get_entity_row, get_entity_by_id
 export get_entity_row_by_id, get_df_row_prop, set_df_row_prop!
 export TREE_ORDER, ECS_ITERATION_STATE
+export Root, instantiate!
+export ecs
 
-abstract type Entity <: System end
+abstract type Entity <: Starlight.System end
 
 awake(e::Entity) = true
 shutdown(e::Entity) = false
-update(e::Entity, Δ::AbstractFloat) = nothing
+update(e, Δ) = nothing
 
 # symbols that getproperty and setproperty! (and end users) care about
 const ENT = :ent
@@ -28,6 +30,7 @@ mutable struct XYZ
   x::Number
   y::Number
   z::Number
+  XYZ(x=0, y=0, z=0) = new(x, y, z)
 end
 
 import Base.+, Base.-, Base.*, Base.÷, Base./, Base.%
@@ -67,9 +70,9 @@ const ecs = ECS()
 
 # internally uses Base.getproperty directly so
 # as to not break if the symbol values change
-get_entity_row(e::ECS, ent::Entity) = e.df[Base.getproperty(e.df, ENTITY) .== ent, :]
-get_entity_by_id(e::ECS, id::Int) = e.df[Base.getproperty(e.df, ID) .== id, ENT][1]
-get_entity_row_by_id(e::ECS, id::Int) = e.df[Base.getproperty(e.df, ID) .== id, :]
+get_entity_row(e::ECS, ent::Entity) = e.df[getproperty(e.df, ENT) .== [ent], :]
+get_entity_by_id(e::ECS, id::Int) = e.df[getproperty(e.df, ID) .== [id], ENT][1]
+get_entity_row_by_id(e::ECS, id::Int) = e.df[getproperty(e.df, ID) .== [id], :]
 get_df_row_prop(r, s) = r[!, s][1]
 set_df_row_prop!(r, s, x) = r[!, s][1] = x
 
@@ -87,7 +90,7 @@ function Base.propertynames(ent::Entity)
     ACTIVE,
     HIDDEN,
     PROPS,
-    [n for n in keys(Base.getproperty(ent, PROPS))]...
+    [n for n in keys(getproperty(ent, PROPS))]...
   )
 end
 
@@ -96,7 +99,7 @@ function Base.hasproperty(ent::Entity, s::Symbol)
 end
 
 function accumulate_XYZ(r, s)
-  acc = XYZ(0, 0, 0)
+  acc = XYZ()
   while true
     r = get_entity_row_by_id(ecs, get_df_row_prop(r, PARENT))
     inc = get_df_row_prop(r, s)
@@ -130,7 +133,10 @@ function Base.setproperty!(ent::Entity, s::Symbol, x)
   end
 
   acquire(ecs_lock)
-  if s in keys(components) && s != PROPS
+  if s == PARENT
+    par = get_entity_by_id(ecs, get_df_row_prop(e, PARENT))
+    push!(getproperty(par, CHILDREN), get_df_row_prop(e, ID))
+  elseif s in keys(components) && s != PROPS
     set_df_row_prop!(e, s, x)
   else
     get_df_row_prop(e, PROPS)[s] = x
@@ -144,7 +150,6 @@ end
 # into physics and rendering, such as
 # z-order. other tree traversal types
 # can be added in the future.
-Base.eltype(::Type{ECS}) = Entity
 Base.length(e::ECS) = size(e.df)[1]
 
 @enum TREE_ORDER begin
@@ -154,38 +159,39 @@ end
 mutable struct ECS_ITERATION_STATE
   root::Int
   o::TREE_ORDER
-  q::Queue{Entity}
+  q::Queue{Int}
   root_visited::Bool
-  ECS_ITERATION_STATE(; root=0, o=LEVEL, q=Queue{Entity}(), root_visited=false) = new(root, o, q, root_visited)
+  ECS_ITERATION_STATE(; root=0, o=LEVEL, q=Queue{Int}(), root_visited=false) = new(root, o, q, root_visited)
 end
 
 function Base.iterate(e::ECS, state::ECS_ITERATION_STATE=ECS_ITERATION_STATE())
-  if length(e) == 0 return nothing end
-
   if state.o == LEVEL
     if isempty(state.q)
       if !state.root_visited # just started
-        enqueue!(state.q, get_entity_by_id(e, state.root))
-        s.root_visited = true
+        enqueue!(state.q, state.root)
+        state.root_visited = true
       else # just finished
         return nothing
       end
     end
 
-    ent = dequeue!(state.q)
+    ent = get_entity_by_id(e, dequeue!(state.q))
 
     for c in getproperty(ent, CHILDREN) 
-      enqueue!(state.q, get_entity_by_id(e, c))
+      enqueue!(state.q, c)
     end
 
-    return ent
+    return (ent, state)
   end
 end
 
 listenFor(ecs, Starlight.TICK)
 
 function handleMessage(e::ECS, m::Starlight.TICK)
-  _update = (ent::Entity) -> update(ent, m.Δ)
+  @debug "ECS tick"
+  function _update(ent::Entity)
+    update(ent, m.Δ)
+  end
   map(_update, e)
 end
 
@@ -198,3 +204,49 @@ function shutdown(e::ECS)
   map(shutdown, e)
   return false
 end
+
+next_id = 0
+
+function instantiate!(e::Entity; 
+  pid::Int=0, active::Bool=true, hidden::Bool=false, 
+  pos::XYZ=XYZ(), rot::XYZ=XYZ(), children::Vector{Int}=Vector{Int}(), 
+  props::Dict{<:Any,<:Any}=Dict())
+
+  acquire(ecs_lock)
+
+  global next_id
+  id = next_id
+  next_id += 1
+
+  # update ecs
+  # allows invalid parents and children for now
+  push!(ecs.df, Dict(
+    ENT=>e,
+    TYPE=>typeof(e),
+    ID=>id,
+    CHILDREN=>children,
+    PARENT=>pid,
+    POSITION=>pos,
+    ROTATION=>rot,
+    ACTIVE=>active,
+    HIDDEN=>hidden,
+    PROPS=>props
+  ))
+
+  if id != 0 # root has no parent but itself
+    par = get_entity_by_id(ecs, pid)
+    push!(getproperty(par, CHILDREN), id)
+  end
+
+  release(ecs_lock)
+
+  return e
+end
+
+mutable struct Root <: Entity end # mutate at your own peril
+# also, user can define update(r::Root, Δ) if they want
+
+# root pid is 0 (default) indicating "here and no further",
+# instantiate in library because always needed, also it will
+# always have id of 0, technically parent of itself
+instantiate!(Root())

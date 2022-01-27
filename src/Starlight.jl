@@ -2,7 +2,7 @@ module Starlight
 
 using Reexport
 @reexport using Base: Semaphore, acquire, release
-@reexport using DataStructures: Queue, PriorityQueue
+@reexport using DataStructures: Queue, PriorityQueue, enqueue!, dequeue!
 @reexport using DataFrames
 @reexport using YAML
 @reexport using SimpleDirectMediaLayer
@@ -16,8 +16,8 @@ export System, Message, App, awake, shutdown, system!, on, off, cat
 import DotEnv
 cfg = DotEnv.config()
 
-DEFAULT_PRIORITY = parse(Int, get(ENV, "DEFAULT_PRIORITY", 0))
-MQUEUE_SIZE = parse(Int, get(ENV, "MQUEUE_SIZE", 1000))
+DEFAULT_PRIORITY = parse(Int, get(ENV, "DEFAULT_PRIORITY", "0"))
+MQUEUE_SIZE = parse(Int, get(ENV, "MQUEUE_SIZE", "1000"))
 
 listeners = Dict{DataType, Vector{Any}}()
 messages = PriorityQueue{Any, Int}()
@@ -59,10 +59,11 @@ end
 function dispatchMessage(arg)
   acquire(msg_ready)
   acquire(mqueue_lock)
-  m = dequeue_pair!(messages)
+  m = dequeue!(messages)
   @debug "dequeued message"
   if haskey(listeners, typeof(m))
     for l in listeners[typeof(m)]
+      @debug "calling handleMessage"
       handleMessage(l, m)
     end
   end
