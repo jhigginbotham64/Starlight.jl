@@ -95,8 +95,11 @@ function awake(c::Clock)
   c.stopped = false
 
   Base.notify(c.started)
+
+  return true
 end
 
 function shutdown(c::Clock)
   c.stopped = true
+  return false
 end

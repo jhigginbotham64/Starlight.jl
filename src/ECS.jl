@@ -5,6 +5,8 @@ export TREE_ORDER, ECS_ITERATION_STATE
 
 abstract type Entity <: System end
 
+awake(e::Entity) = true
+shutdown(e::Entity) = false
 update(e::Entity, Δ::AbstractFloat) = nothing
 
 # symbols that getproperty and setproperty! (and end users) care about
@@ -126,7 +128,7 @@ function Base.setproperty!(ent::Entity, s::Symbol, x)
   ]
     error("cannot set property $(s) on Entity")
   end
-  
+
   acquire(ecs_lock)
   if s in keys(components) && s != PROPS
     set_df_row_prop!(e, s, x)
@@ -158,6 +160,8 @@ mutable struct ECS_ITERATION_STATE
 end
 
 function Base.iterate(e::ECS, state::ECS_ITERATION_STATE=ECS_ITERATION_STATE())
+  if length(e) == 0 return nothing end
+
   if state.o == LEVEL
     if isempty(state.q)
       if !state.root_visited # just started
@@ -187,8 +191,10 @@ end
 
 function awake(e::ECS)
   map(awake, e)
+  return true
 end
 
 function shutdown(e::ECS)
   map(shutdown, e)
+  return false
 end

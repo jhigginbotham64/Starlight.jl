@@ -11,7 +11,7 @@ using Reexport
 SDL = SimpleDirectMediaLayer
 export SDL
 export priority, handleMessage, sendMessage, listenFor, dispatchMessage
-export System, Message, App, awake, shutdown, system!
+export System, Message, App, awake, shutdown, system!, on, off, cat
 
 import DotEnv
 cfg = DotEnv.config()
@@ -73,8 +73,14 @@ end
 abstract type System end
 abstract type Message end
 
-awake(s::System) = nothing
-shutdown(s::System) = nothing
+# these functions are supposed to return
+# whether a value indicating whether the 
+# system is still running or not, except
+# for App where it returns a vector of
+# booleans indicating whether each system
+# is still running
+awake(s::System) = true
+shutdown(s::System) = false
 
 include("Clock.jl")
 include("ECS.jl")
@@ -86,8 +92,9 @@ include("Physics.jl")
 
 mutable struct App <: System
   systems::Dict{DataType, System}
+  running::Vector{Bool}
   function App(ymlf::String="")
-    a = new(Dict())
+    a = new(Dict(), Vector{Bool}())
     c = Clock()
     system!(a, c)
     system!(a, ecs)
@@ -104,19 +111,23 @@ mutable struct App <: System
       end
     end
   
+    a.running = [false for s in keys(a.systems)]
+
     return a
   end
 end
 
+on(a::App) = all(a.running)
+off(a::App) = all(!r for r in a.running)
+# shrodinger's app is neither on nor off, 
+# i.e. some system is not synchronized with the others
+cat(a::App) = !is_on(a) && !is_off(a)
+
 system!(a::App, s::System) = a.systems[typeof(s)] = s
 function awake(a::App) 
   job!(a.systems[Clock], dispatchMessage)
-  map(awake, values(a.systems))
-  # if running as script, keep alive
-  if !isinteractive()
-    while true yield() end
-  end
+  return a.running = map(awake, values(a.systems))
 end
-shutdown(a::App) = map(shutdown, values(a.systems))
+shutdown(a::App) = a.running = map(shutdown, values(a.systems))
 
 end
