@@ -5,8 +5,6 @@ using Reexport
 @reexport using DataStructures: PriorityQueue
 @reexport using DataFrames
 @reexport using YAML
-@reexport using LinearAlgebra
-@reexport using StaticArrays
 @reexport using SimpleDirectMediaLayer
 @reexport using SimpleDirectMediaLayer.LibSDL2
 
@@ -14,10 +12,10 @@ SDL = SimpleDirectMediaLayer
 export SDL
 export priority, handleMessage, sendMessage, listenFor, dispatchMessages
 export System, App, awake, shutdown, system!
-export Event, Entity, Shape, bds
+export Event, Entity
 export Clock, RT_SEC, RT_MSEC, RT_USEC, RT_NSEC, TICK, SLEEP_TIME
 export nsleep, usleep, msleep, ssleep, tick, job!
-export ECS, XYZ
+export ECS, XYZ, instantiate!, get_entity_by_id
 
 import DotEnv
 cfg = DotEnv.config()
@@ -77,9 +75,7 @@ end
 
 abstract type System end
 abstract type Event end
-abstract type Shape end
 
-bounds(s::Shape) = nothing
 awake(s::System) = nothing
 shutdown(s::System) = nothing
 
