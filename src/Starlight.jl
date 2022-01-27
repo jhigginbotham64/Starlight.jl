@@ -10,7 +10,7 @@ using Reexport
 
 SDL = SimpleDirectMediaLayer
 export SDL
-export priority, handleMessage, sendMessage, listenFor, dispatchMessages
+export priority, handleMessage, sendMessage, listenFor, dispatchMessage
 export System, App, awake, shutdown, system!
 export Event, Entity
 
