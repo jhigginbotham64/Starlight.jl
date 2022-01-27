@@ -11,8 +11,7 @@ using Reexport
 SDL = SimpleDirectMediaLayer
 export SDL
 export priority, handleMessage, sendMessage, listenFor, dispatchMessage
-export System, App, awake, shutdown, system!
-export Event, Entity
+export System, Message, App, awake, shutdown, system!
 
 import DotEnv
 cfg = DotEnv.config()
@@ -72,7 +71,7 @@ function dispatchMessage(arg)
 end
 
 abstract type System end
-abstract type Event end
+abstract type Message end
 
 awake(s::System) = nothing
 shutdown(s::System) = nothing

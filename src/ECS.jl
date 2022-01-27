@@ -1,12 +1,10 @@
-abstract type Entity <: System end
-
 export ECS, XYZ, accumulate_XYZ, get_entity_row, get_entity_by_id
 export get_entity_row_by_id, get_df_row_prop, set_df_row_prop!
 export TREE_ORDER, ECS_ITERATION_STATE
 export update
 
-awake(e::Entity) = nothing
-shutdown(e::Entity) = nothing
+abstract type Entity <: System end
+
 update(e::Entity, Δ::AbstractFloat) = nothing
 
 # symbols that getproperty and setproperty! (and end users) care about
