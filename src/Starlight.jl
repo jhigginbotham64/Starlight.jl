@@ -37,9 +37,7 @@ function priority(e)
   (hasproperty(e, :priority)) ? e.priority : DEFAULT_PRIORITY
 end
 
-function handleMessage(l, m)
-  nothing
-end
+handleMessage(l, m) = nothing
 
 function sendMessage(m)
   acquire(slot_available)
