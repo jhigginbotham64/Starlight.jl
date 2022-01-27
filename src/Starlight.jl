@@ -2,7 +2,7 @@ module Starlight
 
 using Reexport
 @reexport using Base: Semaphore, acquire, release
-@reexport using DataStructures: PriorityQueue
+@reexport using DataStructures: Queue, PriorityQueue
 @reexport using DataFrames
 @reexport using YAML
 @reexport using SimpleDirectMediaLayer
@@ -13,9 +13,6 @@ export SDL
 export priority, handleMessage, sendMessage, listenFor, dispatchMessages
 export System, App, awake, shutdown, system!
 export Event, Entity
-export Clock, RT_SEC, RT_MSEC, RT_USEC, RT_NSEC, TICK, SLEEP_TIME
-export nsleep, usleep, msleep, ssleep, tick, job!
-export ECS, XYZ, get_entity_by_id
 
 import DotEnv
 cfg = DotEnv.config()
@@ -52,7 +49,7 @@ function sendMessage(m)
   release(msg_ready)
 end
 
-function listenFor(d::DataType, e)
+function listenFor(e::Any, d::DataType)
   acquire(listener_lock)
   if !haskey(listeners, d) listeners[d] = Vector{Any}() end
   push!(listeners[d], e)

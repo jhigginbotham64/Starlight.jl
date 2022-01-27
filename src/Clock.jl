@@ -1,3 +1,6 @@
+export Clock, RT_SEC, RT_MSEC, RT_USEC, RT_NSEC, TICK, SLEEP_TIME
+export nsleep, usleep, msleep, ssleep, tick, job!
+
 mutable struct Clock <: Starlight.System
   started::Base.Event
   stopped::Bool
