@@ -54,6 +54,9 @@ function listenFor(e::Any, d::DataType)
   release(listener_lock)
 end
 
+# uses single argument to support
+# being called as a job by a Clock,
+# see Clock.jl for that interface
 function dispatchMessage(arg)
   acquire(msg_ready)
   acquire(mqueue_lock)
