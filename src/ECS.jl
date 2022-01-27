@@ -57,12 +57,13 @@ const components = Dict(
 
 struct ECS <: Starlight.System
   df::DataFrame
+  awoken::Bool
   function ECS()
     df = DataFrame(
       NamedTuple{Tuple(keys(components))}(
         t[] for t in values(components)
       ))
-    return new(df)
+    return new(df, false)
   end
 end
 
@@ -195,15 +196,8 @@ function handleMessage(e::ECS, m::Starlight.TICK)
   map(_update, e)
 end
 
-function awake(e::ECS)
-  map(awake, e)
-  return true
-end
-
-function shutdown(e::ECS)
-  map(shutdown, e)
-  return false
-end
+awake(e::ECS) = all(map(awake, e))
+shutdown(e::ECS) = all(map(shutdown, e))
 
 next_id = 0
 
@@ -239,6 +233,8 @@ function instantiate!(e::Entity;
   end
 
   release(ecs_lock)
+
+  if ecs.awoken awake(e) end
 
   return e
 end
