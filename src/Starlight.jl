@@ -8,8 +8,6 @@ using Reexport
 @reexport using SimpleDirectMediaLayer
 @reexport using SimpleDirectMediaLayer.LibSDL2
 
-SDL = SimpleDirectMediaLayer
-export SDL
 export priority, handleMessage, sendMessage, listenFor, dispatchMessage
 export System, Message, App, awake, shutdown, system!, on, off, cat
 
@@ -88,6 +86,7 @@ shutdown(s::System) = false
 
 include("Clock.jl")
 include("ECS.jl")
+include("SDL.jl")
 include("Input.jl")
 include("Audio.jl")
 include("AI.jl")
