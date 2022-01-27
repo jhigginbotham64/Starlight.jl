@@ -52,4 +52,6 @@ Starlight.update(t::TestEntity, Δ) = t.updated = true
 
   @test tst.updated
 
+  # be a nice boi
+  shutdown(a)
 end

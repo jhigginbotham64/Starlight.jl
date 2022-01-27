@@ -204,7 +204,7 @@ next_id = 0
 function instantiate!(e::Entity; 
   pid::Int=0, active::Bool=true, hidden::Bool=false, 
   pos::XYZ=XYZ(), rot::XYZ=XYZ(), children::Vector{Int}=Vector{Int}(), 
-  props::Dict{<:Any,<:Any}=Dict())
+  props::Dict=Dict())
 
   acquire(ecs_lock)
 

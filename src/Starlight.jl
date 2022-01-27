@@ -96,14 +96,15 @@ include("Physics.jl")
 mutable struct App <: System
   systems::Dict{DataType, System}
   running::Vector{Bool}
-  function App(ymlf::String="")
+  function App(appf::String="")
     a = new(Dict(), Vector{Bool}())
     c = Clock()
     system!(a, c)
     system!(a, ecs)
+    system!(a, sdl)
   
-    if isfile(ymlf)
-      yml = YAML.load_file(ymlf)
+    if isfile(appf)
+      yml = YAML.load_file(appf) # may support other file types in the future
       if haskey(yml, "clock") && yml["clock"] isa Dict
         clk = yml["clock"]
         if haskey(clk, "fire_sec") c.fire_sec = clk["fire_sec"] end
