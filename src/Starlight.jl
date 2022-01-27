@@ -124,6 +124,10 @@ off(a::App) = all(!r for r in a.running)
 cat(a::App) = !is_on(a) && !is_off(a)
 
 system!(a::App, s::System) = a.systems[typeof(s)] = s
+# note that if running from a script the app will
+# still exit when julia exits, it will never block.
+# figuring out whether/how to keep it alive is
+# on the user.
 function awake(a::App) 
   job!(a.systems[Clock], dispatchMessage)
   return a.running = map(awake, values(a.systems))
