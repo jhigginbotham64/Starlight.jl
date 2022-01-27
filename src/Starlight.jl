@@ -116,7 +116,7 @@ mutable struct App <: System
   
     a.running = [false for s in keys(a.systems)]
 
-    return a
+    return finalizer(shutdown, a)
   end
 end
 
