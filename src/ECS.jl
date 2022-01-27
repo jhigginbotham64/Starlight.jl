@@ -22,8 +22,8 @@ mutable struct XYZ
 end
 
 import Base.+, Base.-
-Base.+(a::XYZ, b::XYZ) = XYZ(a.x+b.x,a.y+b.y,a.z+b.z)
-Base.-(a::XYZ, b::XYZ) = XYZ(a.x-b.x,a.y-b.y,a.z-b.z)
++(a::XYZ, b::XYZ) = XYZ(a.x+b.x,a.y+b.y,a.z+b.z)
+-(a::XYZ, b::XYZ) = XYZ(a.x-b.x,a.y-b.y,a.z-b.z)
 
 # columns of the in-memory database
 const components = Dict(
@@ -51,10 +51,6 @@ struct ECS <: Starlight.System
 end
 
 const ecs = ECS()
-
-function instantiate!(comps::Dict)
-  push!(ecs.df, comps)
-end
 
 get_entity_by_id(id::Int) = ecs.df[!, Base.getproperty(ecs.df, ID) .== id]
 

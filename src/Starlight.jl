@@ -15,7 +15,7 @@ export System, App, awake, shutdown, system!
 export Event, Entity
 export Clock, RT_SEC, RT_MSEC, RT_USEC, RT_NSEC, TICK, SLEEP_TIME
 export nsleep, usleep, msleep, ssleep, tick, job!
-export ECS, XYZ, instantiate!, get_entity_by_id
+export ECS, XYZ, get_entity_by_id
 
 import DotEnv
 cfg = DotEnv.config()
