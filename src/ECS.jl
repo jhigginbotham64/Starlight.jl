@@ -57,13 +57,12 @@ const components = Dict(
 
 struct ECS <: Starlight.System
   df::DataFrame
-  awoken::Bool
   function ECS()
     df = DataFrame(
       NamedTuple{Tuple(keys(components))}(
         t[] for t in values(components)
       ))
-    return new(df, false)
+    return new(df)
   end
 end
 
@@ -233,8 +232,6 @@ function instantiate!(e::Entity;
   end
 
   release(ecs_lock)
-
-  if ecs.awoken awake(e) end
 
   return e
 end
