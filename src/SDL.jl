@@ -141,6 +141,7 @@ function handleMessage(s::SDL, m::Starlight.TICK)
     event_ref = Ref{SDL_Event}()
     while Bool(SDL_PollEvent(event_ref))
       evt = event_ref[]
+      @debug "SDL sending message $(evt)"
       sendMessage(evt)
     end
   catch e

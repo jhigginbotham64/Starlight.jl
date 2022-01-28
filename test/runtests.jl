@@ -61,7 +61,9 @@ Starlight.handleMessage(t::TestEntity, m::UserEvent) = t.gotUserEvent = true
 
   listenFor(tst, UserEvent)
 
-  # haven't figured out how to push events to the SDL queue yet
+  # haven't figured out how to push events to the SDL queue yet,
+  # but you can still see that the SDL input system works by turning
+  # on debug output and clicking on the terminal window
 
   sleep(1)
 
