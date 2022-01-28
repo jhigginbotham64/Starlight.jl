@@ -1,5 +1,6 @@
 export Clock, RT_SEC, RT_MSEC, RT_USEC, RT_NSEC, TICK, SLEEP_TIME
 export nsleep, usleep, msleep, ssleep, tick, job!
+export clk
 
 mutable struct Clock <: Starlight.System
   started::Base.Event
@@ -12,6 +13,8 @@ mutable struct Clock <: Starlight.System
 end
 
 Clock() = Clock(Base.Event(), true, false, false, false, false, 0.01667) # default frequency of approximately 60 Hz
+
+const clk = Clock()
 
 # RT == "real time"
 # Δ carries the "actual" number of given time units elapsed
@@ -84,7 +87,7 @@ function job!(c::Clock, f, arg=1)
   schedule(Task(job))
 end
 
-function awake(c::Clock)
+function awake!(c::Clock)
   if c.fire_sec job!(c, ssleep) end
   if c.fire_msec job!(c, msleep) end
   if c.fire_usec job!(c, usleep) end
@@ -99,7 +102,8 @@ function awake(c::Clock)
   return true
 end
 
-function shutdown(c::Clock)
+function shutdown!(c::Clock)
   c.stopped = true
+  c.started = Base.Event() # old one remains signaled no matter what, replace
   return false
 end

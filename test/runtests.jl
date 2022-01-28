@@ -2,11 +2,11 @@ using Starlight
 using Test
 
 # the namespace in front of the method name is important, apparently
-Starlight.update(r::Root, Δ) = r.updated = true
+Starlight.update!(r::Root, Δ) = r.update!d = true
 
 mutable struct TestEntity <: Entity end
   
-Starlight.update(t::TestEntity, Δ) = t.updated = true
+Starlight.update!(t::TestEntity, Δ) = t.update!d = true
 
 Starlight.handleMessage(t::TestEntity, m::UserEvent) = t.gotUserEvent = true
 
@@ -19,44 +19,44 @@ Starlight.handleMessage(t::TestEntity, m::UserEvent) = t.gotUserEvent = true
 
   # kick off
   # run with JULIA_DEBUG=Starlight to see clock messages
-  awake(a)
+  awake!(a)
 
   # all systems should be running
   @test on(a)
 
   # close
-  shutdown(a)
+  shutdown!(a)
 
   # systems should no longer be running
   @test off(a)
 
   # ok back on
-  awake(a)
+  awake!(a)
 
   # test manipulations on root
   root = get_entity_by_id(ecs, 0)
 
-  root.updated = false
+  root.update!d = false
 
-  @test !root.updated
+  @test !root.update!d
 
   sleep(1)
 
-  @test root.updated
+  @test root.update!d
 
   # manipulations on test entity
   tst = TestEntity()
   instantiate!(tst, props=Dict(
-    :updated=>false,
+    :update!d=>false,
     :gotUserEvent=>false
   ))
   
-  @test !tst.updated
+  @test !tst.update!d
   @test !tst.gotUserEvent
 
   sleep(1)
 
-  @test tst.updated
+  @test tst.update!d
   @test !tst.gotUserEvent
 
   listenFor(tst, UserEvent)
@@ -71,5 +71,5 @@ Starlight.handleMessage(t::TestEntity, m::UserEvent) = t.gotUserEvent = true
   @test_broken tst.gotUserEvent
 
   # be a nice boi
-  shutdown(a)
+  shutdown!(a)
 end

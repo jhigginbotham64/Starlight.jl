@@ -154,7 +154,7 @@ function getSDLError()
   return unsafe_string(x)
 end
 
-function awake(s::SDL)
+function awake!(s::SDL)
   SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 4)
   SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4)
   r = SDL_Init(UInt32(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC | SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS))
@@ -167,7 +167,7 @@ function awake(s::SDL)
   return true
 end
 
-function shutdown(s::SDL)  
+function shutdown!(s::SDL)  
   TTF_Quit()
   SDL_Quit()
 

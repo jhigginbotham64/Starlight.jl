@@ -9,7 +9,7 @@ using Reexport
 @reexport using SimpleDirectMediaLayer.LibSDL2
 
 export priority, handleMessage, sendMessage, listenFor, dispatchMessage
-export System, App, awake, shutdown, system!, on, off, cat
+export System, App, awake!, shutdown!, system!, on, off, cat
 
 import DotEnv
 cfg = DotEnv.config()
@@ -17,14 +17,14 @@ cfg = DotEnv.config()
 DEFAULT_PRIORITY = parse(Int, get(ENV, "DEFAULT_PRIORITY", "0"))
 MQUEUE_SIZE = parse(Int, get(ENV, "MQUEUE_SIZE", "1000"))
 
-listeners = Dict{DataType, Set{Any}}()
-messages = PriorityQueue{Any, Int}()
+const listeners = Dict{DataType, Set{Any}}()
+const messages = PriorityQueue{Any, Int}()
 
-slot_available = Semaphore(MQUEUE_SIZE)
-msg_ready = Semaphore(MQUEUE_SIZE)
-mqueue_lock = Semaphore(1)
-entity_lock = Semaphore(1)
-listener_lock = Semaphore(1)
+const slot_available = Semaphore(MQUEUE_SIZE)
+const msg_ready = Semaphore(MQUEUE_SIZE)
+const mqueue_lock = Semaphore(1)
+const entity_lock = Semaphore(1)
+const listener_lock = Semaphore(1)
 
 for i in 1:MQUEUE_SIZE
   acquire(msg_ready)
@@ -54,6 +54,8 @@ function listenFor(e::Any, d::DataType)
   release(listener_lock)
 end
 
+# TODO implement "unlisten" function and test
+
 # uses single argument to support
 # being called as a job by a Clock,
 # see Clock.jl for that interface
@@ -80,8 +82,8 @@ abstract type System end
 # for App where it returns a vector of
 # booleans indicating whether each system
 # is still running
-awake(s::System) = true
-shutdown(s::System) = false
+awake!(s::System) = true
+shutdown!(s::System) = false
 
 include("Clock.jl")
 include("ECS.jl")
@@ -92,26 +94,26 @@ mutable struct App <: System
   running::Vector{Bool}
   function App(appf::String="")
     a = new(Dict(), Vector{Bool}())
-    c = Clock()
-    system!(a, c)
+    
+    system!(a, clk)
     system!(a, ecs)
     system!(a, sdl)
   
     if isfile(appf)
       yml = YAML.load_file(appf) # may support other file types in the future
       if haskey(yml, "clock") && yml["clock"] isa Dict
-        clk = yml["clock"]
-        if haskey(clk, "fire_sec") c.fire_sec = clk["fire_sec"] end
-        if haskey(clk, "fire_msec") c.fire_msec = clk["fire_msec"] end
-        if haskey(clk, "fire_usec") c.fire_usec = clk["fire_usec"] end
-        if haskey(clk, "fire_nsec") c.fire_nsec = clk["fire_nsec"] end
-        if haskey(clk, "freq") c.freq = clk["freq"] end
+        clock = yml["clock"]
+        if haskey(clock, "fire_sec") c.fire_sec = clock["fire_sec"] end
+        if haskey(clock, "fire_msec") c.fire_msec = clock["fire_msec"] end
+        if haskey(clock, "fire_usec") c.fire_usec = clock["fire_usec"] end
+        if haskey(clock, "fire_nsec") c.fire_nsec = clock["fire_nsec"] end
+        if haskey(clock, "freq") c.freq = clock["freq"] end
       end
     end
   
     a.running = [false for s in keys(a.systems)]
 
-    return finalizer(shutdown, a)
+    return finalizer(shutdown!, a)
   end
 end
 
@@ -119,17 +121,17 @@ on(a::App) = all(a.running)
 off(a::App) = all(!r for r in a.running)
 # shrodinger's app is neither on nor off, 
 # i.e. some system is not synchronized with the others
-cat(a::App) = !is_on(a) && !is_off(a)
+cat(a::App) = !on(a) && !off(a)
 
 system!(a::App, s::System) = a.systems[typeof(s)] = s
 # note that if running from a script the app will
 # still exit when julia exits, it will never block.
 # figuring out whether/how to keep it alive is
 # on the user.
-function awake(a::App) 
+function awake!(a::App) 
   job!(a.systems[Clock], dispatchMessage)
-  return a.running = map(awake, values(a.systems))
+  return a.running = map(awake!, values(a.systems))
 end
-shutdown(a::App) = a.running = map(shutdown, values(a.systems))
+shutdown!(a::App) = a.running = map(shutdown!, values(a.systems))
 
 end

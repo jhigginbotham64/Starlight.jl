@@ -1,4 +1,4 @@
-export Entity, update
+export Entity, update!
 export ECS, XYZ, accumulate_XYZ, get_entity_row, get_entity_by_id
 export get_entity_row_by_id, get_df_row_prop, set_df_row_prop!
 export TREE_ORDER, ECS_ITERATION_STATE
@@ -7,9 +7,9 @@ export ecs
 
 abstract type Entity <: Starlight.System end
 
-awake(e::Entity) = true
-shutdown(e::Entity) = false
-update(e, Δ) = nothing
+awake!(e::Entity) = true
+shutdown!(e::Entity) = false
+update!(e, Δ) = nothing
 
 # symbols that getproperty and setproperty! (and end users) care about
 const ENT = :ent
@@ -119,7 +119,7 @@ function Base.getproperty(ent::Entity, s::Symbol)
   end
 end
 
-ecs_lock = Semaphore(1)
+const ecs_lock = Semaphore(1)
 
 function Base.setproperty!(ent::Entity, s::Symbol, x)
   e = get_entity_row(ecs, ent)
@@ -190,14 +190,14 @@ listenFor(ecs, Starlight.TICK)
 
 function handleMessage(e::ECS, m::Starlight.TICK)
   @debug "ECS tick"
-  function _update(ent::Entity)
-    update(ent, m.Δ)
+  function _update!(ent::Entity)
+    update!(ent, m.Δ)
   end
-  map(_update, e)
+  map(_update!, e)
 end
 
-awake(e::ECS) = e.awoken = all(map(awake, e))
-shutdown(e::ECS) = e.awoken = all(map(shutdown, e))
+awake!(e::ECS) = e.awoken = all(map(awake!, e))
+shutdown!(e::ECS) = e.awoken = all(map(shutdown!, e))
 
 next_id = 0
 
@@ -212,7 +212,7 @@ function instantiate!(e::Entity;
   id = next_id
   next_id += 1
 
-  # update ecs
+  # update! ecs
   # allows invalid parents and children for now
   push!(ecs.df, Dict(
     ENT=>e,
@@ -234,13 +234,13 @@ function instantiate!(e::Entity;
 
   release(ecs_lock)
 
-  if ecs.awoken awake(e) end
+  if ecs.awoken awake!(e) end
 
   return e
 end
 
 mutable struct Root <: Entity end # mutate at your own peril
-# also, user can define update(r::Root, Δ) if they want
+# also, user can define update!(r::Root, Δ) if they want
 
 # root pid is 0 (default) indicating "here and no further",
 # instantiate in library because always needed, also it will
