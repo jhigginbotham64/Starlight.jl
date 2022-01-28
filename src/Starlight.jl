@@ -9,7 +9,7 @@ using Reexport
 @reexport using SimpleDirectMediaLayer.LibSDL2
 
 export priority, handleMessage, sendMessage, listenFor, dispatchMessage
-export System, Message, App, awake, shutdown, system!, on, off, cat
+export System, App, awake, shutdown, system!, on, off, cat
 
 import DotEnv
 cfg = DotEnv.config()
@@ -17,7 +17,7 @@ cfg = DotEnv.config()
 DEFAULT_PRIORITY = parse(Int, get(ENV, "DEFAULT_PRIORITY", "0"))
 MQUEUE_SIZE = parse(Int, get(ENV, "MQUEUE_SIZE", "1000"))
 
-listeners = Dict{DataType, Vector{Any}}()
+listeners = Dict{DataType, Set{Any}}()
 messages = PriorityQueue{Any, Int}()
 
 slot_available = Semaphore(MQUEUE_SIZE)
@@ -49,7 +49,7 @@ end
 
 function listenFor(e::Any, d::DataType)
   acquire(listener_lock)
-  if !haskey(listeners, d) listeners[d] = Vector{Any}() end
+  if !haskey(listeners, d) listeners[d] = Set{Any}() end
   push!(listeners[d], e)
   release(listener_lock)
 end
@@ -73,7 +73,6 @@ function dispatchMessage(arg)
 end
 
 abstract type System end
-abstract type Message end
 
 # these functions are supposed to return
 # whether a value indicating whether the 
@@ -89,9 +88,10 @@ include("ECS.jl")
 include("SDL.jl")
 include("Input.jl")
 include("Audio.jl")
-include("AI.jl")
 include("Rendering.jl")
 include("Physics.jl")
+include("AI.jl")
+include("Networking.jl")
 
 mutable struct App <: System
   systems::Dict{DataType, System}

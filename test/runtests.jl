@@ -1,12 +1,14 @@
 using Starlight
 using Test
-import Starlight: update
 
+# the namespace in front of the method name is important, apparently
 Starlight.update(r::Root, Δ) = r.updated = true
 
-mutable struct TestEntity <: Starlight.Entity end
+mutable struct TestEntity <: Entity end
   
 Starlight.update(t::TestEntity, Δ) = t.updated = true
+
+Starlight.handleMessage(t::TestEntity, m::UserEvent) = t.gotUserEvent = true
 
 @testset "Starlight" begin
   # load test file
@@ -44,13 +46,27 @@ Starlight.update(t::TestEntity, Δ) = t.updated = true
 
   # manipulations on test entity
   tst = TestEntity()
-  instantiate!(tst, props=Dict(:updated=>false))
+  instantiate!(tst, props=Dict(
+    :updated=>false,
+    :gotUserEvent=>false
+  ))
   
   @test !tst.updated
+  @test !tst.gotUserEvent
 
   sleep(1)
 
   @test tst.updated
+  @test !tst.gotUserEvent
+
+  listenFor(tst, UserEvent)
+
+  # haven't figured out how to push events to the SDL queue yet
+
+  sleep(1)
+
+  # ...therefore this test is broken
+  @test_broken tst.gotUserEvent
 
   # be a nice boi
   shutdown(a)

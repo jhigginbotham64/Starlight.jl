@@ -15,20 +15,20 @@ Clock() = Clock(Base.Event(), true, false, false, false, false, 0.01667) # defau
 
 # RT == "real time"
 # Δ carries the "actual" number of given time units elapsed
-struct RT_SEC <: Starlight.Message
+struct RT_SEC
   Δ::AbstractFloat
 end
-struct RT_MSEC <: Starlight.Message
+struct RT_MSEC
   Δ::AbstractFloat
 end
-struct RT_USEC <: Starlight.Message
+struct RT_USEC
   Δ::AbstractFloat
 end
-struct RT_NSEC <: Starlight.Message
+struct RT_NSEC
   Δ::AbstractFloat
 end
-struct TICK <: Starlight.Message
-  Δ::AbstractFloat # seconds, but is a distinct message from RT_SEC
+struct TICK
+  Δ::AbstractFloat # seconds, but has a distinct meaning from from RT_SEC
 end
 
 struct SLEEP_TIME
