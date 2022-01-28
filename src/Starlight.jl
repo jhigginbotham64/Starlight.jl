@@ -86,12 +86,6 @@ shutdown(s::System) = false
 include("Clock.jl")
 include("ECS.jl")
 include("SDL.jl")
-include("Input.jl")
-include("Audio.jl")
-include("Rendering.jl")
-include("Physics.jl")
-include("AI.jl")
-include("Networking.jl")
 
 mutable struct App <: System
   systems::Dict{DataType, System}
