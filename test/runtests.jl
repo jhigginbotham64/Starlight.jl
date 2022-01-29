@@ -34,7 +34,7 @@ Starlight.handleMessage(t::TestEntity, m::UserEvent) = t.gotUserEvent = true
   awake!(a)
 
   # test manipulations on root
-  root = get_entity_by_id(ecs, 0)
+  root = get_entity_by_id(0)
 
   root.update!d = false
 

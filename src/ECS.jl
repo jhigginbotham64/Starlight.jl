@@ -11,7 +11,7 @@ awake!(e::Entity) = true
 shutdown!(e::Entity) = false
 update!(e, Δ) = nothing
 
-# symbols that getproperty and setproperty! (and end users) care about
+# magic symbols that getproperty and setproperty! (and end users) care about
 const ENT = :ent
 const TYPE = :type
 const ID = :id
@@ -71,9 +71,9 @@ const ecs = ECS()
 
 # internally uses Base.getproperty directly so
 # as to not break if the symbol values change
-get_entity_row(e::ECS, ent::Entity) = e.df[getproperty(e.df, ENT) .== [ent], :]
-get_entity_by_id(e::ECS, id::Int) = e.df[getproperty(e.df, ID) .== [id], ENT][1]
-get_entity_row_by_id(e::ECS, id::Int) = e.df[getproperty(e.df, ID) .== [id], :]
+get_entity_row(ent::Entity) = ecs.df[getproperty(ecs.df, ENT) .== [ent], :]
+get_entity_by_id(id::Int) = ecs.df[getproperty(ecs.df, ID) .== [id], ENT][1]
+get_entity_row_by_id(id::Int) = ecs.df[getproperty(ecs.df, ID) .== [id], :]
 get_df_row_prop(r, s) = r[!, s][1]
 set_df_row_prop!(r, s, x) = r[!, s][1] = x
 
@@ -102,7 +102,7 @@ end
 function accumulate_XYZ(r, s)
   acc = XYZ()
   while true
-    r = get_entity_row_by_id(ecs, get_df_row_prop(r, PARENT))
+    r = get_entity_row_by_id(get_df_row_prop(r, PARENT))
     inc = get_df_row_prop(r, s)
     acc += inc
     get_df_row_prop(r, PARENT) != 0 || return acc
@@ -110,7 +110,7 @@ function accumulate_XYZ(r, s)
 end
 
 function Base.getproperty(ent::Entity, s::Symbol)
-  e = get_entity_row(ecs, ent)
+  e = get_entity_row(ent)
   if s == ABSOLUTE_POSITION return accumulate_XYZ(e, POSITION)
   elseif s == ABSOLUTE_ROTATION return accumulate_XYZ(e, ROTATION)
   elseif s in keys(components) return get_df_row_prop(e, s)
@@ -122,7 +122,7 @@ end
 const ecs_lock = Semaphore(1)
 
 function Base.setproperty!(ent::Entity, s::Symbol, x)
-  e = get_entity_row(ecs, ent)
+  e = get_entity_row(ent)
   if s in [
     ENT, # immutable
     TYPE, # automatically set
@@ -135,7 +135,7 @@ function Base.setproperty!(ent::Entity, s::Symbol, x)
 
   acquire(ecs_lock)
   if s == PARENT
-    par = get_entity_by_id(ecs, get_df_row_prop(e, PARENT))
+    par = get_entity_by_id(get_df_row_prop(e, PARENT))
     push!(getproperty(par, CHILDREN), get_df_row_prop(e, ID))
   elseif s in keys(components) && s != PROPS
     set_df_row_prop!(e, s, x)
@@ -153,20 +153,26 @@ end
 # can be added in the future.
 Base.length(e::ECS) = size(e.df)[1]
 
-@enum TREE_ORDER begin
+@enum ECS_ITERATION_ORDER begin
   LEVEL=1 # i.e. breadth-first
 end
 
+Base.length(o::ECS_ITERATION_ORDER) = length(ecs)
+
+const DEFAULT_ITERATION_ORDER = LEVEL
+
 mutable struct ECS_ITERATION_STATE
   root::Int
-  o::TREE_ORDER
   q::Queue{Int}
   root_visited::Bool
-  ECS_ITERATION_STATE(; root=0, o=LEVEL, q=Queue{Int}(), root_visited=false) = new(root, o, q, root_visited)
+  ECS_ITERATION_STATE(; root=0, q=Queue{Int}(), root_visited=false) = new(root, q, root_visited)
 end
 
-function Base.iterate(e::ECS, state::ECS_ITERATION_STATE=ECS_ITERATION_STATE())
-  if state.o == LEVEL
+# can define multiple iteration types using
+# an enum and then dispatch on them since we
+# have a global constant ecs to iterate over
+function Base.iterate(o::ECS_ITERATION_ORDER, state::ECS_ITERATION_STATE=ECS_ITERATION_STATE())
+  if o == LEVEL
     if isempty(state.q)
       if !state.root_visited # just started
         enqueue!(state.q, state.root)
@@ -176,7 +182,7 @@ function Base.iterate(e::ECS, state::ECS_ITERATION_STATE=ECS_ITERATION_STATE())
       end
     end
 
-    ent = get_entity_by_id(e, dequeue!(state.q))
+    ent = get_entity_by_id(dequeue!(state.q))
 
     for c in getproperty(ent, CHILDREN) 
       enqueue!(state.q, c)
@@ -193,11 +199,11 @@ function handleMessage(e::ECS, m::Starlight.TICK)
   function _update!(ent::Entity)
     update!(ent, m.Δ)
   end
-  map(_update!, e)
+  map(_update!, DEFAULT_ITERATION_ORDER)
 end
 
-awake!(e::ECS) = e.awoken = all(map(awake!, e))
-shutdown!(e::ECS) = e.awoken = all(map(shutdown!, e))
+awake!(e::ECS) = e.awoken = all(map(awake!, DEFAULT_ITERATION_ORDER))
+shutdown!(e::ECS) = e.awoken = all(map(shutdown!, DEFAULT_ITERATION_ORDER))
 
 next_id = 0
 
@@ -228,7 +234,7 @@ function instantiate!(e::Entity;
   ))
 
   if id != 0 # root has no parent but itself
-    par = get_entity_by_id(ecs, pid)
+    par = get_entity_by_id(pid)
     push!(getproperty(par, CHILDREN), id)
   end
 
