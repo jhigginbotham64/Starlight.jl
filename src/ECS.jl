@@ -145,16 +145,15 @@ function Base.setproperty!(ent::Entity, s::Symbol, x)
   release(ecs_lock)
 end
 
-# you can iterate over an ECS!
-# only supports level order for now,
-# but may support others once we get
-# into physics and rendering, such as
-# z-order. other tree traversal types
-# can be added in the future.
 Base.length(e::ECS) = size(e.df)[1]
 
+# can define multiple iteration types using
+# an enum and then dispatch on them since we
+# have a global constant ecs to iterate over
 @enum ECS_ITERATION_ORDER begin
   LEVEL=1 # i.e. breadth-first
+  Z=2 # front to back, i.e. near to far
+  REVERSE_Z=3 # back to front, i.e. far to near
 end
 
 Base.length(o::ECS_ITERATION_ORDER) = length(ecs)
@@ -165,12 +164,10 @@ mutable struct ECS_ITERATION_STATE
   root::Int
   q::Queue{Int}
   root_visited::Bool
-  ECS_ITERATION_STATE(; root=0, q=Queue{Int}(), root_visited=false) = new(root, q, root_visited)
+  index::Int
+  ECS_ITERATION_STATE(; root=0, q=Queue{Int}(), root_visited=false, index=1) = new(root, q, root_visited, index)
 end
 
-# can define multiple iteration types using
-# an enum and then dispatch on them since we
-# have a global constant ecs to iterate over
 function Base.iterate(o::ECS_ITERATION_ORDER, state::ECS_ITERATION_STATE=ECS_ITERATION_STATE())
   if o == LEVEL
     if isempty(state.q)
@@ -188,6 +185,12 @@ function Base.iterate(o::ECS_ITERATION_ORDER, state::ECS_ITERATION_STATE=ECS_ITE
       enqueue!(state.q, c)
     end
 
+    return (ent, state)
+  elseif o == Z || o == REVERSE_Z
+    if state.index > length(ecs) return nothing end
+    sort!(ecs.df, [order(POSITION, rev=(o == REVERSE_Z), by=(pos)->pos.z)])
+    ent = ecs.df[!, ENT][state.index]
+    state.index += 1
     return (ent, state)
   end
 end
