@@ -2,11 +2,11 @@ using Starlight
 using Test
 
 # the namespace in front of the method name is important, apparently
-Starlight.update!(r::Root, Δ) = r.update!d = true
+Starlight.update!(r::Root, Δ) = r.updated = true
 
 mutable struct TestEntity <: Entity end
   
-Starlight.update!(t::TestEntity, Δ) = t.update!d = true
+Starlight.update!(t::TestEntity, Δ) = t.updated = true
 
 Starlight.handleMessage(t::TestEntity, m::SDL_UserEvent) = t.gotUserEvent = true
 
@@ -36,27 +36,27 @@ Starlight.handleMessage(t::TestEntity, m::SDL_UserEvent) = t.gotUserEvent = true
   # test manipulations on root
   root = get_entity_by_id(0)
 
-  root.update!d = false
+  root.updated = false
 
-  @test !root.update!d
+  @test !root.updated
 
   sleep(1)
 
-  @test root.update!d
+  @test root.updated
 
   # manipulations on test entity
   tst = TestEntity()
   instantiate!(tst, props=Dict(
-    :update!d=>false,
+    :updated=>false,
     :gotUserEvent=>false
   ))
   
-  @test !tst.update!d
+  @test !tst.updated
   @test !tst.gotUserEvent
 
   sleep(1)
 
-  @test tst.update!d
+  @test tst.updated
   @test !tst.gotUserEvent
 
   listenFor(tst, SDL_UserEvent)
