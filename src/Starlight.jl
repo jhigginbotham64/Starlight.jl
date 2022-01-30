@@ -1,7 +1,7 @@
 module Starlight
 
 using Reexport
-@reexport using Base: Semaphore, acquire, release
+@reexport using Base: Semaphore, acquire, release, ReentrantLock, lock, unlock
 @reexport using DataStructures: Queue, PriorityQueue, enqueue!, dequeue!
 @reexport using DataFrames
 @reexport using YAML
@@ -10,6 +10,7 @@ using Reexport
 
 export priority, handleMessage, sendMessage, listenFor, dispatchMessage
 export System, App, awake!, shutdown!, system!, on, off, cat
+export app
 
 import DotEnv
 cfg = DotEnv.config()
@@ -93,29 +94,49 @@ mutable struct App <: System
   systems::Dict{DataType, System}
   running::Vector{Bool}
   function App(appf::String="")
-    a = new(Dict(), Vector{Bool}())
-    
-    system!(a, clk)
-    system!(a, ecs)
-    system!(a, sdl)
-  
-    if isfile(appf)
-      yml = YAML.load_file(appf) # may support other file types in the future
-      if haskey(yml, "clock") && yml["clock"] isa Dict
-        clock = yml["clock"]
-        if haskey(clock, "fire_sec") c.fire_sec = clock["fire_sec"] end
-        if haskey(clock, "fire_msec") c.fire_msec = clock["fire_msec"] end
-        if haskey(clock, "fire_usec") c.fire_usec = clock["fire_usec"] end
-        if haskey(clock, "fire_nsec") c.fire_nsec = clock["fire_nsec"] end
-        if haskey(clock, "freq") c.freq = clock["freq"] end
-      end
-    end
-  
-    a.running = [false for s in keys(a.systems)]
+    # singleton pattern from Tom Kwong's book
+    global app
+    global app_lock
+    lock(app_lock)
+    try 
+      if !isassigned(app)
 
-    return finalizer(shutdown!, a)
+        a = new(Dict(), Vector{Bool}())
+        
+        system!(a, clk)
+        system!(a, ecs)
+        system!(a, sdl)
+      
+        a.running = [false for s in keys(a.systems)]
+
+        app[] = finalizer(shutdown!, a)
+
+      end
+
+      # making this separate from instance initialization
+      # means that sequential YAML file loads will merge
+      # and/or overwrite results with each other on the global app
+      if isfile(appf)
+        yml = YAML.load_file(appf) # may support other file types in the future
+        if haskey(yml, "clock") && yml["clock"] isa Dict
+          clock = yml["clock"]
+          if haskey(clock, "fire_sec") clk.fire_sec = clock["fire_sec"] end
+          if haskey(clock, "fire_msec") clk.fire_msec = clock["fire_msec"] end
+          if haskey(clock, "fire_usec") clk.fire_usec = clock["fire_usec"] end
+          if haskey(clock, "fire_nsec") clk.fire_nsec = clock["fire_nsec"] end
+          if haskey(clock, "freq") clk.freq = clock["freq"] end
+        end
+      end
+
+    finally
+      unlock(app_lock)
+      return app[]
+    end
   end
 end
+
+const app = Ref{App}()
+const app_lock = ReentrantLock()
 
 on(a::App) = all(a.running)
 off(a::App) = all(!r for r in a.running)
@@ -133,5 +154,8 @@ function awake!(a::App)
   return a.running = map(awake!, values(a.systems))
 end
 shutdown!(a::App) = a.running = map(shutdown!, values(a.systems))
+
+awake!() = awake!(app[])
+shutdown!() = shutdown!(app[])
 
 end
