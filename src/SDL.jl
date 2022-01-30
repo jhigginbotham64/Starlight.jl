@@ -1,5 +1,6 @@
 export SDL, sdl
-export getSDLError, getWindowSize
+export getSDLError, getWindowSize, window_paused
+export draw, to_ARGB, sdl_colors, clear, clear_and_present
 
 mutable struct SDL <: Starlight.System
   win # window
@@ -22,8 +23,11 @@ function clear_and_present()
   SDL_RenderPresent(sdl.rnd)
 end
 
+draw(e::Entity) = nothing
+
 function handleMessage(s::SDL, m::Starlight.TICK)
   @debug "SDL tick"
+  # handle events
   try
     event_ref = Ref{SDL_Event}()
     while Bool(SDL_PollEvent(event_ref))
@@ -35,6 +39,8 @@ function handleMessage(s::SDL, m::Starlight.TICK)
     rethrow()
   end
 
+  # draw the scene
+  map(draw, scn)
   clear_and_present()
 
 end

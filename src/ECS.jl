@@ -1,9 +1,9 @@
 export Entity, update!
 export ECS, XYZ, accumulate_XYZ, get_entity_row, get_entity_by_id
 export get_entity_row_by_id, get_df_row_prop, set_df_row_prop!
-export TREE_ORDER, ECS_ITERATION_STATE
+export ECSIterator, ECSIteratorState, Level, Scene
 export Root, instantiate!
-export ecs
+export ecs, lvl, scn
 
 abstract type Entity <: Starlight.System end
 
@@ -148,51 +148,56 @@ end
 Base.length(e::ECS) = size(e.df)[1]
 
 # can define multiple iteration types using
-# an enum and then dispatch on them since we
-# have a global constant ecs to iterate over
-@enum ECS_ITERATION_ORDER begin
-  LEVEL=1 # i.e. breadth-first
-  Z=2 # front to back, i.e. near to far
-  REVERSE_Z=3 # back to front, i.e. far to near
-end
+# multiple dispatch thanks to all the global
+# constants, and by defining them as structs
+# rather than enums we can pass arbitrary
+# parameters to the iterator
+abstract type ECSIterator end
+Base.length(e::ECSIterator) = length(ecs)
 
-Base.length(o::ECS_ITERATION_ORDER) = length(ecs)
+# refers to tree level, i.e. breadth-first
+struct Level <: ECSIterator end 
+const lvl = Level()
 
-const DEFAULT_ITERATION_ORDER = LEVEL
+# this is the scene graph, ladies and gentlemen,
+# which we can traverse and mutate however we want
+# during iteration
+mutable struct Scene <: ECSIterator end
+const scn = Scene()
 
-mutable struct ECS_ITERATION_STATE
+mutable struct ECSIteratorState
   root::Int
   q::Queue{Int}
   root_visited::Bool
   index::Int
-  ECS_ITERATION_STATE(; root=0, q=Queue{Int}(), root_visited=false, index=1) = new(root, q, root_visited, index)
+  ECSIteratorState(; root=0, q=Queue{Int}(), root_visited=false, index=1) = new(root, q, root_visited, index)
 end
 
-function Base.iterate(o::ECS_ITERATION_ORDER, state::ECS_ITERATION_STATE=ECS_ITERATION_STATE())
-  if o == LEVEL
-    if isempty(state.q)
-      if !state.root_visited # just started
-        enqueue!(state.q, state.root)
-        state.root_visited = true
-      else # just finished
-        return nothing
-      end
+function Base.iterate(l::Level, state::ECSIteratorState=ECSIteratorState())
+  if isempty(state.q)
+    if !state.root_visited # just started
+      enqueue!(state.q, state.root)
+      state.root_visited = true
+    else # just finished
+      return nothing
     end
-
-    ent = get_entity_by_id(dequeue!(state.q))
-
-    for c in getproperty(ent, CHILDREN) 
-      enqueue!(state.q, c)
-    end
-
-    return (ent, state)
-  elseif o == Z || o == REVERSE_Z
-    if state.index > length(ecs) return nothing end
-    sort!(ecs.df, [order(POSITION, rev=(o == REVERSE_Z), by=(pos)->pos.z)])
-    ent = ecs.df[!, ENT][state.index]
-    state.index += 1
-    return (ent, state)
   end
+
+  ent = get_entity_by_id(dequeue!(state.q))
+
+  for c in getproperty(ent, CHILDREN) 
+    enqueue!(state.q, c)
+  end
+
+  return (ent, state)
+end
+
+function Base.iterate(s::Scene, state=ECSIteratorState())
+  if state.index > length(ecs) return nothing end
+  sort!(ecs.df, [order(POSITION, rev=true, by=(pos)->pos.z)])
+  ent = ecs.df[!, ENT][state.index]
+  state.index += 1
+  return (ent, state)
 end
 
 listenFor(ecs, Starlight.TICK)
@@ -202,11 +207,11 @@ function handleMessage(e::ECS, m::Starlight.TICK)
   function _update!(ent::Entity)
     update!(ent, m.Δ)
   end
-  map(_update!, DEFAULT_ITERATION_ORDER)
+  map(_update!, lvl)
 end
 
-awake!(e::ECS) = e.awoken = all(map(awake!, DEFAULT_ITERATION_ORDER))
-shutdown!(e::ECS) = e.awoken = all(map(shutdown!, DEFAULT_ITERATION_ORDER))
+awake!(e::ECS) = e.awoken = all(map(awake!, lvl))
+shutdown!(e::ECS) = e.awoken = all(map(shutdown!, lvl))
 
 next_id = 0
 
