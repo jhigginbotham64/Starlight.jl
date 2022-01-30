@@ -5,18 +5,26 @@ using Reexport
 @reexport using DataStructures: Queue, PriorityQueue, enqueue!, dequeue!
 @reexport using DataFrames
 @reexport using YAML
+@reexport using Colors, ColorTypes, ColorVectorSpace
 @reexport using SimpleDirectMediaLayer
 @reexport using SimpleDirectMediaLayer.LibSDL2
 
 export priority, handleMessage, sendMessage, listenFor, dispatchMessage
 export System, App, awake!, shutdown!, system!, on, off, cat
-export app
+export app, cfg, str_to_clrnt, get_env_int, get_env_str, get_env_clr, get_env_flt, get_env_bl
 
 import DotEnv
 cfg = DotEnv.config()
 
-DEFAULT_PRIORITY = parse(Int, get(ENV, "DEFAULT_PRIORITY", "0"))
-MQUEUE_SIZE = parse(Int, get(ENV, "MQUEUE_SIZE", "1000"))
+str_to_clrnt(s) = parse(Colorant, s)
+get_env_int(n, d) = parse(Int, get(ENV, n, string(d)))
+get_env_str(n, d) = get(ENV, n, string(d)) # no parse necessary since all env variables are strings by default
+get_env_clr(n, d) = str_to_clrnt(get(ENV, n, string(d)))
+get_env_flt(n, d) = parse(Float64, get(ENV, n, string(d)))
+get_env_bl(n, d) = parse(Bool, get(ENV, n, string(d)))
+
+DEFAULT_PRIORITY = get_env_int("DEFAULT_PRIORITY", 0)
+MQUEUE_SIZE = get_env_int("MQUEUE_SIZE", 1000)
 
 const listeners = Dict{DataType, Set{Any}}()
 const messages = PriorityQueue{Any, Int}()
@@ -113,21 +121,43 @@ mutable struct App <: System
 
       end
 
-      # making this separate from instance initialization
-      # means that sequential YAML file loads will merge
-      # and/or overwrite results with each other on the global app
+      # check environment variables first
+      # clock
+      clk.freq = get_env_flt("CLOCK_FREQ", 0.01667) # 60hz
+      clk.fire_sec = get_env_bl("CLOCK_FIRE_SEC", false)
+      clk.fire_msec = get_env_bl("CLOCK_FIRE_MSEC", false)
+      clk.fire_usec = get_env_bl("CLOCK_FIRE_USEC", false)
+      clk.fire_nsec = get_env_bl("CLOCK_FIRE_NSEC", false)
+      # sdl
+      sdl.bgrd = to_ARGB(get_env_clr("BACKGROUND_COLOR", "gray"))
+      sdl.wdth = get_env_int("WINDOW_WIDTH", 800)
+      sdl.hght = get_env_int("WINDOW_HEIGHT", 450)
+      sdl.ttl = get_env_str("TITLE", "Starlight.jl")
+
+      # ...then override from file if needed.
+      # also, making all this separate from instance initialization
+      # means that sequential env/file loads will merge and/or
+      # overwrite results with each other on the global app.
       if isfile(appf)
         yml = YAML.load_file(appf) # may support other file types in the future
         if haskey(yml, "clock") && yml["clock"] isa Dict
-          clock = yml["clock"]
-          if haskey(clock, "fire_sec") clk.fire_sec = clock["fire_sec"] end
-          if haskey(clock, "fire_msec") clk.fire_msec = clock["fire_msec"] end
-          if haskey(clock, "fire_usec") clk.fire_usec = clock["fire_usec"] end
-          if haskey(clock, "fire_nsec") clk.fire_nsec = clock["fire_nsec"] end
-          if haskey(clock, "freq") clk.freq = clock["freq"] end
+          clkdict = yml["clock"]
+          if haskey(clkdict, "fire_sec") clk.fire_sec = clkdict["fire_sec"] end
+          if haskey(clkdict, "fire_msec") clk.fire_msec = clkdict["fire_msec"] end
+          if haskey(clkdict, "fire_usec") clk.fire_usec = clkdict["fire_usec"] end
+          if haskey(clkdict, "fire_nsec") clk.fire_nsec = clkdict["fire_nsec"] end
+          if haskey(clkdict, "freq") clk.freq = clkdict["freq"] end
+        end
+        if haskey(yml, "sdl") && yml["sdl"] isa Dict
+          sdldict = yml["sdl"]
+          if haskey(sdldict, "background_color") sdl.bgrd = str_to_clrnt(sdldict["background_color"]) end
+          if haskey(sdldict, "window_height") sdl.hght = sdldict["window_height"] end
+          if haskey(sdldict, "window_width") sdl.wdth = sdldict["window_width"] end
+          if haskey(sdldict, "title") sdl.ttl = sdldict["title"] end
         end
       end
-
+    catch e
+      rethrow()
     finally
       unlock(app_lock)
       return app[]

@@ -8,7 +8,7 @@ mutable struct TestEntity <: Entity end
   
 Starlight.update!(t::TestEntity, Δ) = t.update!d = true
 
-Starlight.handleMessage(t::TestEntity, m::UserEvent) = t.gotUserEvent = true
+Starlight.handleMessage(t::TestEntity, m::SDL_UserEvent) = t.gotUserEvent = true
 
 @testset "Starlight" begin
   # load test file
@@ -59,7 +59,7 @@ Starlight.handleMessage(t::TestEntity, m::UserEvent) = t.gotUserEvent = true
   @test tst.update!d
   @test !tst.gotUserEvent
 
-  listenFor(tst, UserEvent)
+  listenFor(tst, SDL_UserEvent)
 
   # haven't figured out how to push events to the SDL queue yet,
   # but you can still see that the SDL input system works by turning
