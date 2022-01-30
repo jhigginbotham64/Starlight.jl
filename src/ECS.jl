@@ -52,7 +52,7 @@ const components = Dict(
   ROTATION=>XYZ,
   ACTIVE=>Bool,
   HIDDEN=>Bool,
-  PROPS=>Dict{Any, Any}
+  PROPS=>Dict{Symbol, Any}
 )
 
 mutable struct ECS <: Starlight.System
@@ -213,7 +213,7 @@ next_id = 0
 function instantiate!(e::Entity; 
   pid::Int=0, active::Bool=true, hidden::Bool=false, 
   pos::XYZ=XYZ(), rot::XYZ=XYZ(), children::Vector{Int}=Vector{Int}(), 
-  props::Dict=Dict())
+  props::Dict=Dict{Symbol, Any}())
 
   acquire(ecs_lock)
 
