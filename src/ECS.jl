@@ -152,16 +152,20 @@ Base.length(e::ECS) = size(e.df)[1]
 # constants, and by defining them as structs
 # rather than enums we can pass arbitrary
 # parameters to the iterator
-abstract type ECSIterator end
+abstract type ECSIterator <: System end
 Base.length(e::ECSIterator) = length(ecs)
 
-# refers to tree level, i.e. breadth-first
+# refers to tree level, i.e. breadth-first,
+# nothing special to see here
 struct Level <: ECSIterator end 
 const lvl = Level()
 
 # this is the scene graph, ladies and gentlemen,
 # which we can traverse and mutate however we want
-# during iteration
+# during iteration, and initialize however we want
+# and destroy however we want...sorry, it took me
+# a long time to come up with this design, and i'm
+# a little bit psyched about it. :)
 mutable struct Scene <: ECSIterator end
 const scn = Scene()
 
@@ -192,7 +196,9 @@ function Base.iterate(l::Level, state::ECSIteratorState=ECSIteratorState())
   return (ent, state)
 end
 
-function Base.iterate(s::Scene, state=ECSIteratorState())
+function Base.iterate(s::Scene, state::ECSIteratorState=ECSIteratorState())
+  # does reverse-z order for now, only 
+  # suitable for simple 2d drawing
   if state.index > length(ecs) return nothing end
   sort!(ecs.df, [order(POSITION, rev=true, by=(pos)->pos.z)])
   ent = ecs.df[!, ENT][state.index]

@@ -114,6 +114,7 @@ mutable struct App <: System
         system!(a, clk)
         system!(a, ecs)
         system!(a, sdl)
+        system!(a, scn)
       
         a.running = [false for s in keys(a.systems)]
 
