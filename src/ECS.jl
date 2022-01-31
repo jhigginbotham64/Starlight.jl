@@ -194,7 +194,7 @@ function handleMessage(e::ECS, m::Starlight.TICK)
   function _update!(ent::Entity)
     if getproperty(ent, ACTIVE) update!(ent, m.Δ) end
   end
-  map(_update!, lvl)
+  map(_update!, lvl) # TODO could parallelize if Level implemented the Threads.@threads interface
 end
 
 awake!(e::ECS) = e.awoken = all(map(awake!, lvl))

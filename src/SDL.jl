@@ -39,7 +39,7 @@ function handleMessage(s::SDL, m::Starlight.TICK)
   end
 
   # draw the scene
-  map(draw, scn)
+  map(draw, scn) # TODO could parallelize if Scene implemented the Threads.@threads interface
   clear_and_present()
 
 end

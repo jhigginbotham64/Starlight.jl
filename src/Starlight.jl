@@ -2,14 +2,14 @@ module Starlight
 
 using Reexport
 @reexport using Base: Semaphore, acquire, release, ReentrantLock, lock, unlock
-@reexport using DataStructures: Queue, PriorityQueue, enqueue!, dequeue!
+@reexport using DataStructures: Queue, enqueue!, dequeue!
 @reexport using DataFrames
 @reexport using YAML
 @reexport using Colors, ColorTypes, ColorVectorSpace
 @reexport using SimpleDirectMediaLayer
 @reexport using SimpleDirectMediaLayer.LibSDL2
 
-export priority, handleMessage, sendMessage, sendMessageTo, listenFor, listenForFrom, dispatchMessage
+export handleMessage, sendMessage, sendMessageTo, listenFor, listenForFrom, dispatchMessage
 export System, App, awake!, shutdown!, system!, on, off, cat
 export app, cfg, str_to_clrnt, get_env_int, get_env_str, get_env_clr, get_env_flt, get_env_bl
 
@@ -27,7 +27,7 @@ DEFAULT_PRIORITY = get_env_int("DEFAULT_PRIORITY", 0)
 MQUEUE_SIZE = get_env_int("MQUEUE_SIZE", 1000)
 
 const listeners = Dict{DataType, Set{Any}}()
-const messages = PriorityQueue{Any, Int}()
+const messages = Queue{Any}()
 const from = Dict{Any, Dict{DataType, Set{Any}}}()
 
 const slot_available = Semaphore(MQUEUE_SIZE)
@@ -40,10 +40,6 @@ for i in 1:MQUEUE_SIZE
   acquire(msg_ready)
 end
 
-function priority(e)
-  (hasproperty(e, :priority)) ? e.priority : DEFAULT_PRIORITY
-end
-
 handleMessage(l, m) = nothing
 
 function sendMessage(m)
@@ -51,7 +47,7 @@ function sendMessage(m)
   if haskey(listeners, typeof(m))
     acquire(slot_available)
     acquire(mqueue_lock)
-    enqueue!(messages, m, priority(m))
+    enqueue!(messages, m)
     release(mqueue_lock)
     release(msg_ready)
   end
@@ -100,12 +96,15 @@ end
 # see Clock.jl for that interface
 function dispatchMessage(arg)
   acquire(msg_ready)
-  acquire(mqueue_lock)
+  acquire(mqueue_lock) # NOTE this lock guarantees that messages are fully processed in the order they are received
   m = dequeue!(messages)
   d = typeof(m)
-  @debug "dequeued message"
+  @debug "dequeued message $(m) of type $(d)"
   if haskey(listeners, d)
-    for l in listeners[d]
+    # Threads.@threads doesn't work on raw sets
+    # because it needs to use indexing to split
+    # up memory, i work around it this way
+    Threads.@threads for l in Vector([listeners[d]...])
       # only call handler if the sender is
       # being listened for, i.e. matches one
       # the recipient cares about, or the
@@ -115,7 +114,6 @@ function dispatchMessage(arg)
           continue
         end
       end
-      @debug "calling handleMessage"
       handleMessage(l, m)
     end
   end
@@ -223,7 +221,7 @@ system!(a::App, s::System) = a.systems[typeof(s)] = s
 # on the user.
 function awake!(a::App)
   if !on(a)
-    job!(a.systems[Clock], dispatchMessage)
+    job!(a.systems[Clock], dispatchMessage) # this could be parallelized if not for mqueue_lock
     a.running = map(awake!, values(a.systems))
   end
   return a.running
