@@ -57,8 +57,8 @@ end
 # for cases when we know all the recipients in
 # advance and there would otherwise be too many
 # listeners (i.e. collision notifications)
-function sendMessageTo(m, t)
-  for to in t
+function sendMessageTo(m, targets...)
+  for to in targets
     handleMessage(to, m)
   end
 end
@@ -136,6 +136,7 @@ include("Clock.jl")
 include("ECS.jl")
 include("SDL.jl")
 include("Scene.jl")
+include("Entities.jl")
 
 mutable struct App <: System
   systems::Dict{DataType, System}

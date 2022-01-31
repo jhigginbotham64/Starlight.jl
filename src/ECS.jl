@@ -5,7 +5,7 @@ export ECSIterator, ECSIteratorState, Level
 export Root, instantiate!
 export ecs, lvl
 
-abstract type Entity <: Starlight.System end
+abstract type Entity <: System end
 
 awake!(e::Entity) = true
 shutdown!(e::Entity) = false
@@ -55,7 +55,7 @@ const components = Dict(
   PROPS=>Dict{Symbol, Any}
 )
 
-mutable struct ECS <: Starlight.System
+mutable struct ECS <: System
   df::DataFrame
   awoken::Bool
   function ECS()
@@ -187,9 +187,9 @@ function Base.iterate(l::Level, state::ECSIteratorState=ECSIteratorState())
   return (ent, state)
 end
 
-listenFor(ecs, Starlight.TICK)
+listenFor(ecs, TICK)
 
-function handleMessage(e::ECS, m::Starlight.TICK)
+function handleMessage(e::ECS, m::TICK)
   @debug "ECS tick"
   function _update!(ent::Entity)
     if getproperty(ent, ACTIVE) update!(ent, m.Δ) end
@@ -213,7 +213,7 @@ function instantiate!(e::Entity;
   id = next_id
   next_id += 1
 
-  # update! ecs
+  # update ecs
   # allows invalid parents and children for now
   push!(ecs.df, Dict(
     ENT=>e,

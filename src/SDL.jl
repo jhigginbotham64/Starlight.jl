@@ -2,7 +2,7 @@ export SDL, sdl
 export getSDLError, getWindowSize, window_paused
 export draw, to_ARGB, sdl_colors, clear, clear_and_present
 
-mutable struct SDL <: Starlight.System
+mutable struct SDL <: System
   win # window
   rnd # renderer
   bgrd # background
@@ -16,7 +16,7 @@ end
 
 const sdl = SDL()
 
-listenFor(sdl, Starlight.TICK)
+listenFor(sdl, TICK)
 
 function clear_and_present()
   clear()
@@ -25,7 +25,7 @@ end
 
 draw(e::Entity) = nothing
 
-function handleMessage(s::SDL, m::Starlight.TICK)
+function handleMessage(s::SDL, m::TICK)
   @debug "SDL tick"
   # handle events
   try

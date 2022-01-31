@@ -13,9 +13,9 @@ const scn = Scene() # needs awake! and shutdown! for initialization/deinitializa
 awake!(s::Scene) = true
 shutdown!(s::Scene) = false
 
-listenFor(scn, Starlight.TICK)
+listenFor(scn, TICK)
 
-function handleMessage(s::Scene, m::Starlight.TICK)
+function handleMessage(s::Scene, m::TICK)
   # sort just once per tick rather than every time we iterate
   @debug "Scene tick"
   sort!(ecs.df, [order(POSITION, rev=true, by=(pos)->pos.z)])
