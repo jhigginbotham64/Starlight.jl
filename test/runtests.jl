@@ -12,13 +12,12 @@ Starlight.handleMessage(t::TestEntity, m::SDL_UserEvent) = t.gotUserEvent = true
 
 @testset "Starlight" begin
   # load test file
-  a = App("test/test.yml")
+  a = App("test.yml")
 
   # no systems should be running
   @test off(a)
 
   # kick off
-  # run with JULIA_DEBUG=Starlight to see clock messages
   awake!(a)
 
   # all systems should be running
@@ -40,36 +39,23 @@ Starlight.handleMessage(t::TestEntity, m::SDL_UserEvent) = t.gotUserEvent = true
 
   @test !root.updated
 
-  sleep(1)
+  # takes just a little longer than a second
+  # for the tick to come through, and longer
+  # still in debug mode, this seems to work
+  sleep(3)
 
   @test root.updated
 
   # manipulations on test entity
   tst = TestEntity()
   instantiate!(tst, props=Dict(
-    :updated=>false,
-    :gotUserEvent=>false
+    :updated=>false
   ))
   
   @test !tst.updated
-  @test !tst.gotUserEvent
 
   sleep(1)
 
   @test tst.updated
-  @test !tst.gotUserEvent
 
-  listenFor(tst, SDL_UserEvent)
-
-  # haven't figured out how to push events to the SDL queue yet,
-  # but you can still see that the SDL input system works by turning
-  # on debug output and clicking on the terminal window
-
-  sleep(1)
-
-  # ...therefore this test is broken
-  @test_broken tst.gotUserEvent
-
-  # be a nice boi
-  shutdown!(a)
 end

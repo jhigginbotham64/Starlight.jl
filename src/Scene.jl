@@ -24,8 +24,10 @@ end
 function Base.iterate(s::Scene, state::ECSIteratorState=ECSIteratorState())
   # does reverse-z order for now, only 
   # suitable for simple 2d drawing
-  if state.index > length(ecs) return nothing end
-  ent = ecs.df[!, ENT][state.index]
-  state.index += 1
-  return (ent, state)
+  while true
+    if state.index > length(ecs) return nothing end
+    ent = ecs.df[!, ENT][state.index]
+    state.index += 1
+    if !getproperty(ent, HIDDEN) return (ent, state) end
+  end
 end

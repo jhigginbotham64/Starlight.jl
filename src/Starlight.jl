@@ -221,11 +221,19 @@ system!(a::App, s::System) = a.systems[typeof(s)] = s
 # still exit when julia exits, it will never block.
 # figuring out whether/how to keep it alive is
 # on the user.
-function awake!(a::App) 
-  job!(a.systems[Clock], dispatchMessage)
-  return a.running = map(awake!, values(a.systems))
+function awake!(a::App)
+  if !on(a)
+    job!(a.systems[Clock], dispatchMessage)
+    a.running = map(awake!, values(a.systems))
+  end
+  return a.running
 end
-shutdown!(a::App) = a.running = map(shutdown!, values(a.systems))
+function shutdown!(a::App)
+  if !off(a)
+    a.running = map(shutdown!, values(a.systems))
+  end
+  return a.running
+end
 
 awake!() = awake!(app[])
 shutdown!() = shutdown!(app[])

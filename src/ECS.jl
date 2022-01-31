@@ -192,7 +192,7 @@ listenFor(ecs, Starlight.TICK)
 function handleMessage(e::ECS, m::Starlight.TICK)
   @debug "ECS tick"
   function _update!(ent::Entity)
-    update!(ent, m.Δ)
+    if getproperty(ent, ACTIVE) update!(ent, m.Δ) end
   end
   map(_update!, lvl)
 end
