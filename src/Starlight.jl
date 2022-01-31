@@ -9,7 +9,7 @@ using Reexport
 @reexport using SimpleDirectMediaLayer
 @reexport using SimpleDirectMediaLayer.LibSDL2
 
-export priority, handleMessage, sendMessage, listenFor, dispatchMessage
+export priority, handleMessage, sendMessage, sendMessageTo, listenFor, listenForFrom, dispatchMessage
 export System, App, awake!, shutdown!, system!, on, off, cat
 export app, cfg, str_to_clrnt, get_env_int, get_env_str, get_env_clr, get_env_flt, get_env_bl
 
@@ -28,6 +28,7 @@ MQUEUE_SIZE = get_env_int("MQUEUE_SIZE", 1000)
 
 const listeners = Dict{DataType, Set{Any}}()
 const messages = PriorityQueue{Any, Int}()
+const from = Dict{Any, Dict{DataType, Set{Any}}}()
 
 const slot_available = Semaphore(MQUEUE_SIZE)
 const msg_ready = Semaphore(MQUEUE_SIZE)
@@ -56,14 +57,43 @@ function sendMessage(m)
   end
 end
 
-function listenFor(e::Any, d::DataType)
-  acquire(listener_lock)
+# allow direct invocation of message handlers
+# for cases when we know all the recipients in
+# advance and there would otherwise be too many
+# listeners (i.e. collision notifications)
+function sendMessageTo(m, t)
+  for to in t
+    handleMessage(to, m)
+  end
+end
+
+function add_listener!(e::Any, d::DataType)
   if !haskey(listeners, d) listeners[d] = Set{Any}() end
   push!(listeners[d], e)
+end
+
+function listenFor(e::Any, d::DataType)
+  acquire(listener_lock)
+  add_listener!(e, d)
+  release(listener_lock)
+end
+
+# used in cases where we care about the sender
+# as well as the message
+function listenForFrom(e::Any, d::DataType, e2::Any)
+  acquire(listener_lock)
+  add_listener!(e, d)
+  if !haskey(from, e) from[e] = Dict{DataType, Set{Any}}() end
+  if !haskey(from[e], d) from[e][d] = Set{Any}() end
+  push!(from[e][d], e2)
   release(listener_lock)
 end
 
 # TODO implement "unlisten" function and test
+# NOTE this would only ever be used by the ECS
+# when removing an entity, it's too much to ask
+# users to write finalizers that do this, i.e.
+# this is not terribly important right now
 
 # uses single argument to support
 # being called as a job by a Clock,
@@ -72,9 +102,19 @@ function dispatchMessage(arg)
   acquire(msg_ready)
   acquire(mqueue_lock)
   m = dequeue!(messages)
+  d = typeof(m)
   @debug "dequeued message"
-  if haskey(listeners, typeof(m))
-    for l in listeners[typeof(m)]
+  if haskey(listeners, d)
+    for l in listeners[d]
+      # only call handler if the sender is
+      # being listened for, i.e. matches one
+      # the recipient cares about, or the
+      # recipient doesn't care
+      if haskey(from, l) && haskey(from[l], d)
+        if !hasproperty(m, :from) || m.from ∉ from[l][d]
+          continue
+        end
+      end
       @debug "calling handleMessage"
       handleMessage(l, m)
     end
