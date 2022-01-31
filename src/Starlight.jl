@@ -97,6 +97,7 @@ shutdown!(s::System) = false
 include("Clock.jl")
 include("ECS.jl")
 include("SDL.jl")
+include("Scene.jl")
 
 mutable struct App <: System
   systems::Dict{DataType, System}

@@ -1,9 +1,9 @@
 export Entity, update!
 export ECS, XYZ, accumulate_XYZ, get_entity_row, get_entity_by_id
 export get_entity_row_by_id, get_df_row_prop, set_df_row_prop!
-export ECSIterator, ECSIteratorState, Level, Scene
+export ECSIterator, ECSIteratorState, Level
 export Root, instantiate!
-export ecs, lvl, scn
+export ecs, lvl
 
 abstract type Entity <: Starlight.System end
 
@@ -160,26 +160,6 @@ Base.length(e::ECSIterator) = length(ecs)
 struct Level <: ECSIterator end 
 const lvl = Level()
 
-# this is the scene graph, ladies and gentlemen,
-# which we can traverse and mutate however we want
-# during iteration, and initialize however we want
-# and destroy however we want...sorry, it took me
-# a long time to come up with this design, and i'm
-# a little bit psyched about it. :)
-mutable struct Scene <: ECSIterator end
-const scn = Scene() # needs awake! and shutdown! for initialization/deinitialization, and a periodic task for keeping its cache updated
-
-awake!(s::Scene) = true
-shutdown!(s::Scene) = false
-
-listenFor(scn, Starlight.TICK)
-
-function handleMessage(s::Scene, m::Starlight.TICK)
-  # sort just once per tick rather than every time we iterate
-  @debug "Scene tick"
-  sort!(ecs.df, [order(POSITION, rev=true, by=(pos)->pos.z)])
-end
-
 mutable struct ECSIteratorState
   root::Int
   q::Queue{Int}
@@ -204,15 +184,6 @@ function Base.iterate(l::Level, state::ECSIteratorState=ECSIteratorState())
     enqueue!(state.q, c)
   end
 
-  return (ent, state)
-end
-
-function Base.iterate(s::Scene, state::ECSIteratorState=ECSIteratorState())
-  # does reverse-z order for now, only 
-  # suitable for simple 2d drawing
-  if state.index > length(ecs) return nothing end
-  ent = ecs.df[!, ENT][state.index]
-  state.index += 1
   return (ent, state)
 end
 
