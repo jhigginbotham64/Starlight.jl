@@ -12,7 +12,7 @@ Starlight.handleMessage(t::TestEntity, m::SDL_UserEvent) = t.gotUserEvent = true
 
 @testset "Starlight" begin
   # load test file
-  a = App("test.yml")
+  a = App()
 
   # no systems should be running
   @test off(a)
@@ -42,7 +42,7 @@ Starlight.handleMessage(t::TestEntity, m::SDL_UserEvent) = t.gotUserEvent = true
   # takes just a little longer than a second
   # for the tick to come through, and longer
   # still in debug mode, this seems to work
-  sleep(3)
+  sleep(1)
 
   @test root.updated
 

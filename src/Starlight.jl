@@ -4,7 +4,6 @@ using Reexport
 @reexport using Base: Semaphore, acquire, release, ReentrantLock, lock, unlock
 @reexport using DataStructures: Queue, enqueue!, dequeue!
 @reexport using DataFrames
-@reexport using YAML
 @reexport using Colors, ColorTypes, ColorVectorSpace
 @reexport using SimpleDirectMediaLayer
 @reexport using SimpleDirectMediaLayer.LibSDL2
@@ -141,7 +140,7 @@ include("Entities.jl")
 mutable struct App <: System
   systems::Dict{DataType, System}
   running::Vector{Bool}
-  function App(appf::String="")
+  function App()
     # singleton pattern from Tom Kwong's book
     global app
     global app_lock
@@ -162,41 +161,19 @@ mutable struct App <: System
 
       end
 
-      # check environment variables first
       # clock
       clk.freq = get_env_flt("CLOCK_FREQ", 0.01667) # 60hz
       clk.fire_sec = get_env_bl("CLOCK_FIRE_SEC", false)
       clk.fire_msec = get_env_bl("CLOCK_FIRE_MSEC", false)
       clk.fire_usec = get_env_bl("CLOCK_FIRE_USEC", false)
       clk.fire_nsec = get_env_bl("CLOCK_FIRE_NSEC", false)
+
       # sdl
       sdl.bgrd = to_ARGB(get_env_clr("BACKGROUND_COLOR", "gray"))
       sdl.wdth = get_env_int("WINDOW_WIDTH", 800)
       sdl.hght = get_env_int("WINDOW_HEIGHT", 450)
       sdl.ttl = get_env_str("TITLE", "Starlight.jl")
 
-      # ...then override from file if needed.
-      # also, making all this separate from instance initialization
-      # means that sequential env/file loads will merge and/or
-      # overwrite results with each other on the global app.
-      if isfile(appf)
-        yml = YAML.load_file(appf) # may support other file types in the future
-        if haskey(yml, "clock") && yml["clock"] isa Dict
-          clkdict = yml["clock"]
-          if haskey(clkdict, "fire_sec") clk.fire_sec = clkdict["fire_sec"] end
-          if haskey(clkdict, "fire_msec") clk.fire_msec = clkdict["fire_msec"] end
-          if haskey(clkdict, "fire_usec") clk.fire_usec = clkdict["fire_usec"] end
-          if haskey(clkdict, "fire_nsec") clk.fire_nsec = clkdict["fire_nsec"] end
-          if haskey(clkdict, "freq") clk.freq = clkdict["freq"] end
-        end
-        if haskey(yml, "sdl") && yml["sdl"] isa Dict
-          sdldict = yml["sdl"]
-          if haskey(sdldict, "background_color") sdl.bgrd = str_to_clrnt(sdldict["background_color"]) end
-          if haskey(sdldict, "window_height") sdl.hght = sdldict["window_height"] end
-          if haskey(sdldict, "window_width") sdl.wdth = sdldict["window_width"] end
-          if haskey(sdldict, "title") sdl.ttl = sdldict["title"] end
-        end
-      end
     catch e
       rethrow()
     finally

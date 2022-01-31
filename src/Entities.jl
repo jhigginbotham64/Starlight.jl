@@ -4,8 +4,9 @@ export ColorLine, ColorRect, ColorCirc, ColorTri
 abstract type Renderable <: Entity end
 
 # NOTE all points are considered as offsets from the entity's position
-# TODO figure out asset loading pipeline so you can do sprites and sounds
 # TODO figure out how to reduce parameter copy-pasting, clean up interface
+# TODO don't ignore position
+# TODO don't ignore rotation
 
 """
   contract
