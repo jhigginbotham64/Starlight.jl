@@ -126,15 +126,6 @@ include("ECS.jl")
 include("Entities.jl")
 include("Scene.jl")
 include("SDL.jl")
-# TODO Artifacts/Assets
-# TODO Sprites
-# TODO Text
-# TODO Audio
-# TODO Input testing
-# TODO game compilation
-# TODO 3D drawing
-# TODO 3D physics
-# TODO 2D physics
 
 mutable struct App <: System
   systems::Dict{DataType, System}
