@@ -1,4 +1,4 @@
-# Starlight
+# Starlight.jl
 
 A greedy game engine for [greedy programmers](https://julialang.org/blog/2012/02/why-we-created-julia/)!
 
