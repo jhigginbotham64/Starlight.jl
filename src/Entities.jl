@@ -4,13 +4,9 @@ export ColorLine, ColorRect, ColorCirc, ColorTri
 abstract type Renderable <: Entity end
 
 # NOTE all points are considered as offsets from the entity's position
-# TODO don't ignore position
-# TODO don't ignore rotation
+# NOTE rotation is ignored for these simple 2d shapes, you
+# either can't rotate them or can transform the points
 
-"""
-  contract
-  expects p1 and p2, for its two endpoints
-"""
 mutable struct ColorLine <: Renderable
   function ColorLine(p1, p2; color=colorant"white", kw...)
     instantiate!(new(); p1=p1, p2=p2, color=color, kw...)
@@ -22,21 +18,19 @@ function draw(l::ColorLine)
       sdl.rnd,
       sdl_colors(l.color)...,
   )
-  SDL_RenderDrawLine(sdl.rnd, Cint.((l.p1[1], l.p1[2], l.p2[1], l.p2[2]))...)
+  SDL_RenderDrawLine(sdl.rnd, Cint.((
+    l.p1[1]+l.abs_pos.x, l.p1[2]+l.abs_pos.y, 
+    l.p2[1]+l.abs_pos.x, l.p2[2]+l.abs_pos.y))...)
 end
 
-"""
-  contract
-  expects p, w, and h, denoting the center,
-  the width, and the height
-"""
 mutable struct ColorRect <: Renderable
   function ColorRect(p, w, h; fill=true, color=colorant"white", kw...)
     instantiate!(new(); p=p, w=w, h=h, color=color, fill=fill, kw...)
   end
 end
 
-Base.convert(T::Type{SDL_Rect}, r::ColorRect) = SDL_Rect(Cint.((r.p[1], r.p[2], r.w, r.h))...)
+Base.convert(T::Type{SDL_Rect}, r::ColorRect) = SDL_Rect(
+  Cint.((r.p[1]+r.abs_pos.x, r.p[2]+r.abs_pos.y, r.w, r.h))...)
 
 function draw(r::ColorRect)
   SDL_SetRenderDrawColor(
@@ -51,10 +45,6 @@ function draw(r::ColorRect)
   end
 end
 
-"""
-  contract
-  expects p and r, denoting the center and radius
-"""
 mutable struct ColorCirc <: Renderable
   function ColorCirc(p, r; fill=true, color=colorant"white", kw...)
     instantiate!(new(); p=p, r=r, fill=fill, color=color, kw...)
@@ -64,8 +54,8 @@ end
 # improved circle drawing algorithm. slower but fills completely. needs optimization
 function draw(circle::ColorCirc)
   # define the center and needed sides of circle
-  centerX = Cint(circle.p[1])
-  centerY = Cint(circle.p[2])
+  centerX = Cint(circle.p[1]+circle.abs_pos.x)
+  centerY = Cint(circle.p[2]+circle.abs_pos.y)
   int_rad = Cint(circle.r)
   left = centerX - int_rad
   top = centerY - int_rad
@@ -111,11 +101,6 @@ function draw(circle::ColorCirc)
 
 end
 
-"""
-  contract
-  expects p1, p2, and p3
-  for its three vertices
-"""
 mutable struct ColorTri <: Renderable
   function ColorTri(p1, p2, p3; fill=true, color=colorant"white", kw...)
     instantiate!(new(); p1=p1, p2=p2, p3=p3, color=color, fill=fill, kw...)
@@ -123,7 +108,9 @@ mutable struct ColorTri <: Renderable
 end
 
 function draw(tr::ColorTri)
-  p1, p2, p3 = Cint.(tr.p1), Cint.(tr.p2), Cint.(tr.p3)
+  p1 = Cint.(tr.p1[1]+tr.abs_pos.x, tr.p1[2]+tr.abs_pos.y)
+  p2 = Cint.(tr.p2[1]+tr.abs_pos.x, tr.p2[2]+tr.abs_pos.y)
+  p3 = Cint.(tr.p3[1]+tr.abs_pos.x, tr.p3[2]+tr.abs_pos.y)
   SDL_SetRenderDrawColor(sdl.rnd, sdl_colors(tr.color)...)
   SDL_RenderDrawLines(sdl.rnd, [p1; p2; p3; p1], Cint(4))
 
