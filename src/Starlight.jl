@@ -4,7 +4,7 @@ using Reexport
 @reexport using Base: ReentrantLock, lock, unlock
 @reexport using DataStructures: Queue, enqueue!, dequeue!
 @reexport using DataFrames
-@reexport using Colors, ColorTypes, ColorVectorSpace
+@reexport using Colors
 @reexport using SimpleDirectMediaLayer
 @reexport using SimpleDirectMediaLayer.LibSDL2
 
