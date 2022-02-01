@@ -1,7 +1,7 @@
 module Starlight
 
 using Reexport
-@reexport using Base: Semaphore, acquire, release, ReentrantLock, lock, unlock
+@reexport using Base: ReentrantLock, lock, unlock
 @reexport using DataStructures: Queue, enqueue!, dequeue!
 @reexport using DataFrames
 @reexport using Colors, ColorTypes, ColorVectorSpace
@@ -22,33 +22,18 @@ get_env_clr(n, d) = str_to_clrnt(get(ENV, n, string(d)))
 get_env_flt(n, d) = parse(Float64, get(ENV, n, string(d)))
 get_env_bl(n, d) = parse(Bool, get(ENV, n, string(d)))
 
-DEFAULT_PRIORITY = get_env_int("DEFAULT_PRIORITY", 0)
-MQUEUE_SIZE = get_env_int("MQUEUE_SIZE", 1000)
-
 const listeners = Dict{DataType, Set{Any}}()
-const messages = Queue{Any}()
+const messages = Channel(Inf)
 const from = Dict{Any, Dict{DataType, Set{Any}}}()
 
-const slot_available = Semaphore(MQUEUE_SIZE)
-const msg_ready = Semaphore(MQUEUE_SIZE)
-const mqueue_lock = Semaphore(1)
-const entity_lock = Semaphore(1)
-const listener_lock = Semaphore(1)
-
-for i in 1:MQUEUE_SIZE
-  acquire(msg_ready)
-end
+const listener_lock = ReentrantLock()
 
 handleMessage(l, m) = nothing
 
 function sendMessage(m)
   # drop if no one's listening
   if haskey(listeners, typeof(m))
-    acquire(slot_available)
-    acquire(mqueue_lock)
-    enqueue!(messages, m)
-    release(mqueue_lock)
-    release(msg_ready)
+    put!(messages, m)
   end
 end
 
@@ -57,9 +42,7 @@ end
 # advance and there would otherwise be too many
 # listeners (i.e. collision notifications)
 function sendMessageTo(m, targets...)
-  for to in targets
-    handleMessage(to, m)
-  end
+  for to in targets handleMessage(to, m) end
 end
 
 function add_listener!(e::Any, d::DataType)
@@ -68,20 +51,20 @@ function add_listener!(e::Any, d::DataType)
 end
 
 function listenFor(e::Any, d::DataType)
-  acquire(listener_lock)
+  lock(listener_lock)
   add_listener!(e, d)
-  release(listener_lock)
+  unlock(listener_lock)
 end
 
 # used in cases where we care about the sender
 # as well as the message
 function listenForFrom(e::Any, d::DataType, e2::Any)
-  acquire(listener_lock)
+  lock(listener_lock)
   add_listener!(e, d)
   if !haskey(from, e) from[e] = Dict{DataType, Set{Any}}() end
   if !haskey(from[e], d) from[e][d] = Set{Any}() end
   push!(from[e][d], e2)
-  release(listener_lock)
+  unlock(listener_lock)
 end
 
 # TODO implement "unlisten" function and test
@@ -94,9 +77,7 @@ end
 # being called as a job by a Clock,
 # see Clock.jl for that interface
 function dispatchMessage(arg)
-  acquire(msg_ready)
-  acquire(mqueue_lock) # NOTE this lock guarantees that messages are fully processed in the order they are received
-  m = dequeue!(messages)
+  m = take!(messages) # NOTE messages are fully processed in the order they are received
   d = typeof(m)
   @debug "dequeued message $(m) of type $(d)"
   if haskey(listeners, d)
@@ -116,8 +97,6 @@ function dispatchMessage(arg)
       handleMessage(l, m)
     end
   end
-  release(mqueue_lock)
-  release(slot_available)
 end
 
 abstract type System end

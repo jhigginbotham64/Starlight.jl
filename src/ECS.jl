@@ -119,7 +119,7 @@ function Base.getproperty(ent::Entity, s::Symbol)
   end
 end
 
-const ecs_lock = Semaphore(1)
+const ecs_lock = ReentrantLock()
 
 function Base.setproperty!(ent::Entity, s::Symbol, x)
   e = get_entity_row(ent)
@@ -133,7 +133,7 @@ function Base.setproperty!(ent::Entity, s::Symbol, x)
     error("cannot set property $(s) on Entity")
   end
 
-  acquire(ecs_lock)
+  lock(ecs_lock)
   if s == PARENT
     par = get_entity_by_id(get_df_row_prop(e, PARENT))
     push!(getproperty(par, CHILDREN), get_df_row_prop(e, ID))
@@ -142,7 +142,7 @@ function Base.setproperty!(ent::Entity, s::Symbol, x)
   else
     get_df_row_prop(e, PROPS)[s] = x
   end
-  release(ecs_lock)
+  unlock(ecs_lock)
 end
 
 Base.length(e::ECS) = size(e.df)[1]
@@ -207,7 +207,7 @@ function instantiate!(e::Entity;
   pos::XYZ=XYZ(), rot::XYZ=XYZ(), children::Vector{Int}=Vector{Int}(), 
   props::Dict=Dict{Symbol, Any}())
 
-  acquire(ecs_lock)
+  lock(ecs_lock)
 
   global next_id
   id = next_id
@@ -233,7 +233,7 @@ function instantiate!(e::Entity;
     push!(getproperty(par, CHILDREN), id)
   end
 
-  release(ecs_lock)
+  unlock(ecs_lock)
 
   if ecs.awoken awake!(e) end
 
