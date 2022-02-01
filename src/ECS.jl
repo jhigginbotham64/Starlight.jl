@@ -202,10 +202,7 @@ shutdown!(e::ECS) = e.awoken = all(map(shutdown!, lvl))
 
 next_id = 0
 
-function instantiate!(e::Entity; 
-  pid::Int=0, active::Bool=true, hidden::Bool=false, 
-  pos::XYZ=XYZ(), rot::XYZ=XYZ(), children::Vector{Int}=Vector{Int}(), 
-  props::Dict=Dict{Symbol, Any}())
+function instantiate!(e::Entity; kw...)
 
   lock(ecs_lock)
 
@@ -219,17 +216,19 @@ function instantiate!(e::Entity;
     ENT=>e,
     TYPE=>typeof(e),
     ID=>id,
-    CHILDREN=>children,
-    PARENT=>pid,
-    POSITION=>pos,
-    ROTATION=>rot,
-    ACTIVE=>active,
-    HIDDEN=>hidden,
-    PROPS=>props
+    CHILDREN=>get(kw, :children, Vector{Int}()),
+    PARENT=>get(kw, :pid, 0),
+    POSITION=>get(kw, :pos, XYZ()),
+    ROTATION=>get(kw, :rot, XYZ()),
+    ACTIVE=>get(kw, :active, true),
+    HIDDEN=>get(kw, :hidden, false),
+    PROPS=>merge(get(kw, :props, Dict{Symbol, Any}()), 
+      Dict(k=>v for (k,v) in kw if k ∉ 
+      [:children, :pid, :pos, :rot, :active, :hidden, :props]))
   ))
 
   if id != 0 # root has no parent but itself
-    par = get_entity_by_id(pid)
+    par = get_entity_by_id(get(kw, :pid, 0))
     push!(getproperty(par, CHILDREN), id)
   end
 

@@ -4,7 +4,6 @@ export ColorLine, ColorRect, ColorCirc, ColorTri
 abstract type Renderable <: Entity end
 
 # NOTE all points are considered as offsets from the entity's position
-# TODO figure out how to reduce parameter copy-pasting, clean up interface
 # TODO don't ignore position
 # TODO don't ignore rotation
 
@@ -13,17 +12,8 @@ abstract type Renderable <: Entity end
   expects p1 and p2, for its two endpoints
 """
 mutable struct ColorLine <: Renderable
-  function ColorLine(p1, p2; color=colorant"white",
-    pid::Int=0, active::Bool=true, hidden::Bool=false, 
-    pos::XYZ=XYZ(), rot::XYZ=XYZ(), children::Vector{Int}=Vector{Int}(), 
-    props::Dict=Dict{Symbol, Any}())
-    instantiate!(new();
-      pid=pid,active=active,hidden=hidden,
-      pos=pos,rot=rot,children=children,  
-      props=merge(props, Dict(
-        :p1=>p1,:p2=>p2,color=>color
-      ))
-    )
+  function ColorLine(p1, p2; color=colorant"white", kw...)
+    instantiate!(new(); p1=p1, p2=p2, color=color, kw...)
   end
 end
 
@@ -41,17 +31,8 @@ end
   the width, and the height
 """
 mutable struct ColorRect <: Renderable
-  function ColorRect(p, w, h; fill=true, color=colorant"white",
-    pid::Int=0, active::Bool=true, hidden::Bool=false, 
-    pos::XYZ=XYZ(), rot::XYZ=XYZ(), children::Vector{Int}=Vector{Int}(), 
-    props::Dict=Dict{Symbol, Any}())
-    instantiate!(new();
-      pid=pid,active=active,hidden=hidden,
-      pos=pos,rot=rot,children=children,  
-      props=merge(props, Dict(
-        :p=>p,:w=>w,:h=>h,fill=>fill,color=>color
-      ))
-    )
+  function ColorRect(p, w, h; fill=true, color=colorant"white", kw...)
+    instantiate!(new(); p=p, w=w, h=h, color=color, fill=fill, kw...)
   end
 end
 
@@ -75,17 +56,8 @@ end
   expects p and r, denoting the center and radius
 """
 mutable struct ColorCirc <: Renderable
-  function ColorCirc(p, r; fill=true, color=colorant"white",
-    pid::Int=0, active::Bool=true, hidden::Bool=false, 
-    pos::XYZ=XYZ(), rot::XYZ=XYZ(), children::Vector{Int}=Vector{Int}(), 
-    props::Dict=Dict{Symbol, Any}())
-    instantiate!(new();
-      pid=pid,active=active,hidden=hidden,
-      pos=pos,rot=rot,children=children,  
-      props=merge(props, Dict(
-        :p=>p,:r=>r,fill=>fill,color=>color
-      ))
-    )
+  function ColorCirc(p, r; fill=true, color=colorant"white", kw...)
+    instantiate!(new(); p=p, r=r, fill=fill, color=color, kw...)
   end
 end
 
@@ -145,17 +117,8 @@ end
   for its three vertices
 """
 mutable struct ColorTri <: Renderable
-  function ColorTri(p1, p2, p3; fill=true, color=colorant"white",
-    pid::Int=0, active::Bool=true, hidden::Bool=false, 
-    pos::XYZ=XYZ(), rot::XYZ=XYZ(), children::Vector{Int}=Vector{Int}(), 
-    props::Dict=Dict{Symbol, Any}())
-    instantiate!(new();
-      pid=pid,active=active,hidden=hidden,
-      pos=pos,rot=rot,children=children,  
-      props=merge(props, Dict(
-        :p1=>p1,:p2=>p2,p3=>p3,fill=>fill,color=>color
-      ))
-    )
+  function ColorTri(p1, p2, p3; fill=true, color=colorant"white", kw...)
+    instantiate!(new(); p1=p1, p2=p2, p3=p3, color=color, fill=fill, kw...)
   end
 end
 
