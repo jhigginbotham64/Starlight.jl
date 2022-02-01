@@ -2,7 +2,7 @@ export Entity, update!
 export ECS, XYZ, accumulate_XYZ, get_entity_row, get_entity_by_id
 export get_entity_row_by_id, get_df_row_prop, set_df_row_prop!
 export ECSIterator, ECSIteratorState, Level
-export Root, instantiate!
+export Root, instantiate!, destroy!
 export ecs, lvl
 
 abstract type Entity <: System end
@@ -47,7 +47,7 @@ const components = Dict(
   TYPE=>DataType,
   ID=>Int,
   PARENT=>Int,
-  CHILDREN=>Vector{Int},
+  CHILDREN=>Set{Int},
   POSITION=>XYZ,
   ROTATION=>XYZ,
   ACTIVE=>Bool,
@@ -220,7 +220,7 @@ function instantiate!(e::Entity; kw...)
     ENT=>e,
     TYPE=>typeof(e),
     ID=>id,
-    CHILDREN=>get(kw, :children, Vector{Int}()),
+    CHILDREN=>get(kw, :children, Set{Int}()),
     PARENT=>get(kw, :pid, 0),
     POSITION=>get(kw, :pos, XYZ()),
     ROTATION=>get(kw, :rot, XYZ()),
@@ -241,6 +241,28 @@ function instantiate!(e::Entity; kw...)
   if ecs.awoken awake!(e) end
 
   return e
+end
+
+function destroy!(e::Entity)
+  shutdown!(e)
+
+  lock(ecs_lock)
+
+  p = get_entity_by_id(getproperty(e, PARENT))
+
+  # if not root
+  if getproperty(p, ID) != getproperty(e, ID)
+    # update parent
+    delete!(getproperty(p, CHILDREN), getproperty(e, ID))
+    # update dataframe
+    deleteat!(ecs.df, getproperty(ecs.df, ENT) .== [e])
+  end
+
+  unlock(ecs_lock)
+end
+
+function destroy!(es...)
+  map(destroy!, es) # TODO investigate parallelization
 end
 
 mutable struct Root <: Entity end # mutate at your own peril

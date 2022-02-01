@@ -10,16 +10,18 @@ Starlight.update!(t::TestEntity, Δ) = t.updated = true
 
 # visual testing
 # NOTE in SDL, (0,0) is top-left and y goes down
-ColorLine((-100,-100),(100,100);pos=XYZ(100,100))
-ColorLine((-100,100),(100,-100);pos=XYZ(100,100))
-ColorLine((-100,-100),(100,100);pos=XYZ(100,300),color=colorant"black")
-ColorLine((-100,100),(100,-100);pos=XYZ(100,300),color=colorant"black")
-ColorRect((0,0),200,200;pos=XYZ(300,100))
-ColorRect((0,0),200,200;pos=XYZ(300,300),color=colorant"black",fill=false)
-ColorCirc((0,0),100;pos=XYZ(500,100))
-ColorCirc((0,0),100;pos=XYZ(500,300),color=colorant"black",fill=false)
-ColorTri((-100,100),(0,-100),(100,100);pos=XYZ(700,100))
-ColorTri((-100,100),(0,-100),(100,100);pos=XYZ(700,300),color=colorant"black",fill=false)
+shapes = [
+  ColorLine((-100,-100),(100,100);pos=XYZ(100,100)),
+  ColorLine((-100,100),(100,-100);pos=XYZ(100,100)),
+  ColorLine((-100,-100),(100,100);pos=XYZ(100,300),color=colorant"black"),
+  ColorLine((-100,100),(100,-100);pos=XYZ(100,300),color=colorant"black"),
+  ColorRect((0,0),200,200;pos=XYZ(300,100)),
+  ColorRect((0,0),200,200;pos=XYZ(300,300),color=colorant"black",fill=false),
+  ColorCirc((0,0),100;pos=XYZ(500,100)),
+  ColorCirc((0,0),100;pos=XYZ(500,300),color=colorant"black",fill=false),
+  ColorTri((-100,100),(0,-100),(100,100);pos=XYZ(700,100)),
+  ColorTri((-100,100),(0,-100),(100,100);pos=XYZ(700,300),color=colorant"black",fill=false),
+]
 
 @testset "Starlight" begin
   # load test file
@@ -68,5 +70,20 @@ ColorTri((-100,100),(0,-100),(100,100);pos=XYZ(700,300),color=colorant"black",fi
   sleep(1)
 
   @test tst.updated
+
+  destroy!(tst)
+
+  @test length(ecs) == 11
+
+  destroy!(shapes...)
+
+  @test length(ecs) == 1
+
+  shutdown!(a)
+
+  # root should remain and be unmodified
+  @test root.updated
+
+  @test off(a)
 
 end
