@@ -73,29 +73,38 @@ end
 # users to write finalizers that do this, i.e.
 # this is not terribly important right now
 
+function handleException()
+  @debug stacktrace(catch_backtrace())
+  rethrow()
+end
+
 # uses single argument to support
 # being called as a job by a Clock,
 # see Clock.jl for that interface
 function dispatchMessage(arg)
-  m = take!(messages) # NOTE messages are fully processed in the order they are received
-  d = typeof(m)
-  @debug "dequeued message $(m) of type $(d)"
-  if haskey(listeners, d)
-    # Threads.@threads doesn't work on raw sets
-    # because it needs to use indexing to split
-    # up memory, i work around it this way
-    Threads.@threads for l in Vector([listeners[d]...])
-      # only call handler if the sender is
-      # being listened for, i.e. matches one
-      # the recipient cares about, or the
-      # recipient doesn't care
-      if haskey(from, l) && haskey(from[l], d)
-        if !hasproperty(m, :from) || m.from ∉ from[l][d]
-          continue
+  try
+    m = take!(messages) # NOTE messages are fully processed in the order they are received
+    d = typeof(m)
+    @debug "dequeued message $(m) of type $(d)"
+    if haskey(listeners, d)
+      # Threads.@threads doesn't work on raw sets
+      # because it needs to use indexing to split
+      # up memory, i work around it this way
+      Threads.@threads for l in Vector([listeners[d]...])
+        # only call handler if the sender is
+        # being listened for, i.e. matches one
+        # the recipient cares about, or the
+        # recipient doesn't care
+        if haskey(from, l) && haskey(from[l], d)
+          if !hasproperty(m, :from) || m.from ∉ from[l][d]
+            continue
+          end
         end
+        handleMessage(l, m)
       end
-      handleMessage(l, m)
     end
+  catch
+    handleException()
   end
 end
 
@@ -112,9 +121,9 @@ shutdown!(s::System) = false
 
 include("Clock.jl")
 include("ECS.jl")
-include("SDL.jl")
-include("Scene.jl")
 include("Entities.jl")
+include("Scene.jl")
+include("SDL.jl")
 
 mutable struct App <: System
   systems::Dict{DataType, System}

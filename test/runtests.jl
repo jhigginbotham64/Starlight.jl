@@ -8,8 +8,6 @@ mutable struct TestEntity <: Entity end
   
 Starlight.update!(t::TestEntity, Δ) = t.updated = true
 
-Starlight.handleMessage(t::TestEntity, m::SDL_UserEvent) = t.gotUserEvent = true
-
 @testset "Starlight" begin
   # load test file
   a = App()
@@ -40,9 +38,9 @@ Starlight.handleMessage(t::TestEntity, m::SDL_UserEvent) = t.gotUserEvent = true
   @test !root.updated
 
   # takes just a little longer than a second
-  # for the tick to come through, and longer
-  # still in debug mode, this seems to work
-  sleep(1)
+  # for the first update to propagate when
+  # JULIA_DEBUG=Starlight, this fixes it
+  sleep(1.5)
 
   @test root.updated
 

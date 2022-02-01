@@ -1,5 +1,7 @@
 export Renderable
-export ColorLine, ColorRect, ColorCirc, ColorTri
+export draw, ColorLine, ColorRect, ColorCirc, ColorTri
+
+draw(e::Entity) = nothing
 
 abstract type Renderable <: Entity end
 

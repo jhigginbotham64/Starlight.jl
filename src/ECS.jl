@@ -153,12 +153,12 @@ Base.length(e::ECS) = size(e.df)[1]
 # rather than enums we can pass arbitrary
 # parameters to the iterator
 abstract type ECSIterator <: System end
-Base.length(e::ECSIterator) = length(ecs)
 
 # refers to tree level, i.e. breadth-first,
 # nothing special to see here
 struct Level <: ECSIterator end 
 const lvl = Level()
+Base.length(l::Level) = length(ecs)
 
 mutable struct ECSIteratorState
   root::Int
@@ -194,7 +194,11 @@ function handleMessage(e::ECS, m::TICK)
   function _update!(ent::Entity)
     if getproperty(ent, ACTIVE) update!(ent, m.Δ) end
   end
-  map(_update!, lvl) # TODO investigate parallelization
+  try
+    map(_update!, lvl) # TODO investigate parallelization
+  catch
+    handleException()
+  end
 end
 
 awake!(e::ECS) = e.awoken = all(map(awake!, lvl))

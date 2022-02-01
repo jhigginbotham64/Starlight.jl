@@ -1,5 +1,6 @@
 export Scene
 export scn
+export scene_view
 
 # this is the scene graph, ladies and gentlemen,
 # which we can traverse and mutate however we want
@@ -7,8 +8,15 @@ export scn
 # and destroy however we want...sorry, it took me
 # a long time to come up with this design, and i'm
 # a little bit psyched about it. :)
-mutable struct Scene <: ECSIterator end
+scene_view() = ecs.df[(ecs.df.type .<: [Renderable]) .& (ecs.df.hidden .== [false]), :]
+
+mutable struct Scene <: ECSIterator
+  view
+  Scene() = new(scene_view())
+end
 const scn = Scene() # needs awake! and shutdown! for initialization/deinitialization, and a periodic task for keeping its cache updated
+
+Base.length(s::Scene) = size(s.view)[1]
 
 awake!(s::Scene) = true
 shutdown!(s::Scene) = false
@@ -18,16 +26,19 @@ listenFor(scn, TICK)
 function handleMessage(s::Scene, m::TICK)
   # sort just once per tick rather than every time we iterate
   @debug "Scene tick"
-  sort!(ecs.df, [order(POSITION, rev=true, by=(pos)->pos.z)])
+  try
+    sort!(ecs.df, [order(POSITION, rev=true, by=(pos)->pos.z)])
+    scn.view = scene_view()
+  catch
+    handleException()
+  end
 end
 
 function Base.iterate(s::Scene, state::ECSIteratorState=ECSIteratorState())
   # does reverse-z order for now, only 
   # suitable for simple 2d drawing
-  while true
-    if state.index > length(ecs) return nothing end
-    ent = ecs.df[!, ENT][state.index]
-    state.index += 1
-    if !getproperty(ent, HIDDEN) return (ent, state) end
-  end
+  if state.index > length(s) return nothing end
+  ent = renderables[!, ENT][state.index]
+  state.index += 1
+  return (ent, state)
 end

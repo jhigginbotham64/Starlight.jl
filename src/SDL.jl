@@ -1,6 +1,6 @@
 export SDL, sdl
 export getSDLError, getWindowSize, window_paused
-export draw, to_ARGB, sdl_colors, clear, clear_and_present
+export to_ARGB, sdl_colors, clear, clear_and_present
 
 mutable struct SDL <: System
   win # window
@@ -23,24 +23,22 @@ function clear_and_present()
   SDL_RenderPresent(sdl.rnd)
 end
 
-draw(e::Entity) = nothing
-
 function handleMessage(s::SDL, m::TICK)
   @debug "SDL tick"
-  # handle events
   try
+    # handle events
     event_ref = Ref{SDL_Event}()
     while Bool(SDL_PollEvent(event_ref))
       evt = event_ref[]
       sendMessage(evt)
     end
-  catch e
-    rethrow()
-  end
 
-  # draw the scene
-  map(draw, scn) # TODO investigate parallelization
-  clear_and_present()
+    # draw the scene
+    map(draw, scn) # TODO investigate parallelization
+    clear_and_present()
+  catch
+    handleException()
+  end
 
 end
 
