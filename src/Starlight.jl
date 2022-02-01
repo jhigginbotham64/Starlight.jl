@@ -8,7 +8,7 @@ using Reexport
 @reexport using SimpleDirectMediaLayer
 @reexport using SimpleDirectMediaLayer.LibSDL2
 
-export handleMessage, sendMessage, sendMessageTo, listenFor, listenForFrom, dispatchMessage
+export handleMessage, sendMessage, sendMessageTo, listenFor, listenForFrom, handleException, dispatchMessage
 export System, App, awake!, shutdown!, system!, on, off, cat
 export app, cfg, str_to_clrnt, get_env_int, get_env_str, get_env_clr, get_env_flt, get_env_bl
 
@@ -74,7 +74,9 @@ end
 # this is not terribly important right now
 
 function handleException()
-  @debug stacktrace(catch_backtrace())
+  for s in stacktrace(catch_backtrace())
+    println(s)
+  end
   rethrow()
 end
 
@@ -159,7 +161,7 @@ mutable struct App <: System
       # sdl
       sdl.bgrd = to_ARGB(get_env_clr("BACKGROUND_COLOR", "gray"))
       sdl.wdth = get_env_int("WINDOW_WIDTH", 800)
-      sdl.hght = get_env_int("WINDOW_HEIGHT", 450)
+      sdl.hght = get_env_int("WINDOW_HEIGHT", 400)
       sdl.ttl = get_env_str("TITLE", "Starlight.jl")
 
     catch e

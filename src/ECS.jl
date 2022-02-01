@@ -102,9 +102,9 @@ end
 function accumulate_XYZ(r, s)
   acc = XYZ()
   while true
-    r = get_entity_row_by_id(get_df_row_prop(r, PARENT))
     inc = get_df_row_prop(r, s)
     acc += inc
+    r = get_entity_row_by_id(get_df_row_prop(r, PARENT))
     get_df_row_prop(r, PARENT) != 0 || return acc
   end
 end

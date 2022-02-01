@@ -32,7 +32,9 @@ mutable struct ColorRect <: Renderable
 end
 
 Base.convert(T::Type{SDL_Rect}, r::ColorRect) = SDL_Rect(
-  Cint.((r.p[1]+r.abs_pos.x, r.p[2]+r.abs_pos.y, r.w, r.h))...)
+  Cint.((r.p[1]+r.abs_pos.x-Int(round(r.w/2)), 
+        r.p[2]+r.abs_pos.y-Int(round(r.h/2)), 
+        r.w, r.h))...)
 
 function draw(r::ColorRect)
   SDL_SetRenderDrawColor(
@@ -110,9 +112,9 @@ mutable struct ColorTri <: Renderable
 end
 
 function draw(tr::ColorTri)
-  p1 = Cint.(tr.p1[1]+tr.abs_pos.x, tr.p1[2]+tr.abs_pos.y)
-  p2 = Cint.(tr.p2[1]+tr.abs_pos.x, tr.p2[2]+tr.abs_pos.y)
-  p3 = Cint.(tr.p3[1]+tr.abs_pos.x, tr.p3[2]+tr.abs_pos.y)
+  p1 = Cint.([tr.p1[1]+tr.abs_pos.x, tr.p1[2]+tr.abs_pos.y])
+  p2 = Cint.([tr.p2[1]+tr.abs_pos.x, tr.p2[2]+tr.abs_pos.y])
+  p3 = Cint.([tr.p3[1]+tr.abs_pos.x, tr.p3[2]+tr.abs_pos.y])
   SDL_SetRenderDrawColor(sdl.rnd, sdl_colors(tr.color)...)
   SDL_RenderDrawLines(sdl.rnd, [p1; p2; p3; p1], Cint(4))
 

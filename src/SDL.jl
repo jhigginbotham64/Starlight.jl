@@ -1,6 +1,6 @@
 export SDL, sdl
 export getSDLError, getWindowSize, window_paused
-export to_ARGB, sdl_colors, clear, clear_and_present
+export to_ARGB, sdl_colors, clear
 
 mutable struct SDL <: System
   win # window
@@ -18,8 +18,9 @@ const sdl = SDL()
 
 listenFor(sdl, TICK)
 
-function clear_and_present()
+function draw()
   clear()
+  map(draw, scn) # TODO investigate parallelization
   SDL_RenderPresent(sdl.rnd)
 end
 
@@ -34,8 +35,7 @@ function handleMessage(s::SDL, m::TICK)
     end
 
     # draw the scene
-    map(draw, scn) # TODO investigate parallelization
-    clear_and_present()
+    draw()
   catch
     handleException()
   end
@@ -132,7 +132,7 @@ function awake!(s::SDL)
   sdl.win = win
   sdl.rnd = rnd
 
-  clear_and_present()
+  draw()
 
   return true
 end
