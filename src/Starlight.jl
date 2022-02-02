@@ -2,9 +2,13 @@ module Starlight
 
 using Reexport
 @reexport using Base: ReentrantLock, lock, unlock
+@reexport using FileIO: load
+@reexport using Pkg.Artifacts
+@reexport using LazyArtifacts
 @reexport using DataStructures: Queue, enqueue!, dequeue!
 @reexport using DataFrames
 @reexport using Colors
+@reexport using PortAudio
 @reexport using SimpleDirectMediaLayer
 @reexport using SimpleDirectMediaLayer.LibSDL2
 
@@ -126,6 +130,7 @@ include("ECS.jl")
 include("Entities.jl")
 include("Scene.jl")
 include("SDL.jl")
+include("Audio.jl")
 
 mutable struct App <: System
   systems::Dict{DataType, System}

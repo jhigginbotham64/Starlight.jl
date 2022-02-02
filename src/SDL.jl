@@ -120,12 +120,24 @@ end
 function awake!(s::SDL)
   SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 4)
   SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4)
-  r = SDL_Init(UInt32(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC | SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS))
+  r = SDL_Init(SDL_INIT_EVERYTHING)
   if r != 0
     error("unable to initialize SDL: $(getSDLError())")
   end
 
   TTF_Init()
+
+  mix_init_flags = MIX_INIT_FLAC|MIX_INIT_MP3|MIX_INIT_OGG
+  inited = Mix_Init(Int32(mix_init_flags))
+  if inited & mix_init_flags != mix_init_flags
+      @warn "Failed to initialise audio mixer properly. All sounds may not play correctly\n$(getSDLError())"
+  end
+
+  device = Mix_OpenAudio(Int32(22050), UInt16(MIX_DEFAULT_FORMAT), Int32(2), Int32(1024) )
+  if device != 0
+      @warn "No audio device available, sounds and music will not play.\n$(getSDLError())"
+      Mix_CloseAudio()
+  end
 
   # other fields set inside App constructor
   win, rnd = makeWinRenderer(sdl.ttl, sdl.wdth, sdl.hght)
