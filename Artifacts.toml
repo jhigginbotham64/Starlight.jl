@@ -1,0 +1,7 @@
+[test]
+git-tree-sha1 = "fe8bb0681f12c65d6628731502bd28343844d8bd"
+lazy = true
+
+  [[test.download]]
+  url = "https://github.com/jhigginbotham64/assets/blob/main/test.tar.gz?raw=true"
+  sha256 = "b33f421ac5db73003e54eaa2f8fedfa50af94bea59fa0330222ce93c51f5b18f"

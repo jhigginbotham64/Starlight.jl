@@ -1,6 +1,6 @@
-export play_sound
+export play_sound, play_music
 
-# NOTE this is all we need for pong
+# NOTE this function is all we need for pong
 function play_sound(sound_file, loops=0, ticks=-1)
   sample=Mix_LoadWAV_RW(SDL_RWFromFile(sound_file, "rb"), 1);
   if sample == C_NULL

@@ -71,9 +71,9 @@ const ecs = ECS()
 
 # internally uses Base.getproperty directly so
 # as to not break if the symbol values change
-get_entity_row(ent::Entity) = ecs.df[getproperty(ecs.df, ENT) .== [ent], :]
+get_entity_row(ent::Entity) = @view ecs.df[getproperty(ecs.df, ENT) .== [ent], :]
 get_entity_by_id(id::Int) = ecs.df[getproperty(ecs.df, ID) .== [id], ENT][1]
-get_entity_row_by_id(id::Int) = ecs.df[getproperty(ecs.df, ID) .== [id], :]
+get_entity_row_by_id(id::Int) = @view ecs.df[getproperty(ecs.df, ID) .== [id], :]
 get_df_row_prop(r, s) = r[!, s][1]
 set_df_row_prop!(r, s, x) = r[!, s][1] = x
 

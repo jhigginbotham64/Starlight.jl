@@ -1,5 +1,5 @@
 export Renderable
-export draw, ColorLine, ColorRect, ColorCirc, ColorTri
+export draw, image_surface, ColorLine, ColorRect, ColorCirc, ColorTri, Sprite, Text
 
 draw(e::Entity) = nothing
 
@@ -152,4 +152,121 @@ function draw(tr::ColorTri)
       SDL_RenderDrawLines(sdl.rnd, [r1; r2], Cint(2))
     end
   end
+end
+
+function Base.size(s::Ptr{SDL_Surface})
+  ss = unsafe_load(s)
+  return (ss.w, ss.h)
+end
+
+function image_surface(img)
+  sf = IMG_Load(img)
+  if sf == C_NULL
+    throw("Error loading $image_file")
+  end
+  return sf
+end
+
+mutable struct Sprite <: Renderable
+  # allow textures larger than a single sprite
+  # by supporting cell_size, cell_ind, and region
+  # fields. cell_size turns img into a matrix of
+  # adjacent regions of the same size starting in
+  # the top left of the texture. cell_ind is a 0-indexed
+  # (row,col) index into a particular cell. region
+  # overrides both and denotes the top-left corner
+  # of a rectangle, its width, and its height, and
+  # uses only that region of the texture.
+  function Sprite(img; cell_size=[0, 0], region=[0, 0, 0, 0], cell_ind=[0, 0], 
+    alpha=UInt8(255), scale=XYZ(1,1,1), kw...)
+    instantiate!(new(); img=img, cell_size=cell_size, 
+      region=region, cell_ind=cell_ind, 
+      alpha=alpha, scale=scale, kw...)
+  end
+end
+
+function draw(s::Sprite)
+  srf = image_surface(s.img)
+  w, h = size(srf)
+  txt = SDL_CreateTextureFromSurface(sdl.rnd, srf)
+
+  if (s.alpha < 255)
+    SDL_SetTextureBlendMode(txt, SDL_BLENDMODE_BLEND)
+    SDL_SetTextureAlphaMod(txt, s.alpha)
+  end
+
+  # calculations for source
+  if s.region != [0, 0, 0, 0]
+    srctl = [s.region[1], s.region[2]]
+    srcw, srch = [s.region[3], s.region[4]]
+  elseif s.cell_size != [0, 0]
+    srctl = [s.cell_ind[2] * s.cell_size[1], s.cell_ind[1] * s.cell_size[2]]
+    srcw, srch = s.cell_size
+  else
+    srctl = [0, 0]
+    srcw, srch = [w, h]
+  end
+
+  # calculations for destination
+  if s.region != [0, 0, 0, 0]
+    dstw, dsth = s.region[3], s.region[4]
+  elseif s.cell_size != [0, 0]
+    dstw, dsth = s.cell_size
+  else
+    dstw, dsth = [w, h]
+  end
+
+  dstw = floor(dstw * s.scale.x)
+  dsth = floor(dsth * s.scale.y)
+  
+  SDL_RenderCopyEx(
+    sdl.rnd, 
+    txt, 
+    Ref(SDL_Rect(srctl[1], srctl[2], srcw, srch)),
+    Ref(SDL_Rect(s.abs_pos.x-Int(round(dstw/2)), s.abs_pos.y-Int(round(dsth/2)), dstw, dsth)),
+    s.abs_rot.z, # NOTE angles are in degrees, positive is clockwise
+    C_NULL,
+    SDL_FLIP_NONE
+  )
+
+  SDL_DestroyTexture(txt)
+  SDL_FreeSurface(srf)
+end
+
+mutable struct Text <: Renderable
+  function Text(text, font_name; font_size=12, color=colorant"black", scale=XYZ(1,1,1), alpha=UInt8(255), kw...)
+    instantiate!(new(), 
+      text=text, font_name=font_name, 
+      font_size=font_size, scale=scale, 
+      color=color, alpha=alpha, kw...)
+  end
+end
+
+function draw(t::Text)
+  font = TTF_OpenFont(t.font_name, t.font_size)
+  srf = TTF_RenderText_Blended(font, t.text, SDL_Color(sdl_colors(t.color)...))
+  w, h = size(srf)
+
+  w = floor(w * t.scale.x)
+  h = floor(h * t.scale.y)
+  txt = SDL_CreateTextureFromSurface(sdl.rnd, srf)
+
+  if t.alpha < 255
+    SDL_SetTextureBlendMode(txt, SDL_BLENDMODE_BLEND)
+    SDL_SetTextureAlphaMod(txt, t.alpha)
+  end
+  
+  SDL_RenderCopyEx(
+    sdl.rnd, 
+    txt, 
+    C_NULL,
+    Ref(SDL_Rect(t.abs_pos.x-Int(round(w/2)), t.abs_pos.y-Int(round(h/2)), w, h)),
+    t.abs_rot.z,
+    C_NULL,
+    SDL_FLIP_NONE
+  )
+
+  SDL_DestroyTexture(txt)
+  SDL_FreeSurface(srf)
+  TTF_CloseFont(font)
 end
