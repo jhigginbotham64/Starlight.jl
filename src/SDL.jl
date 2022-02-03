@@ -154,7 +154,12 @@ function shutdown!(s::SDL)
   SDL_DestroyRenderer(sdl.rnd)
   SDL_DestroyWindow(sdl.win)
 
+  Mix_HaltMusic()
+  Mix_HaltChannel(Int32(-1))
+  Mix_CloseAudio()
+
   TTF_Quit()
+  Mix_Quit()
   SDL_Quit()
 
   return false
