@@ -11,23 +11,22 @@ Borrows heavily from the [MIT-licensed GameZero](https://github.com/aviks/GameZe
 - ~~Sprites~~
 - ~~Text~~
 - ~~Audio~~
-- Game compilation workflow
-- Round of examples and testing, to include input events (v0.2.0)
-- Better logging and introspection
-- Dashboard
-- Import/export scene/ECS/etc.
 - 3D drawing
 - 3D physics
 - 2D physics (easier to subtract the 3rd dimension than to add it)
-- Round of examples and testing, to include Pong (v0.3.0)
+- Game compilation workflow
+- Round of examples and testing, to include Pong (v0.2.0)
+- Better logging and introspection
+- Dashboard
+- Import/export scene/ECS/etc.
 - Better audio
 - Animations
 - AI/Behaviors library
 - Networking/Multiplayer
-- Round of examples and testing, to include Bomberman (v0.4.0)
-- Distributed Systems
-- Round of examples and testing, to include Constellation (v0.5.0)
+- Round of examples and testing, to include Bomberman (v0.3.0)
+- Better parallelization and distributed processing
 - CI/CD
+- Constellation (running key systems on different machines)
 - Documentation (v1.0.0)
 - ???
 - Profit
