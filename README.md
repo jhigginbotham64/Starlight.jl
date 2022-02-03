@@ -18,12 +18,12 @@ Borrows heavily from the [MIT-licensed GameZero](https://github.com/aviks/GameZe
 - Round of examples and testing, to include Pong (v0.2.0)
 - Better logging and introspection
 - Dashboard
-- Import/export scene/ECS/etc.
+- Import/export scene/ECS/etc (v0.3.0)
 - Better audio
 - Animations
 - AI/Behaviors library
 - Networking/Multiplayer
-- Round of examples and testing, to include Bomberman (v0.3.0)
+- Round of examples and testing, to include Bomberman (v0.4.0)
 - Better parallelization and distributed processing
 - CI/CD
 - Constellation (running key systems on different machines)
