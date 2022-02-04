@@ -12,8 +12,8 @@ Borrows heavily from the [MIT-licensed GameZero](https://github.com/aviks/GameZe
 - ~~Text~~
 - ~~Audio~~
 - 3D drawing
-- 3D physics
-- 2D physics (easier to subtract the 3rd dimension than to add it)
+- nD physics
+- 2D-3D physics (easier to subtract the extra dimensions than to add it)
 - Game compilation workflow
 - Round of examples and testing, to include Pong (v0.2.0)
 - Better logging and introspection
