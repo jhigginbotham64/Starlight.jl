@@ -157,11 +157,24 @@ mutable struct App <: System
 
       # clock
       clk.freq = get_env_flt("CLOCK_FREQ", 0.01667) # 60hz
-      clk.fire_sec = get_env_bl("CLOCK_FIRE_SEC", false)
-      clk.fire_msec = get_env_bl("CLOCK_FIRE_MSEC", false)
-      clk.fire_usec = get_env_bl("CLOCK_FIRE_USEC", false)
-      clk.fire_nsec = get_env_bl("CLOCK_FIRE_NSEC", false)
-
+      
+      fire_sec = get_env_bl("CLOCK_FIRE_SEC", false)
+      fire_msec = get_env_bl("CLOCK_FIRE_MSEC", false)
+      fire_usec = get_env_bl("CLOCK_FIRE_USEC", false)
+      fire_nsec = get_env_bl("CLOCK_FIRE_NSEC", false)
+      if fire_sec
+        push!(Clock.message_fires, (1e9, RT_SEC, "second"))
+      end
+      if fire_msec
+        push!(Clock.message_fires, (1e6, RT_MSEC, "millisecond"))
+      end
+      if fire_usec
+        push!(Clock.message_fires, (1e3, RT_USEC, "microsecond"))
+      end
+      if fire_nsec
+        push!(Clock.message_fires, (1.0, RT_NSEC, "nanosecond"))
+      end
+      
       # sdl
       sdl.bgrd = to_ARGB(get_env_clr("BACKGROUND_COLOR", "gray"))
       sdl.wdth = get_env_int("WINDOW_WIDTH", 800)
