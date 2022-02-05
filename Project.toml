@@ -13,6 +13,7 @@ LazyArtifacts = "4af54fe1-eca0-43a8-85a7-787d91b784e3"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 SimpleDirectMediaLayer = "98e33af6-2ee5-5afd-9e75-cbc738b767c4"
+Vulkan = "9f14b124-c50e-4008-a7d4-969b3a6cd68a"
 
 [compat]
 Colors = "0.12.8"
