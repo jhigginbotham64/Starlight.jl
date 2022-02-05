@@ -5,19 +5,31 @@ export clk
 mutable struct Clock <: System
   started::Base.Event
   stopped::Bool
-  fire_sec::Bool
-  fire_msec::Bool
-  fire_usec::Bool
-  fire_nsec::Bool
+  #fire_sec::Bool
+  #fire_msec::Bool
+  #fire_usec::Bool
+  #fire_nsec::Bool
+  message_fires::Vector{Tuple{float,Function,String}}
   freq::AbstractFloat
 end
 
-Clock() = Clock(Base.Event(), true, false, false, false, false, 0.01667) # default frequency of approximately 60 Hz
+Clock() = Clock(Base.Event(), true, [], 0.01667) # default frequency of approximately 60 Hz
 
 const clk = Clock()
 
 # RT == "real time"
 # Δ carries the "actual" number of given time units elapsed
+struct RT_SCALE{scale, signature}
+  Δ::AbstractFloat
+end
+const SIG_TIME_COUNT = 0
+const SIG_TIME_TICK = 1
+RT_SEC = RT_SCALE{1.0, SIG_TIME_COUNT}
+RT_MSEC = RT_SCALE{1e-3, SIG_TIME_COUNT}
+RT_USEC = RT_SCALE{1e-6, SIG_TIME_COUNT}
+RT_NSEC = RT_SCALE{1e-9, SIG_TIME_COUNT}
+TICK = RT_SCALE{1.0, SIG_TIME_TICK}
+#=
 struct RT_SEC
   Δ::AbstractFloat
 end
@@ -33,7 +45,7 @@ end
 struct TICK
   Δ::AbstractFloat # seconds, but has a distinct meaning from from RT_SEC
 end
-
+=#
 struct SLEEP_TIME
   Δ::UInt # time in nanoseconds to sleep for
 end
@@ -47,35 +59,17 @@ function Base.sleep(s::SLEEP_TIME)
   return time_ns() - t1
 end
 
-function nsleep(Δ)
-  δ = sleep(SLEEP_TIME(Δ))
-  sendMessage(RT_NSEC(δ))
-  @debug "nanosecond"
+function sleep_with_message(sleep_time,timescale, message, debug)
+  δ = sleep(SLEEP_TIME(sleep_time*timescale))
+  sendMessage(message(δ/timescale))
+  @debug debug
 end
 
-function usleep(Δ)
-  δ = sleep(SLEEP_TIME(Δ * 1e3))
-  sendMessage(RT_USEC(δ / 1e3))
-  @debug "microsecond"
-end
-
-function msleep(Δ)
-  δ = sleep(SLEEP_TIME(Δ * 1e6))
-  sendMessage(RT_MSEC(δ / 1e6))
-  @debug "millisecond"
-end
-
-function ssleep(Δ)
-  δ =  sleep(SLEEP_TIME(Δ * 1e9))
-  sendMessage(RT_SEC(δ / 1e9))
-  @debug "second"
-end
-
-function tick(Δ)
-  δ = sleep(SLEEP_TIME(Δ * 1e9))
-  sendMessage(TICK(δ / 1e9))
-  @debug "tick"
-end
+nsleep(Δ) = sleep_with_message(Δ,1.0, RT_NSEC, "nanosecond")
+usleep(Δ) = sleep_with_message(Δ,1e3, RT_USEC, "microsecond")
+msleep(Δ) = sleep_with_message(Δ,1e6, RT_MSEC, "millisecond")
+ssleep(Δ) = sleep_with_message(Δ,1e9, RT_SEC, "second")
+tick(Δ) = sleep_with_message(Δ,1e9, TICK, "tick")
 
 function job!(c::Clock, f, arg=1)
   function job()
@@ -88,10 +82,9 @@ function job!(c::Clock, f, arg=1)
 end
 
 function awake!(c::Clock)
-  if c.fire_sec job!(c, ssleep) end
-  if c.fire_msec job!(c, msleep) end
-  if c.fire_usec job!(c, usleep) end
-  if c.fire_nsec job!(c, nsleep) end
+  for i in c.message_fires
+    job!(c, Δ-> sleep_with_message(Δ,i[1], i[2], i[3]))
+  end
 
   job!(c, tick, c.freq)
 

@@ -22,11 +22,14 @@ Borrows heavily from the [MIT-licensed GameZero](https://github.com/aviks/GameZe
 - Better audio
 - Animations
 - AI/Behaviors library
+- Integration with Flux, Alphazero, other AI libraries.
 - Networking/Multiplayer
 - Round of examples and testing, to include Bomberman (v0.4.0)
 - Better parallelization and distributed processing
+- Automatic scaling based on activity.
 - CI/CD
 - Constellation (running key systems on different machines)
 - Documentation (v1.0.0)
+- Containerized server deployment.
 - ???
 - Profit
