@@ -8,12 +8,10 @@ using Reexport
 @reexport using DataStructures: Queue, enqueue!, dequeue!
 @reexport using DataFrames
 @reexport using Colors
-@reexport using SimpleDirectMediaLayer
-@reexport using SimpleDirectMediaLayer.LibSDL2
 
 export handleMessage, sendMessage, sendMessageTo, listenFor, listenForFrom, handleException, dispatchMessage
 export System, App, awake!, shutdown!, system!, on, off, cat
-export app, cfg, str_to_clrnt, get_env_int, get_env_str, get_env_clr, get_env_flt, get_env_bl
+export app, cfg, str_to_clrnt, get_env_int, get_env_str, get_env_clr, get_env_flt
 
 import DotEnv
 cfg = DotEnv.config()
@@ -23,11 +21,9 @@ get_env_int(n, d) = parse(Int, get(ENV, n, string(d)))
 get_env_str(n, d) = get(ENV, n, string(d)) # no parse necessary since all env variables are strings by default
 get_env_clr(n, d) = str_to_clrnt(get(ENV, n, string(d)))
 get_env_flt(n, d) = parse(Float64, get(ENV, n, string(d)))
-get_env_bl(n, d) = parse(Bool, get(ENV, n, string(d)))
 
 const listeners = Dict{DataType, Set{Any}}()
 const messages = Channel(Inf)
-const from = Dict{Any, Dict{DataType, Set{Any}}}()
 
 const listener_lock = ReentrantLock()
 
@@ -40,14 +36,6 @@ function sendMessage(m)
   end
 end
 
-# allow direct invocation of message handlers
-# for cases when we know all the recipients in
-# advance and there would otherwise be too many
-# listeners (i.e. collision notifications)
-function sendMessageTo(m, targets...)
-  for to in targets handleMessage(to, m) end
-end
-
 function add_listener!(e::Any, d::DataType)
   if !haskey(listeners, d) listeners[d] = Set{Any}() end
   push!(listeners[d], e)
@@ -56,17 +44,6 @@ end
 function listenFor(e::Any, d::DataType)
   lock(listener_lock)
   add_listener!(e, d)
-  unlock(listener_lock)
-end
-
-# used in cases where we care about the sender
-# as well as the message
-function listenForFrom(e::Any, d::DataType, e2::Any)
-  lock(listener_lock)
-  add_listener!(e, d)
-  if !haskey(from, e) from[e] = Dict{DataType, Set{Any}}() end
-  if !haskey(from[e], d) from[e][d] = Set{Any}() end
-  push!(from[e][d], e2)
   unlock(listener_lock)
 end
 
@@ -96,15 +73,6 @@ function dispatchMessage(arg)
       # because it needs to use indexing to split
       # up memory, i work around it this way
       Threads.@threads for l in Vector([listeners[d]...])
-        # only call handler if the sender is
-        # being listened for, i.e. matches one
-        # the recipient cares about, or the
-        # recipient doesn't care
-        if haskey(from, l) && haskey(from[l], d)
-          if !hasproperty(m, :from) || m.from ∉ from[l][d]
-            continue
-          end
-        end
         handleMessage(l, m)
       end
     end
@@ -157,16 +125,12 @@ mutable struct App <: System
 
       # clock
       clk.freq = get_env_flt("CLOCK_FREQ", 0.01667) # 60hz
-      clk.fire_sec = get_env_bl("CLOCK_FIRE_SEC", false)
-      clk.fire_msec = get_env_bl("CLOCK_FIRE_MSEC", false)
-      clk.fire_usec = get_env_bl("CLOCK_FIRE_USEC", false)
-      clk.fire_nsec = get_env_bl("CLOCK_FIRE_NSEC", false)
-
+      
       # sdl
       sdl.bgrd = to_ARGB(get_env_clr("BACKGROUND_COLOR", "gray"))
       sdl.wdth = get_env_int("WINDOW_WIDTH", 800)
       sdl.hght = get_env_int("WINDOW_HEIGHT", 400)
-      sdl.ttl = get_env_str("TITLE", "Starlight.jl")
+      sdl.ttl = get_env_str("WINDOW_TITLE", "Starlight.jl")
 
     catch e
       rethrow()

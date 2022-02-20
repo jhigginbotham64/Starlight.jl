@@ -11,6 +11,7 @@ Borrows heavily from the [MIT-licensed GameZero](https://github.com/aviks/GameZe
 - ~~Sprites~~
 - ~~Text~~
 - ~~Audio~~
+- Migrate from SimpleDirectMediaLayer.jl to C++ (Telescope)
 - 3D drawing
 - 3D physics
 - 2D physics (easier to subtract the 3rd dimension than to add it)
@@ -26,6 +27,7 @@ Borrows heavily from the [MIT-licensed GameZero](https://github.com/aviks/GameZe
 - Round of examples and testing, to include Bomberman (v0.4.0)
 - Better parallelization and distributed processing
 - CI/CD
+- Cross-platform Telescope
 - Constellation (running key systems on different machines)
 - Documentation (v1.0.0)
 - ???

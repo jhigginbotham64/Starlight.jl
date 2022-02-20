@@ -15,6 +15,7 @@ mutable struct ColorLine <: Renderable
   end
 end
 
+# CPP draw line (color, p1x, p1y, p2x, p2y)
 function draw(l::ColorLine)
   SDL_SetRenderDrawColor(
       sdl.rnd,
@@ -36,6 +37,7 @@ Base.convert(T::Type{SDL_Rect}, r::ColorRect) = SDL_Rect(
         r.p[2]+r.abs_pos.y-Int(round(r.h/2)), 
         r.w, r.h))...)
 
+# CPP draw rectangle (color, cx, cy, w, h)
 function draw(r::ColorRect)
   SDL_SetRenderDrawColor(
       sdl.rnd,
@@ -55,7 +57,7 @@ mutable struct ColorCirc <: Renderable
   end
 end
 
-# improved circle drawing algorithm. slower but fills completely. needs optimization
+# CPP draw circle (color, cx, cy, r)
 function draw(circle::ColorCirc)
   # define the center and needed sides of circle
   centerX = Cint(circle.p[1]+circle.abs_pos.x)
@@ -111,6 +113,7 @@ mutable struct ColorTri <: Renderable
   end
 end
 
+# CPP draw triangle (color, p1x, p1y, p2x, p2y, p3x, p3y)
 function draw(tr::ColorTri)
   p1 = Cint.([tr.p1[1]+tr.abs_pos.x, tr.p1[2]+tr.abs_pos.y])
   p2 = Cint.([tr.p2[1]+tr.abs_pos.x, tr.p2[2]+tr.abs_pos.y])
@@ -185,6 +188,7 @@ mutable struct Sprite <: Renderable
   end
 end
 
+# CPP draw sprite (img, alpha, src, dst, rot z)
 function draw(s::Sprite)
   srf = image_surface(s.img)
   w, h = size(srf)
@@ -242,6 +246,7 @@ mutable struct Text <: Renderable
   end
 end
 
+# CPP draw text (fname, fsize, color, alpha, dst, rot z)
 function draw(t::Text)
   font = TTF_OpenFont(t.font_name, t.font_size)
   srf = TTF_RenderText_Blended(font, t.text, SDL_Color(sdl_colors(t.color)...))
