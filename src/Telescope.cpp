@@ -1,4 +1,5 @@
 #include <vulkan/vulkan.hpp>
+#include <jlcxx/jlcxx.hpp>
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_mixer.h>
@@ -9,8 +10,6 @@
 #include <algorithm>
 #include <cmath>
 
-int wdth = 800;
-int hght = 400;
 SDL_Window *win = NULL;
 SDL_Renderer *rnd = NULL;
 
@@ -25,7 +24,7 @@ void fill(UInt8 r, UInt8 g, UInt8 b, UInt8 a)
   SDL_RenderClear(rnd);
 }
 
-void init()
+void init(const char * ttl = "Hello SDL", int wdth = 800, int hght = 400)
 {
   SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 4);
   SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4);
@@ -49,7 +48,7 @@ void init()
     Mix_CloseAudio();
   }
 
-  win = SDL_CreateWindow("Hello SDL", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, wdth, hght, SDL_WINDOW_ALLOW_HIGHDPI|SDL_WINDOW_VULKAN|SDL_WINDOW_SHOWN);
+  win = SDL_CreateWindow(ttl, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, wdth, hght, SDL_WINDOW_ALLOW_HIGHDPI|SDL_WINDOW_VULKAN|SDL_WINDOW_SHOWN);
   SDL_SetWindowMinimumSize(win, wdth, hght);
   rnd = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED|SDL_RENDERER_PRESENTVSYNC);
   SDL_SetRenderDrawBlendMode(rnd, SDL_BLENDMODE_BLEND);
@@ -324,3 +323,18 @@ void drawText(const char * fname, int fsize, const char * txt, int r, int g, int
   TTF_CloseFont(font);
 }
 
+JLCXX_MODULE define_julia_module(jlcxx::Module& mod)
+{
+  mod.method("TS_GetSDLError", &getSDLError);
+  mod.method("TS_Fill", &fill);
+  mod.method("TS_Init", &init);
+  mod.method("TS_Quit", &quit);
+  mod.method("TS_Present", &present);
+  mod.method("TS_PlaySound", &play_sound);
+  mod.method("TS_DrawLine", &drawLine);
+  mod.method("TS_DrawRect", &drawRect);
+  mod.method("TS_DrawCircle", &drawCircle);
+  mod.method("TS_DrawTriangle", &drawTriangle);
+  mod.method("TS_DrawSprite", &drawSprite);
+  mod.method("TS_DrawText", &drawText);
+}

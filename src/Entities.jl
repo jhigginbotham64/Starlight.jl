@@ -6,7 +6,7 @@ draw(e::Entity) = nothing
 abstract type Renderable <: Entity end
 
 # NOTE all points are considered as offsets from the entity's position
-# NOTE rotation is ignored for these simple 2d shapes, you
+# NOTE rotation is ignored for the simple 2d shapes, you
 # either can't rotate them or can transform the points
 
 mutable struct ColorLine <: Renderable
@@ -15,9 +15,10 @@ mutable struct ColorLine <: Renderable
   end
 end
 
-# CPP draw line
 function draw(l::ColorLine)
-  
+  TS_DrawLine(sdl_colors(l.color)..., 
+  l.p1[1]+l.abs_pos.x, l.p1[2]+l.abs_pos.y,
+  l.p2[1]+l.abs_pos.x, l.p2[2]+l.abs_pos.y)
 end
 
 mutable struct ColorRect <: Renderable
@@ -26,9 +27,8 @@ mutable struct ColorRect <: Renderable
   end
 end
 
-# CPP draw rectangle
 function draw(r::ColorRect)
-  
+  TS_DrawRect(sdl_colors(r.color)..., r.fill, r.p[1]+r.abs_pos.x, r.p[2]+r.abs_pos.y, r.w, r.h)
 end
 
 mutable struct ColorCirc <: Renderable
@@ -37,9 +37,8 @@ mutable struct ColorCirc <: Renderable
   end
 end
 
-# CPP draw circle
-function draw(circle::ColorCirc)
-
+function draw(c::ColorCirc)
+  TS_DrawCircle(sdl_colors(c.color)..., c.fill, c.p[1]+c.abs_pos.x, c.p[2]+c.abs_pos.y, c.r)
 end
 
 mutable struct ColorTri <: Renderable
@@ -48,9 +47,11 @@ mutable struct ColorTri <: Renderable
   end
 end
 
-# CPP draw triangle
-function draw(tr::ColorTri)
-  
+function draw(t::ColorTri)
+  TS_DrawTriangle(sdl_colors(t.color)..., t.fill, 
+  t.p1[1]+t.abs_pos.x, t.p1[2]+t.abs_pos.y, 
+  t.p2[1]+t.abs_pos.x, t.p2[2]+t.abs_pos.y, 
+  t.p3[1]+t.abs_pos.x, t.p3[2]+t.abs_pos.y)
 end
 
 mutable struct Sprite <: Renderable
@@ -71,9 +72,11 @@ mutable struct Sprite <: Renderable
   end
 end
 
-# CPP draw sprite
 function draw(s::Sprite)
-  
+  TS_DrawSprite(s.img, s.alpha, 
+  s.region[1], s.region[2], s.region[3], s.region[4], 
+  s.cell_size[1], s.cell_size[2], s.cell_ind[1], s.cell_ind[2]
+  s.abs_pos.x, s.abs_pos.y, s.scale.x, s.scale.y, s.abs_rot.z)
 end
 
 mutable struct Text <: Renderable
@@ -85,7 +88,7 @@ mutable struct Text <: Renderable
   end
 end
 
-# CPP draw text
 function draw(t::Text)
-  
+  TS_DrawText(t.font_name, t.font_size, t.text, sdl_colors(t.color)...,
+  t.abs_pos.x, t.abs_pos.y, s.scale.x, t.scale.y, t.abs_rot.z)
 end

@@ -11,7 +11,8 @@ Borrows heavily from the [MIT-licensed GameZero](https://github.com/aviks/GameZe
 - ~~Sprites~~
 - ~~Text~~
 - ~~Audio~~
-- Migrate from SimpleDirectMediaLayer.jl to C++ (Telescope)
+- ~~Migrate from SimpleDirectMediaLayer.jl to C++~~
+- Migrate from SDL Renderer to Vulkan
 - 3D drawing
 - 3D physics
 - 2D physics (easier to subtract the 3rd dimension than to add it)

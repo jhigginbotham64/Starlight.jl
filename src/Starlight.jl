@@ -8,19 +8,18 @@ using Reexport
 @reexport using DataStructures: Queue, enqueue!, dequeue!
 @reexport using DataFrames
 @reexport using Colors
+@reexport using CxxWrap
+
+# TODO use artifacts or some other solution
+# with better portability than @__DIR__
+@wrapmodule(joinpath(@__DIR__, "telescope"))
+function __init__()
+  @initcxx
+end
 
 export handleMessage, sendMessage, sendMessageTo, listenFor, listenForFrom, handleException, dispatchMessage
 export System, App, awake!, shutdown!, system!, on, off, cat
-export app, cfg, str_to_clrnt, get_env_int, get_env_str, get_env_clr, get_env_flt
-
-import DotEnv
-cfg = DotEnv.config()
-
-str_to_clrnt(s) = parse(Colorant, s)
-get_env_int(n, d) = parse(Int, get(ENV, n, string(d)))
-get_env_str(n, d) = get(ENV, n, string(d)) # no parse necessary since all env variables are strings by default
-get_env_clr(n, d) = str_to_clrnt(get(ENV, n, string(d)))
-get_env_flt(n, d) = parse(Float64, get(ENV, n, string(d)))
+export app
 
 const listeners = Dict{DataType, Set{Any}}()
 const messages = Channel(Inf)
@@ -96,7 +95,7 @@ include("Clock.jl")
 include("ECS.jl")
 include("Entities.jl")
 include("Scene.jl")
-include("SDL.jl")
+include("Telescope.jl")
 include("Audio.jl")
 
 mutable struct App <: System
@@ -114,7 +113,7 @@ mutable struct App <: System
         
         system!(a, clk)
         system!(a, ecs)
-        system!(a, sdl)
+        system!(a, ts)
         system!(a, scn)
       
         a.running = [false for s in keys(a.systems)]
@@ -122,15 +121,6 @@ mutable struct App <: System
         app[] = finalizer(shutdown!, a)
 
       end
-
-      # clock
-      clk.freq = get_env_flt("CLOCK_FREQ", 0.01667) # 60hz
-      
-      # sdl
-      sdl.bgrd = to_ARGB(get_env_clr("BACKGROUND_COLOR", "gray"))
-      sdl.wdth = get_env_int("WINDOW_WIDTH", 800)
-      sdl.hght = get_env_int("WINDOW_HEIGHT", 400)
-      sdl.ttl = get_env_str("WINDOW_TITLE", "Starlight.jl")
 
     catch e
       rethrow()
