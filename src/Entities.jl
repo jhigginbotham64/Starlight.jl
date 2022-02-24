@@ -67,5 +67,5 @@ end
 
 function draw(t::Text)
   TS_DrawText(t.font_name, t.font_size, t.text, sdl_colors(t.color)...,
-  t.abs_pos.x, t.abs_pos.y, s.scale.x, t.scale.y, t.abs_rot.z)
+  t.abs_pos.x, t.abs_pos.y, t.scale.x, t.scale.y, t.abs_rot.z)
 end
