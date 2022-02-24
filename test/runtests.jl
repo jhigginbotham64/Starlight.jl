@@ -12,21 +12,6 @@ Starlight.update!(t::TestEntity, Δ) = t.updated = true
   # load test file
   a = App()
 
-  # visual testing
-  # NOTE in SDL, (0,0) is top-left and y goes down
-  shapes = [
-    ColorLine((-100,-100),(100,100);pos=XYZ(100,100)),
-    ColorLine((-100,100),(100,-100);pos=XYZ(100,100)),
-    ColorLine((-100,-100),(100,100);pos=XYZ(100,300),color=colorant"black"),
-    ColorLine((-100,100),(100,-100);pos=XYZ(100,300),color=colorant"black"),
-    ColorRect((0,0),200,200;pos=XYZ(300,100)),
-    ColorRect((0,0),200,200;pos=XYZ(300,300),color=colorant"black",fill=false),
-    ColorCirc((0,0),100;pos=XYZ(500,100)),
-    ColorCirc((0,0),100;pos=XYZ(500,300),color=colorant"black",fill=false),
-    ColorTri((-100,100),(0,-100),(100,100);pos=XYZ(700,100)),
-    ColorTri((-100,100),(0,-100),(100,100);pos=XYZ(700,300),color=colorant"black",fill=false),
-  ]
-
   # no systems should be running
   @test off(a)
 
@@ -44,6 +29,17 @@ Starlight.update!(t::TestEntity, Δ) = t.updated = true
 
   # ok back on
   awake!(a)
+
+  # visual testing
+  # NOTE in SDL, (0,0) is top-left and y goes down
+  shapes = [
+    ColorLine((-100,-100),(100,100);pos=XYZ(100,100)),
+    ColorLine((-100,100),(100,-100);pos=XYZ(100,100)),
+    ColorLine((-100,-100),(100,100);pos=XYZ(100,300),color=colorant"black"),
+    ColorLine((-100,100),(100,-100);pos=XYZ(100,300),color=colorant"black"),
+    ColorRect((0,0),200,200;pos=XYZ(300,100)),
+    ColorRect((0,0),200,200;pos=XYZ(300,300),color=colorant"black",fill=false)
+  ]
 
   # test manipulations on root
   root = get_entity_by_id(0)
@@ -73,7 +69,7 @@ Starlight.update!(t::TestEntity, Δ) = t.updated = true
 
   destroy!(tst)
 
-  @test_broken length(ecs) == 11
+  @test length(ecs) == 7
 
   destroy!(shapes...)
 

@@ -14,8 +14,10 @@ Borrows heavily from the [MIT-licensed GameZero](https://github.com/aviks/GameZe
 - ~~Migrate from SimpleDirectMediaLayer.jl to C++~~
 - Migrate from SDL Renderer to Vulkan
 - 3D drawing
+- Input handling
 - 3D physics
 - 2D physics (easier to subtract the 3rd dimension than to add it)
+- Spin off Telescope as separate package
 - Game compilation workflow
 - Round of examples and testing, to include Pong (v0.2.0)
 - Better logging and introspection

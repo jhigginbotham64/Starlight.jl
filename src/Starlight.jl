@@ -10,13 +10,6 @@ using Reexport
 @reexport using Colors
 @reexport using CxxWrap
 
-# TODO use artifacts or some other solution
-# with better portability than @__DIR__
-@wrapmodule(joinpath(@__DIR__, "telescope"))
-function __init__()
-  @initcxx
-end
-
 export handleMessage, sendMessage, sendMessageTo, listenFor, listenForFrom, handleException, dispatchMessage
 export System, App, awake!, shutdown!, system!, on, off, cat
 export app
@@ -91,11 +84,12 @@ abstract type System end
 awake!(s::System) = true
 shutdown!(s::System) = false
 
+
 include("Clock.jl")
 include("ECS.jl")
-include("Entities.jl")
 include("Scene.jl")
 include("Telescope.jl")
+include("Entities.jl")
 include("Audio.jl")
 
 mutable struct App <: System

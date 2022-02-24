@@ -1,5 +1,5 @@
 export Renderable
-export draw, image_surface, ColorLine, ColorRect, ColorCirc, ColorTri, Sprite, Text
+export draw, image_surface, ColorLine, ColorRect, Sprite, Text
 
 draw(e::Entity) = nothing
 
@@ -31,29 +31,6 @@ function draw(r::ColorRect)
   TS_DrawRect(sdl_colors(r.color)..., r.fill, r.p[1]+r.abs_pos.x, r.p[2]+r.abs_pos.y, r.w, r.h)
 end
 
-mutable struct ColorCirc <: Renderable
-  function ColorCirc(p, r; fill=true, color=colorant"white", kw...)
-    instantiate!(new(); p=p, r=r, fill=fill, color=color, kw...)
-  end
-end
-
-function draw(c::ColorCirc)
-  TS_DrawCircle(sdl_colors(c.color)..., c.fill, c.p[1]+c.abs_pos.x, c.p[2]+c.abs_pos.y, c.r)
-end
-
-mutable struct ColorTri <: Renderable
-  function ColorTri(p1, p2, p3; fill=true, color=colorant"white", kw...)
-    instantiate!(new(); p1=p1, p2=p2, p3=p3, color=color, fill=fill, kw...)
-  end
-end
-
-function draw(t::ColorTri)
-  TS_DrawTriangle(sdl_colors(t.color)..., t.fill, 
-  t.p1[1]+t.abs_pos.x, t.p1[2]+t.abs_pos.y, 
-  t.p2[1]+t.abs_pos.x, t.p2[2]+t.abs_pos.y, 
-  t.p3[1]+t.abs_pos.x, t.p3[2]+t.abs_pos.y)
-end
-
 mutable struct Sprite <: Renderable
   # allow textures larger than a single sprite
   # by supporting cell_size, cell_ind, and region
@@ -75,7 +52,7 @@ end
 function draw(s::Sprite)
   TS_DrawSprite(s.img, s.alpha, 
   s.region[1], s.region[2], s.region[3], s.region[4], 
-  s.cell_size[1], s.cell_size[2], s.cell_ind[1], s.cell_ind[2]
+  s.cell_size[1], s.cell_size[2], s.cell_ind[1], s.cell_ind[2],
   s.abs_pos.x, s.abs_pos.y, s.scale.x, s.scale.y, s.abs_rot.z)
 end
 

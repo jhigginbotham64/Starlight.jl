@@ -1,5 +1,14 @@
 export Telescope, ts
 export to_ARGB, sdl_colors, clear
+export TS_DrawPoint, TS_DrawRect, TS_DrawText, TS_Fill, TS_Init, TS_Present
+export TS_DrawLine, TS_DrawSprite, TS_GetSDLError, TS_PlaySound, TS_Quit
+
+# TODO use artifacts or some other solution
+# with better portability than @__DIR__
+@wrapmodule(joinpath(@__DIR__, "build", "lib", "libtelescope.so"))
+function __init__()
+  @initcxx
+end
 
 mutable struct Telescope <: System end
 
@@ -39,7 +48,7 @@ function Base.fill(c::Colorant)
 end
 
 function awake!(t::Telescope)
-  TS_Init()
+  TS_Init("Hello SDL!", 400, 400)
   draw()
   return true
 end

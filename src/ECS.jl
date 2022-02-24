@@ -202,7 +202,7 @@ function handleMessage(e::ECS, m::TICK)
 end
 
 awake!(e::ECS) = e.awoken = all(map(awake!, lvl))
-shutdown!(e::ECS) = e.awoken = all(map(shutdown!, lvl))
+shutdown!(e::ECS) = e.awoken = all(map(destroy!, lvl))
 
 next_id = 0
 
@@ -244,7 +244,7 @@ function instantiate!(e::Entity; kw...)
 end
 
 function destroy!(e::Entity)
-  shutdown!(e)
+  sd = shutdown!(e)
 
   lock(ecs_lock)
 
@@ -259,6 +259,8 @@ function destroy!(e::Entity)
   end
 
   unlock(ecs_lock)
+
+  return sd
 end
 
 function destroy!(es...)
