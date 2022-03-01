@@ -14,9 +14,10 @@
 #include <set>
 #include <cmath>
 
-const char * window_name = NULL;
+const char *window_name = NULL;
 SDL_Window *win = NULL;
 vk::Instance inst;
+VkSurfaceKHR srf;
 
 void TS_VkCreateInstance()
 {
@@ -43,14 +44,9 @@ void TS_VkCreateInstance()
   inst = vk::createInstance(ici);
 }
 
-void TS_VkCreateDebug()
-{
-
-}
-
 void TS_VkCreateSurface()
 {
-
+  SDL_Vulkan_CreateSurface(win, inst, &srf);
 }
 
 void TS_VkSelectPhysicalDevice()
@@ -116,7 +112,6 @@ void TS_VkCreateFences()
 void TS_VkInit()
 {
   TS_VkCreateInstance();
-  TS_VkCreateDebug();
   TS_VkCreateSurface();
   TS_VkSelectPhysicalDevice();
   TS_VkSelectQueueFamily();
@@ -184,12 +179,7 @@ void TS_VkDestroyDevice()
 
 void TS_VkFreeSurface()
 {
-
-}
-
-void TS_VkDestroyDebug()
-{
-
+  vkDestroySurfaceKHR(inst, srf, nullptr);
 }
 
 void TS_VkDestroyInstance()
@@ -210,7 +200,6 @@ void TS_VkQuit()
   TS_VkDestroySwapchain();
   TS_VkDestroyDevice();
   TS_VkFreeSurface();
-  TS_VkDestroyDebug();
   TS_VkDestroyInstance();
 }
 
