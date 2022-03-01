@@ -1,3 +1,4 @@
+.vscode/
 /Manifest.toml
-/Artifacts.toml
+build/
 .env

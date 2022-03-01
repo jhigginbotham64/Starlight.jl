@@ -71,9 +71,9 @@ const ecs = ECS()
 
 # internally uses Base.getproperty directly so
 # as to not break if the symbol values change
-get_entity_row(ent::Entity) = ecs.df[getproperty(ecs.df, ENT) .== [ent], :]
+get_entity_row(ent::Entity) = @view ecs.df[getproperty(ecs.df, ENT) .== [ent], :]
 get_entity_by_id(id::Int) = ecs.df[getproperty(ecs.df, ID) .== [id], ENT][1]
-get_entity_row_by_id(id::Int) = ecs.df[getproperty(ecs.df, ID) .== [id], :]
+get_entity_row_by_id(id::Int) = @view ecs.df[getproperty(ecs.df, ID) .== [id], :]
 get_df_row_prop(r, s) = r[!, s][1]
 set_df_row_prop!(r, s, x) = r[!, s][1] = x
 
@@ -202,7 +202,7 @@ function handleMessage(e::ECS, m::TICK)
 end
 
 awake!(e::ECS) = e.awoken = all(map(awake!, lvl))
-shutdown!(e::ECS) = e.awoken = all(map(shutdown!, lvl))
+shutdown!(e::ECS) = e.awoken = all(map(destroy!, lvl))
 
 next_id = 0
 
@@ -244,7 +244,7 @@ function instantiate!(e::Entity; kw...)
 end
 
 function destroy!(e::Entity)
-  shutdown!(e)
+  sd = shutdown!(e)
 
   lock(ecs_lock)
 
@@ -259,6 +259,8 @@ function destroy!(e::Entity)
   end
 
   unlock(ecs_lock)
+
+  return sd
 end
 
 function destroy!(es...)
