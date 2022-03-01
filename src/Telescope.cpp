@@ -18,6 +18,7 @@ const char *window_name = NULL;
 SDL_Window *win = NULL;
 vk::Instance inst;
 VkSurfaceKHR srf;
+vk::PhysicalDevice pdev;
 
 void TS_VkCreateInstance()
 {
@@ -51,7 +52,7 @@ void TS_VkCreateSurface()
 
 void TS_VkSelectPhysicalDevice()
 {
-
+  pdev = inst.enumeratePhysicalDevices()[0]; // TODO improve selection
 }
 
 void TS_VkSelectQueueFamily()
