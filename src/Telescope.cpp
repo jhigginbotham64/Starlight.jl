@@ -5,14 +5,214 @@
 #include <SDL2/SDL_mixer.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
+#include <SDL2/SDL_vulkan.h>
 
 #include <iostream>
 #include <algorithm>
 #include <string>
+#include <vector>
+#include <set>
 #include <cmath>
 
+const char * window_name = NULL;
 SDL_Window *win = NULL;
-SDL_Renderer *rnd = NULL;
+vk::Instance inst;
+
+void TS_VkCreateInstance()
+{
+  unsigned int extensionCount = 0;
+  SDL_Vulkan_GetInstanceExtensions(win, &extensionCount, nullptr);
+  std::vector<const char *> extensionNames(extensionCount);
+  SDL_Vulkan_GetInstanceExtensions(win, &extensionCount, extensionNames.data());
+  
+  vk::ApplicationInfo appInfo {
+    window_name, 
+    VK_MAKE_VERSION(0, 1, 0), 
+    "Telescope", 
+    VK_MAKE_VERSION(0, 1, 0),
+    VK_API_VERSION_1_0
+  };
+
+  vk::InstanceCreateInfo ici {
+    vk::InstanceCreateFlags(),
+    &appInfo,
+    0, NULL, // no validation or other layers yet
+    extensionNames.size(), extensionNames.data()
+  };
+
+  inst = vk::createInstance(ici);
+}
+
+void TS_VkCreateDebug()
+{
+
+}
+
+void TS_VkCreateSurface()
+{
+
+}
+
+void TS_VkSelectPhysicalDevice()
+{
+
+}
+
+void TS_VkSelectQueueFamily()
+{
+
+}
+
+void TS_VkCreateDevice()
+{
+
+}
+
+void TS_VkCreateSwapchain()
+{
+
+}
+
+void TS_VkCreateImageViews()
+{
+
+}
+
+void TS_VkSetupDepthStencil()
+{
+
+}
+
+void TS_VkCreateRenderPass()
+{
+
+}
+
+void TS_VkCreateFramebuffers()
+{
+
+}
+
+void TS_VkCreateCommandPool()
+{
+
+}
+
+void TS_VkCreateCommandBuffers()
+{
+
+}
+
+void TS_VkCreateSemaphores()
+{
+
+}
+
+void TS_VkCreateFences()
+{
+
+}
+
+void TS_VkInit()
+{
+  TS_VkCreateInstance();
+  TS_VkCreateDebug();
+  TS_VkCreateSurface();
+  TS_VkSelectPhysicalDevice();
+  TS_VkSelectQueueFamily();
+  TS_VkCreateDevice();
+  TS_VkCreateSwapchain();
+  TS_VkCreateImageViews();
+  TS_VkSetupDepthStencil();
+  TS_VkCreateRenderPass();
+  TS_VkCreateFramebuffers();
+  TS_VkCreateCommandPool();
+  TS_VkCreateCommandBuffers();
+  TS_VkCreateSemaphores();
+  TS_VkCreateFences();
+}
+
+void TS_VkDestroyFences()
+{
+
+}
+
+void TS_VkDestroySemaphores()
+{
+
+}
+
+void TS_VkFreeCommandBuffers()
+{
+
+}
+
+void TS_VkDestroyCommandPool()
+{
+
+}
+
+void TS_VkFreeFramebuffers()
+{
+
+}
+
+void TS_VkDestroyRenderPass()
+{
+
+}
+
+void TS_VkTeardownDepthStencil()
+{
+
+}
+
+void TS_VkDestroyImageViews()
+{
+
+}
+
+void TS_VkDestroySwapchain()
+{
+
+}
+
+void TS_VkDestroyDevice()
+{
+
+}
+
+void TS_VkFreeSurface()
+{
+
+}
+
+void TS_VkDestroyDebug()
+{
+
+}
+
+void TS_VkDestroyInstance()
+{
+  inst.destroy();
+}
+
+void TS_VkQuit()
+{
+  TS_VkDestroyFences();
+  TS_VkDestroySemaphores();
+  TS_VkFreeCommandBuffers();
+  TS_VkDestroyCommandPool();
+  TS_VkFreeFramebuffers();
+  TS_VkDestroyRenderPass();
+  TS_VkTeardownDepthStencil();
+  TS_VkDestroyImageViews();
+  TS_VkDestroySwapchain();
+  TS_VkDestroyDevice();
+  TS_VkFreeSurface();
+  TS_VkDestroyDebug();
+  TS_VkDestroyInstance();
+}
 
 std::string TS_GetSDLError()
 {
@@ -21,21 +221,11 @@ std::string TS_GetSDLError()
 
 void TS_Fill(Uint8 r, Uint8 g, Uint8 b, Uint8 a)
 {
-  if(SDL_SetRenderDrawColor(rnd, r, g, b, a) != 0)
-  {
-    std::cerr << "Failed to set renderer draw color: " << TS_GetSDLError() << std::endl;
-  }
-  if(SDL_RenderClear(rnd) != 0)
-  {
-    std::cerr << "Failed to clear renderer: " << TS_GetSDLError() << std::endl;
-  }
+  
 }
 
-void TS_Init(const char * ttl = "Hello SDL", int wdth = 800, int hght = 400)
-{
-  SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 4);
-  SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4);
-  
+void TS_Init(const char * ttl, int wdth, int hght)
+{ 
   if (SDL_Init(SDL_INIT_EVERYTHING) != 0)
   {
     std::cerr << "Unable to initialize SDL: " << TS_GetSDLError() << std::endl;
@@ -55,7 +245,8 @@ void TS_Init(const char * ttl = "Hello SDL", int wdth = 800, int hght = 400)
     Mix_CloseAudio();
   }
 
-  win = SDL_CreateWindow(ttl, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, wdth, hght, SDL_WINDOW_ALLOW_HIGHDPI|SDL_WINDOW_SHOWN);
+  window_name = ttl;
+  win = SDL_CreateWindow(ttl, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, wdth, hght, SDL_WINDOW_VULKAN|SDL_WINDOW_ALLOW_HIGHDPI|SDL_WINDOW_SHOWN);
   if (win == NULL)
   {
     std::cerr << "Failed to create window: " << TS_GetSDLError() << std::endl;
@@ -65,20 +256,12 @@ void TS_Init(const char * ttl = "Hello SDL", int wdth = 800, int hght = 400)
     SDL_SetWindowMinimumSize(win, wdth, hght);
   }
   
-  rnd = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED|SDL_RENDERER_PRESENTVSYNC);
-  if (rnd == NULL)
-  {
-    std::cerr << "Failed to create renderer: " << TS_GetSDLError() << std::endl;
-  }
-  else
-  {
-    SDL_SetRenderDrawBlendMode(rnd, SDL_BLENDMODE_BLEND);
-  }
+  TS_VkInit();
 }
 
 void TS_Quit()
 {
-  SDL_DestroyRenderer(rnd);
+  TS_VkQuit();
   SDL_DestroyWindow(win);
 
   Mix_HaltMusic();
@@ -92,7 +275,7 @@ void TS_Quit()
 
 void TS_Present()
 {
-  SDL_RenderPresent(rnd);
+  
 }
 
 void TS_PlaySound(const char* sound_file, int loops=0, int ticks=-1)
@@ -111,132 +294,27 @@ void TS_PlaySound(const char* sound_file, int loops=0, int ticks=-1)
 
 void TS_DrawPoint(Uint8 r, Uint8 g, Uint8 b, Uint8 a, int x, int y)
 {
-  SDL_SetRenderDrawColor(rnd, r, g, b, a);
-  SDL_RenderDrawPoint(rnd, x, y);
+  
 }
 
 void TS_DrawLine(Uint8 r, Uint8 g, Uint8 b, Uint8 a, int x1, int y1, int x2, int y2)
 {
-  SDL_SetRenderDrawColor(rnd, r, g, b, a);
-  SDL_RenderDrawLine(rnd, x1, y1, x2, y2);
+  
 }
 
 void TS_DrawRect(Uint8 r, Uint8 g, Uint8 b, Uint8 a, bool fill, int x, int y, int w, int h)
 {
-  SDL_SetRenderDrawColor(rnd, r, g, b, a);
-  // SDL expects top-left but Starlight passes center
-  SDL_Rect rect = {x-lround(w/2), y-lround(h/2), w, h};
-  if (!fill)
-  {
-    SDL_RenderDrawRect(rnd, &rect);
-  }
-  else
-  {
-    SDL_RenderFillRect(rnd, &rect);
-  }
+  
 }
 
 void TS_DrawSprite(const char * img, Uint8 a, int rx, int ry, int rw, int rh, int cx, int cy, int ci, int cj, int px, int py, int sx, int sy, int rotz)
 {
-  SDL_Surface * srf = IMG_Load(img);
-  if (srf == NULL)
-  {
-    std::cerr << "Error loading " << std::string(img) << std::endl << TS_GetSDLError() << std::endl;
-  }
-  int w = srf->w;
-  int h = srf->h;
-  SDL_Texture * txt = SDL_CreateTextureFromSurface(rnd, srf);
-
-  if (a < 255)
-  {
-    SDL_SetTextureBlendMode(txt, SDL_BLENDMODE_BLEND);
-    SDL_SetTextureAlphaMod(txt, a);
-  }
-
-  int srctlx = 0;
-  int srctly = 0;
-  int srcw = w;
-  int srch = h;
-
-  if (rx != 0 || ry != 0 || rw != 0 || rh != 0)
-  {
-    srctlx = rx;
-    srctly = ry;
-    srcw = rw;
-    srch = rh;
-  }
-  else if (cx != 0 || cy != 0)
-  {
-    srctlx = cj * cx;
-    srctly = ci * cy;
-    srcw = cx;
-    srch = cy;
-  }
-
-  int dstw = w;
-  int dsth = h;
-
-  if (rx != 0 || ry != 0 || rw != 0 || rh != 0)
-  {
-    dstw = rw;
-    dsth = rh;
-  }
-  else if (cx != 0 || cy != 0)
-  {
-    dstw = cx;
-    dsth = cy;
-  }
-
-  dstw = floor(dstw * sx);
-  dsth = floor(dsth * sy);
-
-  SDL_Rect src = {srctlx, srctly, srcw, srch};
-  SDL_Rect dst = {px - lround(dstw / 2), py - lround(dsth / 2), dstw, dsth};
   
-  SDL_RenderCopyEx(
-    rnd,
-    txt,
-    &src,
-    &dst,
-    rotz,
-    NULL,
-    SDL_FLIP_NONE
-  );
-  
-  SDL_DestroyTexture(txt);
-  SDL_FreeSurface(srf);
 }
 
 void TS_DrawText(const char * fname, int fsize, const char * text, Uint8 r, Uint8 g, Uint8 b, Uint8 a, int px, int py, int sx, int sy, int rotz)
 {
-  TTF_Font * font = TTF_OpenFont(fname, fsize);
-  SDL_Color c = {r, g, b, a};
-  SDL_Surface * srf = TTF_RenderText_Blended(font, text, c);
-  SDL_Texture * txt = SDL_CreateTextureFromSurface(rnd, srf);
-
-  if (a < 255)
-  {
-    SDL_SetTextureBlendMode(txt, SDL_BLENDMODE_BLEND);
-    SDL_SetTextureAlphaMod(txt, a);
-  }
-
-  int w = lround(srf->w * sx);
-  int h = lround(srf->h * sy);
-  SDL_Rect dst = {px - lround(w / 2), py - lround(h / 2), w, h};
   
-  SDL_RenderCopyEx(
-    rnd,
-    txt,
-    NULL,
-    &dst,
-    rotz,
-    NULL,
-    SDL_FLIP_NONE
-  );
-
-  SDL_DestroyTexture(txt);
-  SDL_FreeSurface(srf);
-  TTF_CloseFont(font);
 }
 
 JLCXX_MODULE define_julia_module(jlcxx::Module& mod)
