@@ -19,6 +19,11 @@ SDL_Window *win = NULL;
 vk::Instance inst;
 VkSurfaceKHR srf;
 vk::PhysicalDevice pdev;
+vk::Device ldev;
+int graphicsQueueFamilyIndex = -1;
+int presentQueueFamilyIndex = -1;
+vk::Queue gq;
+vk::Queue pq;
 
 void TS_VkCreateInstance()
 {
@@ -57,12 +62,61 @@ void TS_VkSelectPhysicalDevice()
 
 void TS_VkSelectQueueFamily()
 {
-
+  int graphicIndex = -1;
+  int presentIndex = -1;
+  int i = 0;
+  for (const auto& qf : pdev.getQueueFamilyProperties())
+  {
+    if (qf.queueCount > 0 && qf.queueFlags & vk::QueueFlagBits::eGraphics) graphicIndex = i;
+    vk::Bool32 presentSupport = false;
+    vkGetPhysicalDeviceSurfaceSupportKHR(pdev, i, srf, &presentSupport);
+    if (qf.queueCount > 0 && presentSupport) presentIndex = i;
+    if (graphicIndex != -1 && presentIndex != -1) break;
+    ++i;
+  }
+  graphicsQueueFamilyIndex = graphicIndex;
+  presentQueueFamilyIndex = presentIndex;
 }
 
 void TS_VkCreateDevice()
 {
+  const std::vector<const char*> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+  const float queue_priority[] = { 1.0f };
+  float queuePriority = queue_priority[0];
+  
+  std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
+  
+  vk::DeviceQueueCreateInfo gr {
+    vk::DeviceQueueCreateFlags(),
+    graphicsQueueFamilyIndex, 
+    1, 
+    &queuePriority
+  };
 
+  vk::DeviceQueueCreateInfo pr {
+    vk::DeviceQueueCreateFlags(),
+    presentQueueFamilyIndex, 
+    1, 
+    &queuePriority
+  };
+
+  queueCreateInfos.push_back(gr);
+  queueCreateInfos.push_back(pr);
+
+  vk::PhysicalDeviceFeatures deviceFeatures = {};
+  deviceFeatures.samplerAnisotropy = VK_TRUE;
+  vk::DeviceCreateInfo deviceCreateInfo {
+    vk::DeviceCreateFlags(),
+    queueCreateInfos.size(), queueCreateInfos.data(),
+    // TODO figure out whether these are in the correct order
+    deviceExtensions.size(), deviceExtensions.data(),
+    0, nullptr,
+    &deviceFeatures
+  };
+
+  ldev = pdev.createDevice(deviceCreateInfo);
+  gq = ldev.getQueue(graphicsQueueFamilyIndex, 0);
+  pq = ldev.getQueue(presentQueueFamilyIndex, 0);
 }
 
 void TS_VkCreateSwapchain()
@@ -175,7 +229,9 @@ void TS_VkDestroySwapchain()
 
 void TS_VkDestroyDevice()
 {
-
+  graphicsQueueFamilyIndex = -1;
+  presentQueueFamilyIndex = -1;
+  ldev.destroy();
 }
 
 void TS_VkFreeSurface()
