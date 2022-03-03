@@ -321,7 +321,10 @@ void TS_VkCreateSemaphores()
 
 void TS_VkCreateFences()
 {
-
+  for (uint32_t i = 0; i < swapchainImageCount; ++i)
+  {
+    fences.push_back(dev.createFence({vk::FenceCreateFlagBits::eSignaled}));
+  }
 }
 
 void TS_VkInit()
@@ -344,7 +347,11 @@ void TS_VkInit()
 
 void TS_VkDestroyFences()
 {
-
+  for (int i = 0; i < swapchainImageCount; ++i)
+  {
+    dev.destroyFence(fences[i]);
+  }
+  fences.clear();
 }
 
 void TS_VkDestroySemaphores()
