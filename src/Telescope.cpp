@@ -1,3 +1,7 @@
+#define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
+#define VULKAN_HPP_STORAGE_SHARED 1
+#define VULKAN_HPP_STORAGE_SHARED_EXPORT 1
+
 #include <vulkan/vulkan.hpp>
 #include <jlcxx/jlcxx.hpp>
 
@@ -13,6 +17,8 @@
 #include <vector>
 #include <set>
 #include <cmath>
+
+VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 const char *window_name = NULL;
 SDL_Window *win = NULL;
@@ -45,6 +51,8 @@ std::vector<vk::Fence> fences;
 
 void TS_VkCreateInstance()
 {
+  VULKAN_HPP_DEFAULT_DISPATCHER.init((PFN_vkGetInstanceProcAddr)SDL_Vulkan_GetVkGetInstanceProcAddr());
+
   unsigned int extensionCount = 0;
   SDL_Vulkan_GetInstanceExtensions(win, &extensionCount, nullptr);
   std::vector<const char *> extensionNames(extensionCount);
@@ -66,6 +74,8 @@ void TS_VkCreateInstance()
   };
 
   inst = vk::createInstance(ici);
+
+  VULKAN_HPP_DEFAULT_DISPATCHER.init(inst);
 }
 
 void TS_VkCreateSurface()
@@ -132,6 +142,7 @@ void TS_VkCreateDevice()
   };
 
   dev = pdev.createDevice(deviceCreateInfo);
+  VULKAN_HPP_DEFAULT_DISPATCHER.init(dev);
   gq = dev.getQueue(graphicsQueueFamilyIndex, 0);
   pq = dev.getQueue(presentQueueFamilyIndex, 0);
 }
@@ -153,8 +164,7 @@ void TS_VkCreateSwapchain()
   {
     imageCount = surfaceCapabilities.maxImageCount;
   }
-  // would use Vulkan-Hpp initializer, but following
-  // tutorial and unsure of field order
+  
   vk::SwapchainCreateInfoKHR createInfo;
   createInfo.surface = srf;
   createInfo.minImageCount = surfaceCapabilities.minImageCount;
@@ -184,7 +194,19 @@ void TS_VkCreateSwapchain()
 
 void TS_VkCreateImageViews()
 {
+  for (int i = 0; i < swapchainImages.size(); ++i)
+  {
+    vk::ImageViewCreateInfo viewInfo;
+    viewInfo.viewType = vk::ImageViewType::e2D;
+    viewInfo.format = surfaceFormat.format;
+    viewInfo.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+    viewInfo.subresourceRange.baseMipLevel = 0;
+    viewInfo.subresourceRange.levelCount = 1;
+    viewInfo.subresourceRange.baseArrayLayer = 0;
+    viewInfo.subresourceRange.layerCount = 1;
 
+    swapchainImageViews.push_back(dev.createImageView(viewInfo));
+  }
 }
 
 void TS_VkSetupDepthStencil()
@@ -279,7 +301,11 @@ void TS_VkTeardownDepthStencil()
 
 void TS_VkDestroyImageViews()
 {
-
+  for (vk::ImageView iv : swapchainImageViews)
+  {
+    dev.destroyImageView(iv);
+  }
+  swapchainImageViews.clear();
 }
 
 void TS_VkDestroySwapchain()
