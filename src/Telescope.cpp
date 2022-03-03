@@ -192,27 +192,105 @@ void TS_VkCreateSwapchain()
   swapchainImages = dev.getSwapchainImagesKHR(swapchain);
 }
 
+vk::ImageView TS_VkCreateImageView(vk::Image img, vk::Format fmt, vk::ImageAspectFlagBits flags)
+{
+  vk::ImageViewCreateInfo viewInfo;
+  viewInfo.viewType = vk::ImageViewType::e2D;
+  viewInfo.image = img;
+  viewInfo.format = fmt;
+  viewInfo.subresourceRange.aspectMask = flags;
+  viewInfo.subresourceRange.baseMipLevel = 0;
+  viewInfo.subresourceRange.levelCount = 1;
+  viewInfo.subresourceRange.baseArrayLayer = 0;
+  viewInfo.subresourceRange.layerCount = 1;
+
+  return dev.createImageView(viewInfo);
+}
+
 void TS_VkCreateImageViews()
 {
   for (int i = 0; i < swapchainImages.size(); ++i)
   {
-    vk::ImageViewCreateInfo viewInfo;
-    viewInfo.viewType = vk::ImageViewType::e2D;
-    viewInfo.image = swapchainImages[i];
-    viewInfo.format = surfaceFormat.format;
-    viewInfo.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
-    viewInfo.subresourceRange.baseMipLevel = 0;
-    viewInfo.subresourceRange.levelCount = 1;
-    viewInfo.subresourceRange.baseArrayLayer = 0;
-    viewInfo.subresourceRange.layerCount = 1;
-
-    swapchainImageViews.push_back(dev.createImageView(viewInfo));
+    swapchainImageViews.push_back(TS_VkCreateImageView(swapchainImages[i], surfaceFormat.format, vk::ImageAspectFlagBits::eColor));
   }
+}
+
+vk::Bool32 TS_VkGetSupportedDepthFormat()
+{
+  std::vector<vk::Format> depthFormats = {
+    vk::Format::eD32SfloatS8Uint,
+    vk::Format::eD32Sfloat,
+    vk::Format::eD24UnormS8Uint,
+    vk::Format::eD16UnormS8Uint,
+    vk::Format::eD16Unorm
+  };
+
+  for (auto& format : depthFormats)
+  {
+    vk::FormatProperties formatProps = pdev.getFormatProperties(format);
+    if (formatProps.optimalTilingFeatures & vk::FormatFeatureFlagBits::eDepthStencilAttachment)
+    {
+      depthFormat = format;
+      return true;
+    }
+  }
+
+  return false;
+}
+
+uint32_t TS_VkFindMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlagBits properties)
+{
+  vk::PhysicalDeviceMemoryProperties memProperties = pdev.getMemoryProperties();
+
+  for (uint32_t i = 0; i < memProperties.memoryTypeCount; ++i)
+  {
+    if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
+    {
+      return i;
+    }
+  }
+
+  throw std::runtime_error("failed to find suitable memory type!");
+}
+
+void TS_VkCreateImage(uint32_t width, uint32_t height, vk::Format fmt, vk::ImageTiling tiling,
+                      vk::ImageUsageFlagBits usage, vk::MemoryPropertyFlagBits properties,
+                      vk::Image& img, vk::DeviceMemory& imageMemory)
+{
+  vk::ImageCreateInfo imageInfo;
+  imageInfo.imageType = vk::ImageType::e2D;
+  imageInfo.extent.width = width;
+  imageInfo.extent.height = height;
+  imageInfo.extent.depth = 1;
+  imageInfo.mipLevels = 1;
+  imageInfo.arrayLayers = 1;
+  imageInfo.format = fmt;
+  imageInfo.tiling = tiling;
+  imageInfo.initialLayout = vk::ImageLayout::eUndefined;
+  imageInfo.usage = usage;
+  imageInfo.samples = vk::SampleCountFlagBits::e1;
+  imageInfo.sharingMode = vk::SharingMode::eExclusive;
+
+  img = dev.createImage(imageInfo);
+
+  vk::MemoryRequirements memRequirements = dev.getImageMemoryRequirements(img);
+
+  vk::MemoryAllocateInfo allocInfo;
+  allocInfo.allocationSize = memRequirements.size;
+  allocInfo.memoryTypeIndex = TS_VkFindMemoryType(memRequirements.memoryTypeBits, properties);
+
+  imageMemory = dev.allocateMemory(allocInfo);
+  dev.bindImageMemory(img, imageMemory, 0);
 }
 
 void TS_VkSetupDepthStencil()
 {
-
+  TS_VkGetSupportedDepthFormat();
+  TS_VkCreateImage(swapchainSize.width, swapchainSize.height,
+                  vk::Format::eD32SfloatS8Uint, vk::ImageTiling::eOptimal,
+                  vk::ImageUsageFlagBits::eDepthStencilAttachment, vk::MemoryPropertyFlagBits::eDeviceLocal,
+                  depthImage, depthImageMemory);
+  depthImageView = TS_VkCreateImageView(depthImage, vk::Format::eD32SfloatS8Uint, vk::ImageAspectFlagBits::eDepth);
 }
 
 void TS_VkCreateRenderPass()
@@ -297,7 +375,9 @@ void TS_VkDestroyRenderPass()
 
 void TS_VkTeardownDepthStencil()
 {
-
+  dev.destroyImageView(depthImageView);
+  dev.freeMemory(depthImageMemory);
+  dev.destroyImage(depthImage);
 }
 
 void TS_VkDestroyImageViews()
