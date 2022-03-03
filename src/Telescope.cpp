@@ -198,6 +198,7 @@ void TS_VkCreateImageViews()
   {
     vk::ImageViewCreateInfo viewInfo;
     viewInfo.viewType = vk::ImageViewType::e2D;
+    viewInfo.image = swapchainImages[i];
     viewInfo.format = surfaceFormat.format;
     viewInfo.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
     viewInfo.subresourceRange.baseMipLevel = 0;
