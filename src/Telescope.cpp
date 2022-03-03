@@ -295,7 +295,64 @@ void TS_VkSetupDepthStencil()
 
 void TS_VkCreateRenderPass()
 {
+  std::vector<vk::AttachmentDescription> attachments(2);
 
+  attachments[0].format = surfaceFormat.format;
+	attachments[0].samples = vk::SampleCountFlagBits::e1;
+	attachments[0].loadOp = vk::AttachmentLoadOp::eClear;
+	attachments[0].storeOp = vk::AttachmentStoreOp::eStore;
+	attachments[0].stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+	attachments[0].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+	attachments[0].initialLayout = vk::ImageLayout::eUndefined;
+	attachments[0].finalLayout = vk::ImageLayout::ePresentSrcKHR;
+
+	attachments[1].format = depthFormat;
+	attachments[1].samples = vk::SampleCountFlagBits::e1;
+	attachments[1].loadOp = vk::AttachmentLoadOp::eClear;
+	attachments[1].storeOp = vk::AttachmentStoreOp::eStore;
+	attachments[1].stencilLoadOp = vk::AttachmentLoadOp::eClear;
+	attachments[1].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+	attachments[1].initialLayout = vk::ImageLayout::eUndefined;
+	attachments[1].finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
+
+	vk::AttachmentReference colorReference {
+    0, vk::ImageLayout::eColorAttachmentOptimal
+  };
+
+	vk::AttachmentReference depthReference {
+    1, vk::ImageLayout::eDepthStencilAttachmentOptimal
+  };
+
+	vk::SubpassDescription subpassDescription;
+	subpassDescription.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
+	subpassDescription.colorAttachmentCount = 1;
+	subpassDescription.pColorAttachments = &colorReference;
+	subpassDescription.pDepthStencilAttachment = &depthReference;
+	subpassDescription.inputAttachmentCount = 0;
+	subpassDescription.pInputAttachments = nullptr;
+	subpassDescription.preserveAttachmentCount = 0;
+	subpassDescription.pPreserveAttachments = nullptr;
+	subpassDescription.pResolveAttachments = nullptr;
+
+	std::vector<vk::SubpassDependency> dependencies(1);
+
+	dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+	dependencies[0].dstSubpass = 0;
+	dependencies[0].srcStageMask = vk::PipelineStageFlagBits::eBottomOfPipe;
+	dependencies[0].dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+	dependencies[0].srcAccessMask = vk::AccessFlagBits::eMemoryRead;
+	dependencies[0].dstAccessMask = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentRead;
+	dependencies[0].dependencyFlags = vk::DependencyFlagBits::eByRegion;
+
+	vk::RenderPassCreateInfo renderPassInfo;
+	renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+	renderPassInfo.pAttachments = attachments.data();
+	renderPassInfo.subpassCount = 1;
+	renderPassInfo.pSubpasses = &subpassDescription;
+	renderPassInfo.dependencyCount = static_cast<uint32_t>(dependencies.size());
+	renderPassInfo.pDependencies = dependencies.data();
+
+  rp = dev.createRenderPass(renderPassInfo);
 }
 
 void TS_VkCreateFramebuffers()
@@ -377,7 +434,7 @@ void TS_VkFreeFramebuffers()
 
 void TS_VkDestroyRenderPass()
 {
-
+  dev.destroyRenderPass(rp);
 }
 
 void TS_VkTeardownDepthStencil()
