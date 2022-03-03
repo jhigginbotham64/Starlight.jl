@@ -19,11 +19,29 @@ SDL_Window *win = NULL;
 vk::Instance inst;
 VkSurfaceKHR srf;
 vk::PhysicalDevice pdev;
-vk::Device ldev;
+vk::Device dev;
 int graphicsQueueFamilyIndex = -1;
 int presentQueueFamilyIndex = -1;
 vk::Queue gq;
 vk::Queue pq;
+vk::SwapchainKHR swapchain;
+vk::SurfaceCapabilitiesKHR surfaceCapabilities;
+vk::SurfaceFormatKHR surfaceFormat;
+vk::Extent2D swapchainSize;
+std::vector<vk::Image> swapchainImages;
+uint32_t swapchainImageCount;
+std::vector<vk::ImageView> swapchainImageViews;
+vk::Format depthFormat;
+vk::Image depthImage;
+vk::DeviceMemory depthImageMemory;
+vk::ImageView depthImageView;
+vk::RenderPass rp;
+std::vector<vk::Framebuffer> swapchainFramebuffers;
+vk::CommandPool cp;
+std::vector<vk::CommandBuffer> cmdbufs;
+vk::Semaphore imageAvailableSemaphore;
+vk::Semaphore renderingFinishedSemaphore;
+std::vector<vk::Fence> fences;
 
 void TS_VkCreateInstance()
 {
@@ -108,20 +126,60 @@ void TS_VkCreateDevice()
   vk::DeviceCreateInfo deviceCreateInfo {
     vk::DeviceCreateFlags(),
     queueCreateInfos.size(), queueCreateInfos.data(),
-    // TODO figure out whether these are in the correct order
-    deviceExtensions.size(), deviceExtensions.data(),
     0, nullptr,
+    deviceExtensions.size(), deviceExtensions.data(),
     &deviceFeatures
   };
 
-  ldev = pdev.createDevice(deviceCreateInfo);
-  gq = ldev.getQueue(graphicsQueueFamilyIndex, 0);
-  pq = ldev.getQueue(presentQueueFamilyIndex, 0);
+  dev = pdev.createDevice(deviceCreateInfo);
+  gq = dev.getQueue(graphicsQueueFamilyIndex, 0);
+  pq = dev.getQueue(presentQueueFamilyIndex, 0);
 }
 
+#define CLAMP(x, lo, hi)    ((x) < (lo) ? (lo) : (x) > (hi) ? (hi) : (x))
 void TS_VkCreateSwapchain()
 {
-
+  surfaceCapabilities = pdev.getSurfaceCapabilitiesKHR(srf);
+  std::vector<vk::SurfaceFormatKHR> surfaceFormats = pdev.getSurfaceFormatsKHR(srf);
+  surfaceFormat = surfaceFormats[0];
+  int width,height = 0;
+  SDL_Vulkan_GetDrawableSize(win, &width, &height);
+  width = CLAMP(width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
+  height = CLAMP(height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
+  swapchainSize.width = width;
+  swapchainSize.height = height;
+  uint32_t imageCount = surfaceCapabilities.minImageCount + 1;
+  if (surfaceCapabilities.maxImageCount > 0 && imageCount > surfaceCapabilities.maxImageCount)
+  {
+    imageCount = surfaceCapabilities.maxImageCount;
+  }
+  // would use Vulkan-Hpp initializer, but following
+  // tutorial and unsure of field order
+  vk::SwapchainCreateInfoKHR createInfo;
+  createInfo.surface = srf;
+  createInfo.minImageCount = surfaceCapabilities.minImageCount;
+  createInfo.imageFormat = surfaceFormat.format;
+  createInfo.imageColorSpace = surfaceFormat.colorSpace;
+  createInfo.imageExtent = swapchainSize;
+  createInfo.imageArrayLayers = 1;
+  createInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
+  uint32_t queueFamilyIndices[] = {graphicsQueueFamilyIndex, presentQueueFamilyIndex};
+  if (graphicsQueueFamilyIndex != presentQueueFamilyIndex)
+  {
+    createInfo.imageSharingMode = vk::SharingMode::eConcurrent;
+    createInfo.queueFamilyIndexCount = 2;
+    createInfo.pQueueFamilyIndices = queueFamilyIndices;
+  }
+  else
+  {
+    createInfo.imageSharingMode = vk::SharingMode::eExclusive;
+  }
+  createInfo.preTransform = surfaceCapabilities.currentTransform;
+  createInfo.compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
+  createInfo.presentMode = vk::PresentModeKHR::eFifo;
+  createInfo.clipped = VK_TRUE;
+  swapchain = dev.createSwapchainKHR(createInfo);
+  swapchainImages = dev.getSwapchainImagesKHR(swapchain);
 }
 
 void TS_VkCreateImageViews()
@@ -156,7 +214,8 @@ void TS_VkCreateCommandBuffers()
 
 void TS_VkCreateSemaphores()
 {
-
+  imageAvailableSemaphore = dev.createSemaphore({});
+  renderingFinishedSemaphore = dev.createSemaphore({});
 }
 
 void TS_VkCreateFences()
@@ -189,7 +248,8 @@ void TS_VkDestroyFences()
 
 void TS_VkDestroySemaphores()
 {
-
+  dev.destroySemaphore(imageAvailableSemaphore);
+  dev.destroySemaphore(renderingFinishedSemaphore);
 }
 
 void TS_VkFreeCommandBuffers()
@@ -224,14 +284,14 @@ void TS_VkDestroyImageViews()
 
 void TS_VkDestroySwapchain()
 {
-
+  dev.destroySwapchainKHR(swapchain);
 }
 
 void TS_VkDestroyDevice()
 {
   graphicsQueueFamilyIndex = -1;
   presentQueueFamilyIndex = -1;
-  ldev.destroy();
+  dev.destroy();
 }
 
 void TS_VkFreeSurface()
