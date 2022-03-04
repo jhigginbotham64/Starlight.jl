@@ -375,7 +375,10 @@ void TS_VkCreateFramebuffers()
 
 void TS_VkCreateCommandPool()
 {
-
+  cp = dev.createCommandPool({
+    vk::CommandPoolCreateFlagBits::eResetCommandBuffer | vk::CommandPoolCreateFlagBits::eTransient,
+    graphicsQueueFamilyIndex
+  });
 }
 
 void TS_VkCreateCommandBuffers()
@@ -430,13 +433,9 @@ void TS_VkDestroySemaphores()
   dev.destroySemaphore(renderingFinishedSemaphore);
 }
 
-void TS_VkFreeCommandBuffers()
+void TS_VkDestroyCommandBuffers()
 {
-  for (int i = 0; i < swapchainFramebuffers.size(); ++i)
-  {
-    dev.destroyFramebuffer(swapchainFramebuffers[i]);
-  }
-  swapchainFramebuffers.clear();
+  dev.destroyCommandPool(cp);
 }
 
 void TS_VkDestroyCommandPool()
@@ -444,9 +443,13 @@ void TS_VkDestroyCommandPool()
 
 }
 
-void TS_VkFreeFramebuffers()
+void TS_VkDestroyFramebuffers()
 {
-
+  for (int i = 0; i < swapchainFramebuffers.size(); ++i)
+  {
+    dev.destroyFramebuffer(swapchainFramebuffers[i]);
+  }
+  swapchainFramebuffers.clear();
 }
 
 void TS_VkDestroyRenderPass()
@@ -482,7 +485,7 @@ void TS_VkDestroyDevice()
   dev.destroy();
 }
 
-void TS_VkFreeSurface()
+void TS_VkDestroySurface()
 {
   vkDestroySurfaceKHR(inst, srf, nullptr);
 }
@@ -496,15 +499,15 @@ void TS_VkQuit()
 {
   TS_VkDestroyFences();
   TS_VkDestroySemaphores();
-  TS_VkFreeCommandBuffers();
+  TS_VkDestroyCommandBuffers();
   TS_VkDestroyCommandPool();
-  TS_VkFreeFramebuffers();
+  TS_VkDestroyFramebuffers();
   TS_VkDestroyRenderPass();
   TS_VkTeardownDepthStencil();
   TS_VkDestroyImageViews();
   TS_VkDestroySwapchain();
   TS_VkDestroyDevice();
-  TS_VkFreeSurface();
+  TS_VkDestroySurface();
   TS_VkDestroyInstance();
 }
 
