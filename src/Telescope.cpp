@@ -52,6 +52,16 @@ uint32_t frameIndex;
 vk::CommandBuffer cmdbuf;
 vk::Image img;
 
+void TS_VkCmdDrawRect(float r, float g, float b, float a, int x, int y, int w, int h, int rotz)
+{
+  
+}
+
+void TS_VkCmdDrawSprite(const char * img, float a, int rx, int ry, int rw, int rh, int cx, int cy, int ci, int cj, int px, int py, int sx, int sy, int rotz)
+{
+  
+}
+
 void TS_VkCmdClearColorImage(float r, float g, float b, float a)
 {
   vk::ClearColorValue clearColor(std::array<float, 4>({r, g, b, a}));
@@ -653,23 +663,10 @@ void TS_PlaySound(const char* sound_file, int loops=0, int ticks=-1)
   }
 }
 
-void TS_DrawRect(float r, float g, float b, float a, int x, int y, int w, int h, int rotz)
-{
-  
-}
-
-void TS_DrawSprite(const char * img, float a, int rx, int ry, int rw, int rh, int cx, int cy, int ci, int cj, int px, int py, int sx, int sy, int rotz)
-{
-  
-}
-
-void TS_DrawText(const char * fname, int fsize, const char * text, float r, float g, float b, float a, int px, int py, int sx, int sy, int rotz)
-{
-  
-}
-
 JLCXX_MODULE define_julia_module(jlcxx::Module& mod)
 {
+  mod.method("TS_VkCmdDrawRect", &TS_VkCmdDrawRect);
+  mod.method("TS_VkCmdDrawSprite", &TS_VkCmdDrawSprite);
   mod.method("TS_VkCmdClearColorImage", &TS_VkCmdClearColorImage);
   mod.method("TS_VkAcquireNextImage", &TS_VkAcquireNextImage);
   mod.method("TS_VkResetCommandBuffer", &TS_VkResetCommandBuffer);
@@ -712,7 +709,4 @@ JLCXX_MODULE define_julia_module(jlcxx::Module& mod)
   mod.method("TS_Init", &TS_Init);
   mod.method("TS_Quit", &TS_Quit);
   mod.method("TS_PlaySound", &TS_PlaySound);
-  mod.method("TS_DrawRect", &TS_DrawRect);
-  mod.method("TS_DrawSprite", &TS_DrawSprite);
-  mod.method("TS_DrawText", &TS_DrawText);
 }
