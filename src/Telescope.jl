@@ -1,7 +1,7 @@
 export Telescope, ts
 export to_ARGB, sdl_colors, clear
-export TS_DrawPoint, TS_DrawRect, TS_DrawText, TS_Fill, TS_Init, TS_Present
-export TS_DrawLine, TS_DrawSprite, TS_GetSDLError, TS_PlaySound, TS_Quit
+export TS_DrawPoint, TS_DrawRect, TS_DrawText, TS_Init, TS_Quit
+export TS_DrawLine, TS_DrawSprite, TS_GetSDLError, TS_PlaySound
 
 # TODO use artifacts or some other solution
 # with better portability than @__DIR__
