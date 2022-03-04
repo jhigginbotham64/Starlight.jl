@@ -26,8 +26,8 @@ vk::Instance inst;
 VkSurfaceKHR srf;
 vk::PhysicalDevice pdev;
 vk::Device dev;
-int graphicsQueueFamilyIndex = -1;
-int presentQueueFamilyIndex = -1;
+uint32_t graphicsQueueFamilyIndex = -1;
+uint32_t presentQueueFamilyIndex = -1;
 vk::Queue gq;
 vk::Queue pq;
 vk::SwapchainKHR swapchain;
@@ -48,6 +48,70 @@ std::vector<vk::CommandBuffer> cmdbufs;
 vk::Semaphore imageAvailableSemaphore;
 vk::Semaphore renderingFinishedSemaphore;
 std::vector<vk::Fence> fences;
+uint32_t frameIndex;
+vk::CommandBuffer cmdbuf;
+vk::Image img;
+
+void TS_VkAcquireNextImage()
+{
+  frameIndex = dev.acquireNextImageKHR(swapchain, UINT64_MAX, imageAvailableSemaphore).value;
+  dev.waitForFences(1, &fences[frameIndex], VK_FALSE, UINT64_MAX);
+  dev.resetFences(1, &fences[frameIndex]);
+  cmdbuf = cmdbufs[frameIndex];
+  img = swapchainImages[frameIndex];
+}
+
+void TS_VkResetCommandBuffer()
+{
+  cmdbuf.reset();
+}
+
+void TS_VkBeginCommandBuffer()
+{
+  cmdbuf.begin({vk::CommandBufferUsageFlagBits::eSimultaneousUse});
+}
+
+void TS_VkBeginRenderPass(uint32_t r, uint32_t g, uint32_t b, uint32_t a)
+{
+  vk::RenderPassBeginInfo rpi {
+    rp, swapchainFramebuffers[frameIndex]
+  };
+  rpi.renderArea.offset = vk::Offset2D();
+  rpi.renderArea.extent = swapchainSize;
+
+  std::vector<vk::ClearValue> clearValues(2);
+  clearValues[0] = vk::ClearColorValue(std::array<uint32_t, 4>({r, g, b, a}));
+  clearValues[1] = vk::ClearDepthStencilValue(VkClearDepthStencilValue({1.0f, 0}));
+
+  rpi.clearValueCount = static_cast<uint32_t>(clearValues.size());
+  rpi.pClearValues = clearValues.data();
+
+  cmdbuf.beginRenderPass(rpi, vk::SubpassContents::eInline);
+}
+
+void TS_VkEndRenderPass()
+{
+  cmdbuf.endRenderPass();
+}
+
+void TS_VkEndCommandBuffer()
+{
+  cmdbuf.end();
+}
+
+void TS_VkQueueSubmit()
+{
+  vk::PipelineStageFlags waitDestStageMask = vk::PipelineStageFlags(vk::PipelineStageFlagBits::eTransfer);
+  vk::SubmitInfo submitInfo(1, &imageAvailableSemaphore, &waitDestStageMask, 1, &cmdbuf, 1, &renderingFinishedSemaphore);
+  gq.submit(1, &submitInfo, fences[frameIndex]);
+}
+
+void TS_VkQueuePresent()
+{
+  vk::PresentInfoKHR pInfo(1, &renderingFinishedSemaphore, 1, &swapchain, &frameIndex);
+  pq.presentKHR(pInfo);
+  pq.waitIdle();
+}
 
 void TS_VkCreateInstance()
 {
@@ -70,7 +134,7 @@ void TS_VkCreateInstance()
     vk::InstanceCreateFlags(),
     &appInfo,
     0, NULL, // no validation or other layers yet
-    extensionNames.size(), extensionNames.data()
+    static_cast<uint32_t>(extensionNames.size()), extensionNames.data()
   };
 
   inst = vk::createInstance(ici);
@@ -135,9 +199,9 @@ void TS_VkCreateDevice()
   deviceFeatures.samplerAnisotropy = VK_TRUE;
   vk::DeviceCreateInfo deviceCreateInfo {
     vk::DeviceCreateFlags(),
-    queueCreateInfos.size(), queueCreateInfos.data(),
+    static_cast<uint32_t>(queueCreateInfos.size()), queueCreateInfos.data(),
     0, nullptr,
-    deviceExtensions.size(), deviceExtensions.data(),
+    static_cast<uint32_t>(deviceExtensions.size()), deviceExtensions.data(),
     &deviceFeatures
   };
 
@@ -190,6 +254,7 @@ void TS_VkCreateSwapchain()
   createInfo.clipped = VK_TRUE;
   swapchain = dev.createSwapchainKHR(createInfo);
   swapchainImages = dev.getSwapchainImagesKHR(swapchain);
+  swapchainImageCount = static_cast<uint32_t>(swapchainImages.size());
 }
 
 vk::ImageView TS_VkCreateImageView(vk::Image img, vk::Format fmt, vk::ImageAspectFlagBits flags)
@@ -381,9 +446,9 @@ void TS_VkCreateCommandPool()
   });
 }
 
-void TS_VkCreateCommandBuffers()
+void TS_VkAllocateCommandBuffers()
 {
-
+  cmdbufs = dev.allocateCommandBuffers({cp, vk::CommandBufferLevel::ePrimary, swapchainImageCount});
 }
 
 void TS_VkCreateSemaphores()
@@ -413,7 +478,7 @@ void TS_VkInit()
   TS_VkCreateRenderPass();
   TS_VkCreateFramebuffers();
   TS_VkCreateCommandPool();
-  TS_VkCreateCommandBuffers();
+  TS_VkAllocateCommandBuffers();
   TS_VkCreateSemaphores();
   TS_VkCreateFences();
 }
@@ -433,14 +498,15 @@ void TS_VkDestroySemaphores()
   dev.destroySemaphore(renderingFinishedSemaphore);
 }
 
-void TS_VkDestroyCommandBuffers()
+void TS_VkFreeCommandBuffers()
 {
-  dev.destroyCommandPool(cp);
+  dev.freeCommandBuffers(cp, cmdbufs);
+  cmdbufs.clear();
 }
 
 void TS_VkDestroyCommandPool()
 {
-
+  dev.destroyCommandPool(cp);
 }
 
 void TS_VkDestroyFramebuffers()
@@ -499,7 +565,7 @@ void TS_VkQuit()
 {
   TS_VkDestroyFences();
   TS_VkDestroySemaphores();
-  TS_VkDestroyCommandBuffers();
+  TS_VkFreeCommandBuffers();
   TS_VkDestroyCommandPool();
   TS_VkDestroyFramebuffers();
   TS_VkDestroyRenderPass();
@@ -514,11 +580,6 @@ void TS_VkQuit()
 std::string TS_GetSDLError()
 {
   return std::string(SDL_GetError());
-}
-
-void TS_Fill(Uint8 r, Uint8 g, Uint8 b, Uint8 a)
-{
-  
 }
 
 void TS_Init(const char * ttl, int wdth, int hght)
@@ -570,11 +631,6 @@ void TS_Quit()
   SDL_Quit();
 }
 
-void TS_Present()
-{
-  
-}
-
 void TS_PlaySound(const char* sound_file, int loops=0, int ticks=-1)
 {
   Mix_Chunk *sample = Mix_LoadWAV_RW(SDL_RWFromFile(sound_file, "rb"), 1);
@@ -616,11 +672,46 @@ void TS_DrawText(const char * fname, int fsize, const char * text, Uint8 r, Uint
 
 JLCXX_MODULE define_julia_module(jlcxx::Module& mod)
 {
+  mod.method("TS_VkAcquireNextImage", &TS_VkAcquireNextImage);
+  mod.method("TS_VkResetCommandBuffer", &TS_VkResetCommandBuffer);
+  mod.method("TS_VkBeginCommandBuffer", &TS_VkBeginCommandBuffer);
+  mod.method("TS_VkBeginRenderPass", &TS_VkBeginRenderPass);
+  mod.method("TS_VkEndRenderPass", &TS_VkEndRenderPass);
+  mod.method("TS_VkEndCommandBuffer", &TS_VkEndCommandBuffer);
+  mod.method("TS_VkQueueSubmit", &TS_VkQueueSubmit);
+  mod.method("TS_VkQueuePresent", &TS_VkQueuePresent);
+  mod.method("TS_VkCreateInstance", &TS_VkCreateInstance);
+  mod.method("TS_VkCreateSurface", &TS_VkCreateSurface);
+  mod.method("TS_VkSelectPhysicalDevice", &TS_VkSelectPhysicalDevice);
+  mod.method("TS_VkSelectQueueFamily", &TS_VkSelectQueueFamily);
+  mod.method("TS_VkCreateDevice", &TS_VkCreateDevice);
+  mod.method("TS_VkCreateSwapchain", &TS_VkCreateSwapchain);
+  mod.method("TS_VkCreateImageViews", &TS_VkCreateImageViews);
+  mod.method("TS_VkGetSupportedDepthFormat", &TS_VkGetSupportedDepthFormat);
+  mod.method("TS_VkSetupDepthStencil", &TS_VkSetupDepthStencil);
+  mod.method("TS_VkCreateRenderPass", &TS_VkCreateRenderPass);
+  mod.method("TS_VkCreateFramebuffers", &TS_VkCreateFramebuffers);
+  mod.method("TS_VkCreateCommandPool", &TS_VkCreateCommandPool);
+  mod.method("TS_VkAllocateCommandBuffers", &TS_VkAllocateCommandBuffers);
+  mod.method("TS_VkCreateSemaphores", &TS_VkCreateSemaphores);
+  mod.method("TS_VkCreateFences", &TS_VkCreateFences);
+  mod.method("TS_VkInit", &TS_VkInit);
+  mod.method("TS_VkDestroyFences", &TS_VkDestroyFences);
+  mod.method("TS_VkDestroySemaphores", &TS_VkDestroySemaphores);
+  mod.method("TS_VkFreeCommandBuffers", &TS_VkFreeCommandBuffers);
+  mod.method("TS_VkDestroyCommandPool", &TS_VkDestroyCommandPool);
+  mod.method("TS_VkDestroyFramebuffers", &TS_VkDestroyFramebuffers);
+  mod.method("TS_VkDestroyRenderPass", &TS_VkDestroyRenderPass);
+  mod.method("TS_VkTeardownDepthStencil", &TS_VkTeardownDepthStencil);
+  mod.method("TS_VkDestroyImageViews", &TS_VkDestroyImageViews);
+  mod.method("TS_VkDestroySwapchain", &TS_VkDestroySwapchain);
+  mod.method("TS_VkDestroyDevice", &TS_VkDestroyDevice);
+  mod.method("TS_VkDestroySurface", &TS_VkDestroySurface);
+  mod.method("TS_VkDestroyInstance", &TS_VkDestroyInstance);
+  mod.method("TS_VkQuit", &TS_VkQuit);
   mod.method("TS_GetSDLError", &TS_GetSDLError);
-  mod.method("TS_Fill", &TS_Fill);
   mod.method("TS_Init", &TS_Init);
   mod.method("TS_Quit", &TS_Quit);
-  mod.method("TS_Present", &TS_Present);
   mod.method("TS_PlaySound", &TS_PlaySound);
   mod.method("TS_DrawPoint", &TS_DrawPoint);
   mod.method("TS_DrawLine", &TS_DrawLine);

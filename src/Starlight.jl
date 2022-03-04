@@ -10,7 +10,7 @@ using Reexport
 @reexport using Colors
 @reexport using CxxWrap
 
-export handleMessage, sendMessage, sendMessageTo, listenFor, listenForFrom, handleException, dispatchMessage
+export handleMessage, sendMessage, listenFor, unlistenFrom, handleException, dispatchMessage
 export System, App, awake!, shutdown!, system!, on, off, cat
 export app
 
@@ -28,22 +28,18 @@ function sendMessage(m)
   end
 end
 
-function add_listener!(e::Any, d::DataType)
-  if !haskey(listeners, d) listeners[d] = Set{Any}() end
-  push!(listeners[d], e)
-end
-
 function listenFor(e::Any, d::DataType)
   lock(listener_lock)
-  add_listener!(e, d)
+  if !haskey(listeners, d) listeners[d] = Set{Any}() end
+  push!(listeners[d], e)
   unlock(listener_lock)
 end
 
-# TODO implement "unlisten" function and test
-# NOTE this would only ever be used by the ECS
-# when removing an entity, it's too much to ask
-# users to write finalizers that do this, i.e.
-# this is not terribly important right now
+function unlistenFrom(e::Any, d::DataType)
+  lock(listener_lock)
+  if haskey(listeners, d) delete!(listeners[d], e) end
+  unlock(listener_lock)
+end
 
 function handleException()
   for s in stacktrace(catch_backtrace())

@@ -187,8 +187,6 @@ function Base.iterate(l::Level, state::ECSIteratorState=ECSIteratorState())
   return (ent, state)
 end
 
-listenFor(ecs, TICK)
-
 function handleMessage(e::ECS, m::TICK)
   @debug "ECS tick"
   function _update!(ent::Entity)
@@ -201,8 +199,17 @@ function handleMessage(e::ECS, m::TICK)
   end
 end
 
-awake!(e::ECS) = e.awoken = all(map(awake!, lvl))
-shutdown!(e::ECS) = e.awoken = all(map(destroy!, lvl))
+function awake!(e::ECS)
+  e.awoken = all(map(awake!, lvl))
+  listenFor(ecs, TICK)
+  return e.awoken
+end
+
+function shutdown!(e::ECS) 
+  unlistenFrom(ecs, TICK)
+  e.awoken = all(map(destroy!, lvl))
+  return e.awoken
+end
 
 next_id = 0
 

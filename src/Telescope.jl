@@ -14,12 +14,18 @@ mutable struct Telescope <: System end
 
 const ts = Telescope()
 
-listenFor(ts, TICK)
-
 function draw()
-  clear()
+  TS_VkAcquireNextImage()
+  TS_VkResetCommandBuffer()
+  TS_VkBeginCommandBuffer()
+  TS_VkBeginRenderPass(sdl_colors(colorant"grey")...)
+
   map(draw, scn) # TODO investigate parallelization
-  TS_Present()
+
+  TS_VkEndRenderPass()
+  TS_VkEndCommandBuffer()
+  TS_VkQueueSubmit()
+  TS_VkQueuePresent()
 end
 
 function handleMessage(t::Telescope, m::TICK)
@@ -38,22 +44,17 @@ to_ARGB(c) = c
 to_ARGB(c::ARGB) = c
 to_ARGB(c::Colorant) = ARGB(c)
 
-clear() = fill(colorant"gray")
-
 sdl_colors(c::Colorant) = sdl_colors(convert(ARGB{Colors.FixedPointNumbers.Normed{UInt8,8}}, c))
 sdl_colors(c::ARGB) = Int.(reinterpret.((red(c), green(c), blue(c), alpha(c))))
 
-function Base.fill(c::Colorant)
-  TS_Fill(sdl_colors(c)...)
-end
-
 function awake!(t::Telescope)
   TS_Init("Hello SDL!", 400, 400)
-  draw()
+  listenFor(ts, TICK)
   return true
 end
 
 function shutdown!(t::Telescope)  
+  unlistenFrom(ts, TICK)
   TS_Quit()
   return false
 end

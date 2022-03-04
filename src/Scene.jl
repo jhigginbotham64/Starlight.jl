@@ -16,10 +16,16 @@ const scn = Scene() # needs awake! and shutdown! for initialization/deinitializa
 
 Base.length(s::Scene) = size(scene_view())[1]
 
-awake!(s::Scene) = true
-shutdown!(s::Scene) = false
+function awake!(s::Scene)
+  listenFor(scn, TICK)
+  return true
+end
 
-listenFor(scn, TICK)
+function shutdown!(s::Scene)
+  unlistenFrom(scn, TICK)
+  return false
+end
+
 
 function handleMessage(s::Scene, m::TICK)
   # sort just once per tick rather than every time we iterate
