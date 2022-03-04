@@ -653,27 +653,17 @@ void TS_PlaySound(const char* sound_file, int loops=0, int ticks=-1)
   }
 }
 
-void TS_DrawPoint(Uint8 r, Uint8 g, Uint8 b, Uint8 a, int x, int y)
+void TS_DrawRect(float r, float g, float b, float a, int x, int y, int w, int h, int rotz)
 {
   
 }
 
-void TS_DrawLine(Uint8 r, Uint8 g, Uint8 b, Uint8 a, int x1, int y1, int x2, int y2)
+void TS_DrawSprite(const char * img, float a, int rx, int ry, int rw, int rh, int cx, int cy, int ci, int cj, int px, int py, int sx, int sy, int rotz)
 {
   
 }
 
-void TS_DrawRect(Uint8 r, Uint8 g, Uint8 b, Uint8 a, bool fill, int x, int y, int w, int h)
-{
-  
-}
-
-void TS_DrawSprite(const char * img, Uint8 a, int rx, int ry, int rw, int rh, int cx, int cy, int ci, int cj, int px, int py, int sx, int sy, int rotz)
-{
-  
-}
-
-void TS_DrawText(const char * fname, int fsize, const char * text, Uint8 r, Uint8 g, Uint8 b, Uint8 a, int px, int py, int sx, int sy, int rotz)
+void TS_DrawText(const char * fname, int fsize, const char * text, float r, float g, float b, float a, int px, int py, int sx, int sy, int rotz)
 {
   
 }
@@ -722,8 +712,6 @@ JLCXX_MODULE define_julia_module(jlcxx::Module& mod)
   mod.method("TS_Init", &TS_Init);
   mod.method("TS_Quit", &TS_Quit);
   mod.method("TS_PlaySound", &TS_PlaySound);
-  mod.method("TS_DrawPoint", &TS_DrawPoint);
-  mod.method("TS_DrawLine", &TS_DrawLine);
   mod.method("TS_DrawRect", &TS_DrawRect);
   mod.method("TS_DrawSprite", &TS_DrawSprite);
   mod.method("TS_DrawText", &TS_DrawText);

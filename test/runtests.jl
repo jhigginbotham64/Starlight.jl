@@ -33,12 +33,7 @@ Starlight.update!(t::TestEntity, Δ) = t.updated = true
   # visual testing
   # NOTE in SDL, (0,0) is top-left and y goes down
   shapes = [
-    ColorLine((-100,-100),(100,100);pos=XYZ(100,100)),
-    ColorLine((-100,100),(100,-100);pos=XYZ(100,100)),
-    ColorLine((-100,-100),(100,100);pos=XYZ(100,300),color=colorant"black"),
-    ColorLine((-100,100),(100,-100);pos=XYZ(100,300),color=colorant"black"),
-    ColorRect((0,0),200,200;pos=XYZ(300,100)),
-    ColorRect((0,0),200,200;pos=XYZ(300,300),color=colorant"black",fill=false)
+    ColorRect((0,0),200,200;pos=XYZ(200,200)),
   ]
 
   # test manipulations on root
@@ -69,7 +64,7 @@ Starlight.update!(t::TestEntity, Δ) = t.updated = true
 
   destroy!(tst)
 
-  @test length(ecs) == 7
+  @test length(ecs) == 2
 
   destroy!(shapes...)
 
