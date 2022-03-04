@@ -357,7 +357,20 @@ void TS_VkCreateRenderPass()
 
 void TS_VkCreateFramebuffers()
 {
-
+  for (size_t i = 0; i < swapchainImageViews.size(); ++i)
+  {
+    std::vector<vk::ImageView> attachments {
+      swapchainImageViews[i],
+      depthImageView
+    };
+    
+    vk::FramebufferCreateInfo framebufferInfo {
+      vk::FramebufferCreateFlags(),
+      rp, attachments, swapchainSize.width, swapchainSize.height, 1
+    };
+    
+    swapchainFramebuffers.push_back(dev.createFramebuffer(framebufferInfo));
+  }
 }
 
 void TS_VkCreateCommandPool()
@@ -419,7 +432,11 @@ void TS_VkDestroySemaphores()
 
 void TS_VkFreeCommandBuffers()
 {
-
+  for (int i = 0; i < swapchainFramebuffers.size(); ++i)
+  {
+    dev.destroyFramebuffer(swapchainFramebuffers[i]);
+  }
+  swapchainFramebuffers.clear();
 }
 
 void TS_VkDestroyCommandPool()
