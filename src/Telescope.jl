@@ -1,7 +1,5 @@
 export Telescope, ts
-export to_ARGB, sdl_colors, clear
-export TS_DrawPoint, TS_DrawRect, TS_DrawText, TS_Init, TS_Quit
-export TS_DrawLine, TS_DrawSprite, TS_GetSDLError, TS_PlaySound
+export to_ARGB, sdl_colors, vulkan_colors, clear, clrclr
 
 # TODO use artifacts or some other solution
 # with better portability than @__DIR__
@@ -14,11 +12,13 @@ mutable struct Telescope <: System end
 
 const ts = Telescope()
 
+clrclr = colorant"grey" # "clear color"
+
 function draw()
   TS_VkAcquireNextImage()
   TS_VkResetCommandBuffer()
   TS_VkBeginCommandBuffer()
-  TS_VkBeginRenderPass(sdl_colors(colorant"grey")...)
+  TS_VkBeginRenderPass(vulkan_colors(clrclr)...)
 
   map(draw, scn) # TODO investigate parallelization
 
@@ -47,8 +47,17 @@ to_ARGB(c::Colorant) = ARGB(c)
 sdl_colors(c::Colorant) = sdl_colors(convert(ARGB{Colors.FixedPointNumbers.Normed{UInt8,8}}, c))
 sdl_colors(c::ARGB) = Int.(reinterpret.((red(c), green(c), blue(c), alpha(c))))
 
+vulkan_colors(c::Colorant) = Float32.(sdl_colors(c) ./ 255)
+
+clear(c::Colorant=clrclr) = fill(c)
+
+function Base.fill(c::Colorant)
+  TS_VkCmdClearColorImage(vulkan_colors(c)...)
+end
+
 function awake!(t::Telescope)
   TS_Init("Hello SDL!", 400, 400)
+  draw()
   listenFor(ts, TICK)
   return true
 end

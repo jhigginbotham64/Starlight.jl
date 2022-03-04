@@ -52,6 +52,14 @@ uint32_t frameIndex;
 vk::CommandBuffer cmdbuf;
 vk::Image img;
 
+void TS_VkCmdClearColorImage(float r, float g, float b, float a)
+{
+  vk::ClearColorValue clearColor(std::array<float, 4>({r, g, b, a}));
+  vk::ImageSubresourceRange imageRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1);
+
+  cmdbuf.clearColorImage(img, vk::ImageLayout::eGeneral, &clearColor, 1U, &imageRange);
+}
+
 void TS_VkAcquireNextImage()
 {
   frameIndex = dev.acquireNextImageKHR(swapchain, UINT64_MAX, imageAvailableSemaphore).value;
@@ -71,7 +79,7 @@ void TS_VkBeginCommandBuffer()
   cmdbuf.begin({vk::CommandBufferUsageFlagBits::eSimultaneousUse});
 }
 
-void TS_VkBeginRenderPass(uint32_t r, uint32_t g, uint32_t b, uint32_t a)
+void TS_VkBeginRenderPass(float r, float g, float b, float a)
 {
   vk::RenderPassBeginInfo rpi {
     rp, swapchainFramebuffers[frameIndex]
@@ -80,7 +88,7 @@ void TS_VkBeginRenderPass(uint32_t r, uint32_t g, uint32_t b, uint32_t a)
   rpi.renderArea.extent = swapchainSize;
 
   std::vector<vk::ClearValue> clearValues(2);
-  clearValues[0] = vk::ClearColorValue(std::array<uint32_t, 4>({r, g, b, a}));
+  clearValues[0] = vk::ClearColorValue(std::array<float, 4>({r, g, b, a}));
   clearValues[1] = vk::ClearDepthStencilValue(VkClearDepthStencilValue({1.0f, 0}));
 
   rpi.clearValueCount = static_cast<uint32_t>(clearValues.size());
@@ -672,6 +680,7 @@ void TS_DrawText(const char * fname, int fsize, const char * text, Uint8 r, Uint
 
 JLCXX_MODULE define_julia_module(jlcxx::Module& mod)
 {
+  mod.method("TS_VkCmdClearColorImage", &TS_VkCmdClearColorImage);
   mod.method("TS_VkAcquireNextImage", &TS_VkAcquireNextImage);
   mod.method("TS_VkResetCommandBuffer", &TS_VkResetCommandBuffer);
   mod.method("TS_VkBeginCommandBuffer", &TS_VkBeginCommandBuffer);
