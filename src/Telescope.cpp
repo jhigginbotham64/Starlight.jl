@@ -2,8 +2,12 @@
 #define VULKAN_HPP_STORAGE_SHARED 1
 #define VULKAN_HPP_STORAGE_SHARED_EXPORT 1
 
+#include <glm/glm.hpp>
 #include <vulkan/vulkan.hpp>
 #include <jlcxx/jlcxx.hpp>
+
+#define VMA_IMPLEMENTATION
+#include "vk_mem_alloc.hpp"
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_mixer.h>
@@ -52,12 +56,16 @@ uint32_t frameIndex;
 vk::CommandBuffer cmdbuf;
 vk::Image img;
 
-void TS_VkCmdDrawRect(float r, float g, float b, float a, int x, int y, int w, int h, int rotz)
+void TS_VkCmdDrawRect(float r, float g, float b, float a, int x, int y, int w, int h)
 {
-  
+  /*
+    to draw a rectangle properly, i still need:
+    - a graphics pipeline (and everything that comes with it)
+    - 
+  */
 }
 
-void TS_VkCmdDrawSprite(const char * img, float a, int rx, int ry, int rw, int rh, int cx, int cy, int ci, int cj, int px, int py, int sx, int sy, int rotz)
+void TS_VkCmdDrawSprite(const char * img, float a, int rx, int ry, int rw, int rh, int cx, int cy, int ci, int cj, int px, int py, int sx, int sy)
 {
   
 }

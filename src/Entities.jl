@@ -12,7 +12,7 @@ mutable struct ColorRect <: Renderable
 end
 
 function draw(r::ColorRect)
-  TS_VkCmdDrawRect(vulkan_colors(r.color)..., r.p[1]+r.abs_pos.x, r.p[2]+r.abs_pos.y, r.w, r.h, r.abs_rot.z)
+  TS_VkCmdDrawRect(vulkan_colors(r.color)..., r.p[1]+r.abs_pos.x, r.p[2]+r.abs_pos.y, r.w, r.h)
 end
 
 mutable struct Sprite <: Renderable
@@ -37,5 +37,5 @@ function draw(s::Sprite)
   TS_VkCmdDrawSprite(s.img, s.alpha / 255, 
   s.region[1], s.region[2], s.region[3], s.region[4], 
   s.cell_size[1], s.cell_size[2], s.cell_ind[1], s.cell_ind[2],
-  s.abs_pos.x, s.abs_pos.y, s.scale.x, s.scale.y, s.abs_rot.z)
+  s.abs_pos.x, s.abs_pos.y, s.scale.x, s.scale.y)
 end
