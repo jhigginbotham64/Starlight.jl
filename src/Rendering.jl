@@ -1,16 +1,10 @@
-export Telescope, ts
+export Rendering, rnd
 export to_ARGB, sdl_colors, vulkan_colors, clear, clrclr
 
-# TODO use artifacts or some other solution
-# with better portability than @__DIR__
-@wrapmodule(joinpath(@__DIR__, "build", "lib", "libtelescope.so"))
-function __init__()
-  @initcxx
-end
 
-mutable struct Telescope <: System end
+mutable struct Rendering <: System end
 
-const ts = Telescope()
+const rnd = Rendering()
 
 clrclr = colorant"grey" # "clear color"
 
@@ -28,8 +22,8 @@ function draw()
   TS_VkQueuePresent()
 end
 
-function handleMessage(t::Telescope, m::TICK)
-  @debug "Telescope tick"
+function handleMessage(t::Rendering, m::TICK)
+  @debug "Rendering tick"
   try
     # TODO CPP events
 
@@ -55,15 +49,15 @@ function Base.fill(c::Colorant)
   TS_VkCmdClearColorImage(vulkan_colors(c)...)
 end
 
-function awake!(t::Telescope)
+function awake!(t::Rendering)
   TS_Init("Hello SDL!", 400, 400)
   draw()
-  listenFor(ts, TICK)
+  listenFor(rnd, TICK)
   return true
 end
 
-function shutdown!(t::Telescope)  
-  unlistenFrom(ts, TICK)
+function shutdown!(t::Rendering)  
+  unlistenFrom(rnd, TICK)
   TS_Quit()
   return false
 end

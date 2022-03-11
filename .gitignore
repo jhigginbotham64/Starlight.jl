@@ -1,4 +1,3 @@
 .vscode/
 /Manifest.toml
-build/
 .env

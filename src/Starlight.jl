@@ -8,7 +8,7 @@ using Reexport
 @reexport using DataStructures: Queue, enqueue!, dequeue!
 @reexport using DataFrames
 @reexport using Colors
-@reexport using CxxWrap
+@reexport using Telescope
 
 export handleMessage, sendMessage, listenFor, unlistenFrom, handleException, dispatchMessage
 export System, App, awake!, shutdown!, system!, on, off, cat
@@ -103,7 +103,7 @@ mutable struct App <: System
         
         system!(a, clk)
         system!(a, ecs)
-        system!(a, ts)
+        system!(a, rnd)
         system!(a, scn)
       
         a.running = [false for s in keys(a.systems)]
