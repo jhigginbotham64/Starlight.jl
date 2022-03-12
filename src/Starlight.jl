@@ -84,7 +84,7 @@ shutdown!(s::System) = false
 include("Clock.jl")
 include("ECS.jl")
 include("Scene.jl")
-include("Telescope.jl")
+include("Rendering.jl")
 include("Entities.jl")
 include("Audio.jl")
 
