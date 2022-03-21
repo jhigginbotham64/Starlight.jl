@@ -9,17 +9,11 @@ const rnd = Rendering()
 clrclr = colorant"grey" # "clear color"
 
 function draw()
-  TS_VkAcquireNextImage()
-  TS_VkResetCommandBuffer()
-  TS_VkBeginCommandBuffer()
-  TS_VkBeginRenderPass(vulkan_colors(clrclr)...)
+  TS_VkBeginDrawPass()
 
   map(draw, scn) # TODO investigate parallelization
 
-  TS_VkEndRenderPass()
-  TS_VkEndCommandBuffer()
-  TS_VkQueueSubmit()
-  TS_VkQueuePresent()
+  TS_VkEndDrawPass(vulkan_colors(clrclr)...)
 end
 
 function handleMessage(t::Rendering, m::TICK)
