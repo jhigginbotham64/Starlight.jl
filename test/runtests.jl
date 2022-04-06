@@ -33,7 +33,7 @@ Starlight.update!(t::TestEntity, Δ) = t.updated = true
   # visual testing
   # NOTE in SDL, (0,0) is top-left and y goes down
   shapes = [
-    ColorRect((0,0),200,200;pos=XYZ(200,200)),
+    ColorRect(200,200;pos=XYZ(100,100)),
   ]
 
   # test manipulations on root

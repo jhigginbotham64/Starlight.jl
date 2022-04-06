@@ -6,13 +6,13 @@ draw(e::Entity) = nothing
 abstract type Renderable <: Entity end
 
 mutable struct ColorRect <: Renderable
-  function ColorRect(p, w, h; color=colorant"white", kw...)
-    instantiate!(new(); p=p, w=w, h=h, color=color, kw...)
+  function ColorRect(w, h; color=colorant"white", kw...)
+    instantiate!(new(); w=w, h=h, color=color, kw...)
   end
 end
 
 function draw(r::ColorRect)
-  TS_VkCmdDrawRect(vulkan_colors(r.color)..., r.p[1]+r.abs_pos.x, r.p[2]+r.abs_pos.y, r.w, r.h)
+  TS_VkCmdDrawRect(vulkan_colors(r.color)..., r.abs_pos.x, r.abs_pos.y, r.w, r.h)
 end
 
 mutable struct Sprite <: Renderable
