@@ -33,7 +33,8 @@ Starlight.update!(t::TestEntity, Δ) = t.updated = true
   # visual testing
   # NOTE in SDL, (0,0) is top-left and y goes down
   shapes = [
-    ColorRect(200,200;pos=XYZ(100,100)),
+    ColorRect(200, 200; color=colorant"blue", pos=XYZ(200, 200)),
+    Sprite(artifact"test/test/sprites/charmap-cellphone_black.png"; color=RGBA(1.0, 0, 0, 0.5), pos=XYZ(100, 100)),
   ]
 
   # test manipulations on root
@@ -64,7 +65,7 @@ Starlight.update!(t::TestEntity, Δ) = t.updated = true
 
   destroy!(tst)
 
-  @test length(ecs) == 2
+  @test length(ecs) == 3
 
   destroy!(shapes...)
 

@@ -26,15 +26,15 @@ mutable struct Sprite <: Renderable
   # of a rectangle, its width, and its height, and
   # uses only that region of the texture.
   function Sprite(img; cell_size=[0, 0], region=[0, 0, 0, 0], cell_ind=[0, 0], 
-    alpha=255, scale=XYZ(1,1,1), kw...)
+    color=colorant"white", scale=XYZ(1,1,1), kw...)
     instantiate!(new(); img=img, cell_size=cell_size, 
-      region=region, cell_ind=cell_ind, 
+      region=region, cell_ind=cell_ind, color=color,
       alpha=alpha, scale=scale, kw...)
   end
 end
 
 function draw(s::Sprite)
-  TS_VkCmdDrawSprite(s.img, s.alpha / 255, 
+  TS_VkCmdDrawSprite(s.img, vulkan_colors(s.color)..., 
   s.region[1], s.region[2], s.region[3], s.region[4], 
   s.cell_size[1], s.cell_size[2], s.cell_ind[1], s.cell_ind[2],
   s.abs_pos.x, s.abs_pos.y, s.scale.x, s.scale.y)
