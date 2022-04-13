@@ -6,14 +6,12 @@ mutable struct Rendering <: System end
 
 const rnd = Rendering()
 
-clrclr = colorant"grey" # "clear color"
-
 function draw()
   TS_VkBeginDrawPass()
 
   map(draw, scn) # TODO investigate parallelization
 
-  TS_VkEndDrawPass(vulkan_colors(clrclr)...)
+  TS_VkEndDrawPass(vulkan_colors(app[].bgrd)...)
 end
 
 function handleMessage(t::Rendering, m::TICK)
@@ -37,14 +35,14 @@ sdl_colors(c::ARGB) = Int.(reinterpret.((red(c), green(c), blue(c), alpha(c))))
 
 vulkan_colors(c::Colorant) = Float32.(sdl_colors(c) ./ 255)
 
-clear(c::Colorant=clrclr) = fill(c)
+clear() = fill(app[].bgrd)
 
 function Base.fill(c::Colorant)
   TS_VkCmdClearColorImage(vulkan_colors(c)...)
 end
 
 function awake!(t::Rendering)
-  TS_Init("Hello SDL!", 400, 400)
+  TS_Init("Hello SDL!", app[].wdth, app[].hght)
   draw()
   listenFor(rnd, TICK)
   return true

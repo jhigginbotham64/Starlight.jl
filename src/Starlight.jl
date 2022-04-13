@@ -80,7 +80,6 @@ abstract type System end
 awake!(s::System) = true
 shutdown!(s::System) = false
 
-
 include("Clock.jl")
 include("ECS.jl")
 include("Scene.jl")
@@ -91,16 +90,18 @@ include("Audio.jl")
 mutable struct App <: System
   systems::Dict{DataType, System}
   running::Vector{Bool}
-  function App()
+  wdth::Int
+  hght::Int
+  bgrd::Colorant
+  function App(; wdth::Int=400, hght::Int=400, bgrd=colorant"grey")
     # singleton pattern from Tom Kwong's book
     global app
     global app_lock
     lock(app_lock)
     try 
       if !isassigned(app)
+        a = new(Dict{DataType, System}(), Vector{Bool}(), wdth, hght, bgrd)
 
-        a = new(Dict(), Vector{Bool}())
-        
         system!(a, clk)
         system!(a, ecs)
         system!(a, rnd)
@@ -109,7 +110,6 @@ mutable struct App <: System
         a.running = [false for s in keys(a.systems)]
 
         app[] = finalizer(shutdown!, a)
-
       end
 
     catch e
