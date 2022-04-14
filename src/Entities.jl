@@ -29,7 +29,7 @@ mutable struct Sprite <: Renderable
     color=colorant"white", scale=XYZ(1,1,1), kw...)
     instantiate!(new(); img=img, cell_size=cell_size, 
       region=region, cell_ind=cell_ind, color=color,
-      alpha=alpha, scale=scale, kw...)
+      scale=scale, kw...)
   end
 end
 
