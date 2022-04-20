@@ -8,10 +8,12 @@ using Reexport
 @reexport using DataStructures: Queue, enqueue!, dequeue!
 @reexport using DataFrames
 @reexport using Colors
+@reexport using SimpleDirectMediaLayer
+@reexport using SimpleDirectMediaLayer.LibSDL2
 @reexport using Telescope
 
 export handleMessage, sendMessage, listenFor, unlistenFrom, handleException, dispatchMessage
-export System, App, awake!, shutdown!, system!, on, off, cat
+export System, App, awake!, shutdown!, run!, system!, on, off, cat
 export app
 
 const listeners = Dict{DataType, Set{Any}}()
@@ -134,7 +136,7 @@ system!(a::App, s::System) = a.systems[typeof(s)] = s
 # note that if running from a script the app will
 # still exit when julia exits, it will never block.
 # figuring out whether/how to keep it alive is
-# on the user.
+# on the user. see run! below for one method.
 function awake!(a::App)
   if !on(a)
     job!(a.systems[Clock], dispatchMessage) # this could be parallelized if not for mqueue_lock
@@ -142,6 +144,7 @@ function awake!(a::App)
   end
   return a.running
 end
+
 function shutdown!(a::App)
   if !off(a)
     a.running = map(shutdown!, values(a.systems))
@@ -149,7 +152,18 @@ function shutdown!(a::App)
   return a.running
 end
 
-awake!() = awake!(app[])
-shutdown!() = shutdown!(app[])
+function run!(a::App)
+  listenFor(a, SDL_QuitEvent)
+  awake!(a)
+  if !isinteractive()
+    while on(a)
+      yield()
+    end
+  end
+end
+
+function handleMessage(a::App, q::SDL_QuitEvent)
+  shutdown!(a)
+end
 
 end
