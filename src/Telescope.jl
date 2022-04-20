@@ -1,10 +1,10 @@
-export Rendering, rnd
-export to_ARGB, sdl_colors, vulkan_colors, clear, clrclr
+export TS, ts
+export to_ARGB, getSDLError, sdl_colors, vulkan_colors, clear, clrclr
 
 
-mutable struct Rendering <: System end
+mutable struct TS <: System end
 
-const rnd = Rendering()
+const ts = TS()
 
 function draw()
   TS_VkBeginDrawPass()
@@ -14,8 +14,8 @@ function draw()
   TS_VkEndDrawPass(vulkan_colors(app[].bgrd)...)
 end
 
-function handleMessage(t::Rendering, m::TICK)
-  @debug "Rendering tick"
+function handleMessage(t::TS, m::TICK)
+  @debug "TS tick"
   try
     # TODO CPP events
 
@@ -25,6 +25,8 @@ function handleMessage(t::Rendering, m::TICK)
   end
 
 end
+
+getSDLError() = unsafe_string(TS_SDLGetError())
 
 to_ARGB(c) = c
 to_ARGB(c::ARGB) = c
@@ -41,15 +43,15 @@ function Base.fill(c::Colorant)
   TS_VkCmdClearColorImage(vulkan_colors(c)...)
 end
 
-function awake!(t::Rendering)
+function awake!(t::TS)
   TS_Init("Hello SDL!", app[].wdth, app[].hght)
   draw()
-  listenFor(rnd, TICK)
+  listenFor(ts, TICK)
   return true
 end
 
-function shutdown!(t::Rendering)  
-  unlistenFrom(rnd, TICK)
+function shutdown!(t::TS)  
+  unlistenFrom(ts, TICK)
   TS_Quit()
   return false
 end

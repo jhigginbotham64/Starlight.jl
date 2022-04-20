@@ -83,7 +83,7 @@ shutdown!(s::System) = false
 include("Clock.jl")
 include("ECS.jl")
 include("Scene.jl")
-include("Rendering.jl")
+include("Telescope.jl")
 include("Entities.jl")
 include("Audio.jl")
 
@@ -104,7 +104,7 @@ mutable struct App <: System
 
         system!(a, clk)
         system!(a, ecs)
-        system!(a, rnd)
+        system!(a, ts)
         system!(a, scn)
       
         a.running = [false for s in keys(a.systems)]
