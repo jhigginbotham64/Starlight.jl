@@ -13,8 +13,8 @@ using Reexport
 @reexport using Telescope
 
 export handleMessage, sendMessage, listenFor, unlistenFrom, handleException, dispatchMessage
-export System, App, awake!, shutdown!, run!, system!, on, off, cat
-export app
+export System, App, awake!, shutdown!, run!, system!, on, off
+export app, clk, ecs, inp, ts, phys, scn
 
 const listeners = Dict{DataType, Set{Any}}()
 const messages = Channel(Inf)
@@ -82,16 +82,19 @@ abstract type System end
 awake!(s::System) = true
 shutdown!(s::System) = false
 
+# order is determined by which systems
+# need to be awakened before which
 include("Clock.jl")
 include("ECS.jl")
-include("Scene.jl")
 include("Telescope.jl")
 include("Entities.jl")
 include("Audio.jl")
+include("Input.jl")
+include("Physics.jl")
 
 mutable struct App <: System
   systems::Dict{DataType, System}
-  running::Vector{Bool}
+  running::Bool
   wdth::Int
   hght::Int
   bgrd::Colorant
@@ -102,16 +105,22 @@ mutable struct App <: System
     lock(app_lock)
     try 
       if !isassigned(app)
-        a = new(Dict{DataType, System}(), Vector{Bool}(), wdth, hght, bgrd)
+        a = new(Dict{DataType, System}(), false, wdth, hght, bgrd)
 
-        system!(a, clk)
-        system!(a, ecs)
-        system!(a, ts)
-        system!(a, scn)
-      
-        a.running = [false for s in keys(a.systems)]
+        system!(a, Clock())
+        system!(a, ECS())
+        system!(a, Scene())
+        system!(a, TS())
+        system!(a, Input())
+        system!(a, Physics())
 
         app[] = finalizer(shutdown!, a)
+
+        # root pid is 0 (default) indicating "here and no further",
+        # always needed, also it will technically parent of itself.
+        # mutate at your own peril, but remember that a  user can 
+        # define update!(r::Root, Δ) if they want
+        instantiate!(Root())
       end
 
     catch e
@@ -126,11 +135,15 @@ end
 const app = Ref{App}()
 const app_lock = ReentrantLock()
 
-on(a::App) = all(a.running)
-off(a::App) = all(!r for r in a.running)
-# shrodinger's app is neither on nor off, 
-# i.e. some system is not synchronized with the others
-cat(a::App) = !on(a) && !off(a)
+clk() = app[].systems[Clock]
+scn() = app[].systems[Scene]
+ts() = app[].systems[TS]
+inp() = app[].systems[Input]
+ecs() = app[].systems[ECS]
+phys() = app[].systems[Physics]
+
+on(a::App) = a.running
+off(a::App) = !a.running
 
 system!(a::App, s::System) = a.systems[typeof(s)] = s
 # note that if running from a script the app will
@@ -140,14 +153,15 @@ system!(a::App, s::System) = a.systems[typeof(s)] = s
 function awake!(a::App)
   if !on(a)
     job!(a.systems[Clock], dispatchMessage) # this could be parallelized if not for mqueue_lock
-    a.running = map(awake!, values(a.systems))
+    map(awake!, values(a.systems))
+    a.running = true
   end
-  return a.running
 end
 
 function shutdown!(a::App)
   if !off(a)
-    a.running = map(shutdown!, values(a.systems))
+    map(shutdown!, values(a.systems))
+    a.running = false
   end
   return a.running
 end

@@ -1,16 +1,12 @@
 export Clock, TICK, SLEEP_TIME
 export tick, job!
-export clk
 
 mutable struct Clock <: System
   started::Base.Event
   stopped::Bool
   freq::AbstractFloat
+  Clock() = new(Base.Event(), true, 0.01667)
 end
-
-Clock() = Clock(Base.Event(), true, 0.01667) # default frequency of approximately 60 Hz
-
-const clk = Clock()
 
 struct TICK
   Δ::AbstractFloat # seconds, but has a distinct meaning from from RT_SEC
@@ -51,12 +47,9 @@ function awake!(c::Clock)
   c.stopped = false
 
   Base.notify(c.started)
-
-  return true
 end
 
 function shutdown!(c::Clock)
   c.stopped = true
   c.started = Base.Event() # old one remains signaled no matter what, replace
-  return false
 end

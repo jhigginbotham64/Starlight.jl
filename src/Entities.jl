@@ -3,6 +3,8 @@ export draw, image_surface, ColorRect, Sprite
 
 draw(e::Entity) = nothing
 
+mutable struct Root <: Entity end # used for root of ECS tree
+
 abstract type Renderable <: Entity end
 
 mutable struct ColorRect <: Renderable

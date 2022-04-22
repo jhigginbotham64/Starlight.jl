@@ -65,11 +65,11 @@ Starlight.update!(t::TestEntity, Δ) = t.updated = true
 
   destroy!(tst)
 
-  @test length(ecs) == 3
+  @test length(ecs()) == 3
 
   destroy!(shapes...)
 
-  @test length(ecs) == 1
+  @test length(ecs()) == 1
 
   shutdown!(a)
 

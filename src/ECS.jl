@@ -3,7 +3,8 @@ export ECS, XYZ, accumulate_XYZ, get_entity_row, get_entity_by_id
 export get_entity_row_by_id, get_df_row_prop, set_df_row_prop!
 export ECSIterator, ECSIteratorState, Level
 export Root, instantiate!, destroy!
-export ecs, lvl
+export Scene, scene_view
+
 
 abstract type Entity <: System end
 
@@ -58,22 +59,22 @@ const components = Dict(
 mutable struct ECS <: System
   df::DataFrame
   awoken::Bool
+  lock::ReentrantLock
+  next_id::Int
   function ECS()
     df = DataFrame(
       NamedTuple{Tuple(keys(components))}(
         t[] for t in values(components)
       ))
-    return new(df, false)
+    return new(df, false, ReentrantLock(), 0)
   end
 end
 
-const ecs = ECS()
-
 # internally uses Base.getproperty directly so
 # as to not break if the symbol values change
-get_entity_row(ent::Entity) = @view ecs.df[getproperty(ecs.df, ENT) .== [ent], :]
-get_entity_by_id(id::Int) = ecs.df[getproperty(ecs.df, ID) .== [id], ENT][1]
-get_entity_row_by_id(id::Int) = @view ecs.df[getproperty(ecs.df, ID) .== [id], :]
+get_entity_row(ent::Entity) = @view ecs().df[getproperty(ecs().df, ENT) .== [ent], :]
+get_entity_by_id(id::Int) = ecs().df[getproperty(ecs().df, ID) .== [id], ENT][1]
+get_entity_row_by_id(id::Int) = @view ecs().df[getproperty(ecs().df, ID) .== [id], :]
 get_df_row_prop(r, s) = r[!, s][1]
 set_df_row_prop!(r, s, x) = r[!, s][1] = x
 
@@ -119,8 +120,6 @@ function Base.getproperty(ent::Entity, s::Symbol)
   end
 end
 
-const ecs_lock = ReentrantLock()
-
 function Base.setproperty!(ent::Entity, s::Symbol, x)
   e = get_entity_row(ent)
   if s in [
@@ -133,7 +132,7 @@ function Base.setproperty!(ent::Entity, s::Symbol, x)
     error("cannot set property $(s) on Entity")
   end
 
-  lock(ecs_lock)
+  lock(ecs().lock)
   if s == PARENT
     par = get_entity_by_id(get_df_row_prop(e, PARENT))
     push!(getproperty(par, CHILDREN), get_df_row_prop(e, ID))
@@ -142,7 +141,7 @@ function Base.setproperty!(ent::Entity, s::Symbol, x)
   else
     get_df_row_prop(e, PROPS)[s] = x
   end
-  unlock(ecs_lock)
+  unlock(ecs().lock)
 end
 
 Base.length(e::ECS) = size(e.df)[1]
@@ -154,12 +153,6 @@ Base.length(e::ECS) = size(e.df)[1]
 # parameters to the iterator
 abstract type ECSIterator <: System end
 
-# refers to tree level, i.e. breadth-first,
-# nothing special to see here
-struct Level <: ECSIterator end 
-const lvl = Level()
-Base.length(l::Level) = length(ecs)
-
 mutable struct ECSIteratorState
   root::Int
   q::Queue{Int}
@@ -167,6 +160,11 @@ mutable struct ECSIteratorState
   index::Int
   ECSIteratorState(; root=0, q=Queue{Int}(), root_visited=false, index=1) = new(root, q, root_visited, index)
 end
+
+# refers to tree level, i.e. breadth-first,
+# nothing special to see here
+struct Level <: ECSIterator end 
+Base.length(l::Level) = length(ecs())
 
 function Base.iterate(l::Level, state::ECSIteratorState=ECSIteratorState())
   if isempty(state.q)
@@ -193,37 +191,32 @@ function handleMessage(e::ECS, m::TICK)
     if getproperty(ent, ACTIVE) update!(ent, m.Δ) end
   end
   try
-    map(_update!, lvl) # TODO investigate parallelization
+    map(_update!, Level()) # TODO investigate parallelization
   catch
     handleException()
   end
 end
 
 function awake!(e::ECS)
-  e.awoken = all(map(awake!, lvl))
-  listenFor(ecs, TICK)
-  return e.awoken
+  e.awoken = all(map(awake!, Level()))
+  listenFor(e, TICK)
 end
 
 function shutdown!(e::ECS) 
-  unlistenFrom(ecs, TICK)
-  e.awoken = all(map(destroy!, lvl))
-  return e.awoken
+  unlistenFrom(e, TICK)
+  e.awoken = all(map(destroy!, Level()))
 end
-
-next_id = 0
 
 function instantiate!(e::Entity; kw...)
 
-  lock(ecs_lock)
+  lock(ecs().lock)
 
-  global next_id
-  id = next_id
-  next_id += 1
+  id = ecs().next_id
+  ecs().next_id += 1
 
   # update ecs
   # allows invalid parents and children for now
-  push!(ecs.df, Dict(
+  push!(ecs().df, Dict(
     ENT=>e,
     TYPE=>typeof(e),
     ID=>id,
@@ -243,9 +236,9 @@ function instantiate!(e::Entity; kw...)
     push!(getproperty(par, CHILDREN), id)
   end
 
-  unlock(ecs_lock)
+  unlock(ecs().lock)
 
-  if ecs.awoken awake!(e) end
+  if ecs().awoken awake!(e) end
 
   return e
 end
@@ -253,7 +246,7 @@ end
 function destroy!(e::Entity)
   sd = shutdown!(e)
 
-  lock(ecs_lock)
+  lock(ecs().lock)
 
   p = get_entity_by_id(getproperty(e, PARENT))
 
@@ -262,10 +255,10 @@ function destroy!(e::Entity)
     # update parent
     delete!(getproperty(p, CHILDREN), getproperty(e, ID))
     # update dataframe
-    deleteat!(ecs.df, getproperty(ecs.df, ENT) .== [e])
+    deleteat!(ecs().df, getproperty(ecs().df, ENT) .== [e])
   end
 
-  unlock(ecs_lock)
+  unlock(ecs().lock)
 
   return sd
 end
@@ -274,10 +267,41 @@ function destroy!(es...)
   map(destroy!, es) # TODO investigate parallelization
 end
 
-mutable struct Root <: Entity end # mutate at your own peril
-# also, user can define update!(r::Root, Δ) if they want
+# this is the scene graph, ladies and gentlemen,
+# which we can traverse and mutate however we want
+# during iteration, and initialize however we want
+# and destroy however we want...sorry, it took me
+# a long time to come up with this design, and i'm
+# a little bit psyched about it. :)
+scene_view() = ecs().df[(ecs().df.type .<: [Renderable]) .& (ecs().df.hidden .== [false]), :]
 
-# root pid is 0 (default) indicating "here and no further",
-# instantiate in library because always needed, also it will
-# always have id of 0, technically parent of itself
-instantiate!(Root())
+mutable struct Scene <: ECSIterator end
+
+Base.length(s::Scene) = size(scene_view())[1]
+
+function Base.iterate(s::Scene, state::ECSIteratorState=ECSIteratorState())
+  # does reverse-z order for now, only 
+  # suitable for simple 2d drawing
+  if state.index > length(s) return nothing end
+  ent = scene_view()[!, ENT][state.index]
+  state.index += 1
+  return (ent, state)
+end
+
+function awake!(s::Scene)
+  listenFor(s, TICK)
+end
+
+function shutdown!(s::Scene)
+  unlistenFrom(s, TICK)
+end
+
+function handleMessage(s::Scene, m::TICK)
+  # sort just once per tick rather than every time we iterate
+  @debug "Scene tick"
+  try
+    sort!(ecs().df, [order(POSITION, rev=true, by=(pos)->pos.z)])
+  catch
+    handleException()
+  end
+end
