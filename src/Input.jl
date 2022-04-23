@@ -2,7 +2,8 @@ export Input
 
 mutable struct Input <: System end
 
-function handleMessage(i::Input, m::TICK)
+function handleMessage!(i::Input, m::TICK)
+  @debug "Input tick"
   evt_ref = Ref{SDL_Event}()
   while Bool(SDL_PollEvent(evt_ref))
     evt = evt_ref[]

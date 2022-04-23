@@ -2,11 +2,11 @@ using Starlight
 using Test
 
 # the namespace in front of the method name is important, apparently
-Starlight.update!(r::Root, Δ) = r.updated = true
+Starlight.update!(r::Root, Δ::AbstractFloat) = r.updated = true
 
 mutable struct TestEntity <: Entity end
   
-Starlight.update!(t::TestEntity, Δ) = t.updated = true
+Starlight.update!(t::TestEntity, Δ::AbstractFloat) = t.updated = true
 
 @testset "Starlight" begin
   # load test file

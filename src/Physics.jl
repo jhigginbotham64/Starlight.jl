@@ -2,8 +2,11 @@ export Physics
 
 mutable struct Physics <: System end
 
-function handleMessage(p::Physics, m::TICK)
-  nothing
+function handleMessage!(p::Physics, m::TICK)
+  @debug "Physics tick"
+  # advance physics simulation
+  # update transforms
+  # dispatch collision events
 end
 
 function awake!(p::Physics)

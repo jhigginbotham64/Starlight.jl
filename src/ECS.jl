@@ -10,7 +10,7 @@ abstract type Entity <: System end
 
 awake!(e::Entity) = true
 shutdown!(e::Entity) = false
-update!(e, Δ) = nothing
+update!(e::Entity, Δ::AbstractFloat) = nothing
 
 # magic symbols that getproperty and setproperty! (and end users) care about
 const ENT = :ent
@@ -182,7 +182,7 @@ function Base.iterate(l::Level, state::ECSIteratorState=ECSIteratorState())
   return (ent, state)
 end
 
-function handleMessage(e::ECS, m::TICK)
+function handleMessage!(e::ECS, m::TICK)
   @debug "ECS tick"
   try
     map((ent) -> update!(ent, m.Δ), Level()) # TODO investigate parallelization
@@ -288,7 +288,7 @@ function shutdown!(s::Scene)
   unlistenFrom(s, TICK)
 end
 
-function handleMessage(s::Scene, m::TICK)
+function handleMessage!(s::Scene, m::TICK)
   # sort just once per tick rather than every time we iterate
   @debug "Scene tick"
   try

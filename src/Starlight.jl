@@ -12,7 +12,7 @@ using Reexport
 @reexport using SimpleDirectMediaLayer.LibSDL2
 @reexport using Telescope
 
-export handleMessage, sendMessage, listenFor, unlistenFrom, handleException, dispatchMessage
+export handleMessage!, sendMessage, listenFor, unlistenFrom, handleException, dispatchMessage
 export System, App, awake!, shutdown!, run!, system!, on, off
 export app, clk, ecs, inp, ts, phys, scn
 
@@ -21,7 +21,7 @@ const messages = Channel(Inf)
 
 const listener_lock = ReentrantLock()
 
-handleMessage(l, m) = nothing
+handleMessage!(l, m) = nothing
 
 function sendMessage(m)
   # drop if no one's listening
@@ -63,7 +63,7 @@ function dispatchMessage(arg)
       # because it needs to use indexing to split
       # up memory, i work around it this way
       Threads.@threads for l in Vector([listeners[d]...])
-        handleMessage(l, m)
+        handleMessage!(l, m)
       end
     end
   catch
@@ -73,20 +73,14 @@ end
 
 abstract type System end
 
-# these functions are supposed to return
-# whether a value indicating whether the 
-# system is still running or not, except
-# for App where it returns a vector of
-# booleans indicating whether each system
-# is still running
-awake!(s::System) = true
-shutdown!(s::System) = false
+awake!(s::System) = nothing
+shutdown!(s::System) = nothing
 
 # order is determined by which systems
 # need to be awakened before which
 include("Clock.jl")
 include("ECS.jl")
-include("Telescope.jl")
+include("TS.jl")
 include("Entities.jl")
 include("Audio.jl")
 include("Input.jl")
@@ -119,7 +113,7 @@ mutable struct App <: System
         # root pid is 0 (default) indicating "here and no further",
         # always needed, also it will technically parent of itself.
         # mutate at your own peril, but remember that a  user can 
-        # define update!(r::Root, Δ) if they want
+        # define update!(r::Root, Δ::AbstractFloat) if they want
         instantiate!(Root())
       end
 
@@ -176,7 +170,7 @@ function run!(a::App)
   end
 end
 
-function handleMessage(a::App, q::SDL_QuitEvent)
+function handleMessage!(a::App, q::SDL_QuitEvent)
   shutdown!(a)
 end
 

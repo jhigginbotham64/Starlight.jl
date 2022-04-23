@@ -11,7 +11,7 @@ function draw()
   TS_VkEndDrawPass(vulkan_colors(app[].bgrd)...)
 end
 
-function handleMessage(t::TS, m::TICK)
+function handleMessage!(t::TS, m::TICK)
   @debug "TS tick"
   try
     draw()
