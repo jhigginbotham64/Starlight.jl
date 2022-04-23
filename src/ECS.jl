@@ -22,6 +22,7 @@ const POSITION = :pos
 const ROTATION = :rot
 const ABSOLUTE_POSITION = :abs_pos
 const ABSOLUTE_ROTATION = :abs_rot
+const HIDDEN = :hidden
 const PROPS = :props
 
 # position, rotation, velocity, acceleration, whatever
@@ -49,6 +50,7 @@ const components = Dict(
   CHILDREN=>Set{Int},
   POSITION=>XYZ,
   ROTATION=>XYZ,
+  HIDDEN=>Bool,
   PROPS=>Dict{Symbol, Any}
 )
 
@@ -85,6 +87,7 @@ function Base.propertynames(ent::Entity)
     ROTATION,
     ABSOLUTE_POSITION,
     ABSOLUTE_ROTATION,
+    HIDDEN,
     PROPS,
     [n for n in keys(getproperty(ent, PROPS))]...
   )
@@ -212,17 +215,18 @@ function instantiate!(e::Entity; kw...)
     ENT=>e,
     TYPE=>typeof(e),
     ID=>id,
-    CHILDREN=>get(kw, :children, Set{Int}()),
-    PARENT=>get(kw, :pid, 0),
-    POSITION=>get(kw, :pos, XYZ()),
-    ROTATION=>get(kw, :rot, XYZ()),
-    PROPS=>merge(get(kw, :props, Dict{Symbol, Any}()), 
+    CHILDREN=>get(kw, CHILDREN, Set{Int}()),
+    PARENT=>get(kw, PARENT, 0),
+    POSITION=>get(kw, POSITION, XYZ()),
+    ROTATION=>get(kw, ROTATION, XYZ()),
+    HIDDEN=>get(kw, HIDDEN, false),
+    PROPS=>merge(get(kw, PROPS, Dict{Symbol, Any}()), 
       Dict(k=>v for (k,v) in kw if k ∉ 
-      [:children, :pid, :pos, :rot, :props]))
+      [CHILDREN, PARENT, POSITION, ROTATION, HIDDEN, PROPS]))
   ))
 
   if id != 0 # root has no parent but itself
-    par = get_entity_by_id(get(kw, :pid, 0))
+    par = get_entity_by_id(get(kw, PARENT, 0))
     push!(getproperty(par, CHILDREN), id)
   end
 
@@ -261,7 +265,7 @@ end
 # and destroy however we want...sorry, it took me
 # a long time to come up with this design, and i'm
 # a little bit psyched about it. :)
-scene_view() = ecs().df[ecs().df.type .<: [Renderable], :]
+scene_view() = ecs().df[(ecs().df.type .<: [Renderable]) .& (ecs().df.hidden .== [false]), :]
 
 mutable struct Scene <: ECSIterator end
 
