@@ -1,5 +1,6 @@
 export Renderable
 export draw, image_surface, ColorRect, Sprite
+export defaultDrawRect, defaultDrawSprite
 
 draw(e::Entity) = nothing
 
@@ -13,9 +14,9 @@ mutable struct ColorRect <: Renderable
   end
 end
 
-function draw(r::ColorRect)
-  TS_VkCmdDrawRect(vulkan_colors(r.color)..., r.abs_pos.x, r.abs_pos.y, r.w, r.h)
-end
+defaultDrawRect(r) = TS_VkCmdDrawRect(vulkan_colors(r.color)..., r.abs_pos.x, r.abs_pos.y, r.w, r.h)
+
+draw(r::ColorRect) = defaultDrawRect(r)
 
 mutable struct Sprite <: Renderable
   # allow textures larger than a single sprite
@@ -35,9 +36,9 @@ mutable struct Sprite <: Renderable
   end
 end
 
-function draw(s::Sprite)
-  TS_VkCmdDrawSprite(s.img, vulkan_colors(s.color)..., 
+defaultDrawSprite(s) = TS_VkCmdDrawSprite(s.img, vulkan_colors(s.color)..., 
   s.region[1], s.region[2], s.region[3], s.region[4], 
   s.cell_size[1], s.cell_size[2], s.cell_ind[1], s.cell_ind[2],
   s.abs_pos.x, s.abs_pos.y, s.scale.x, s.scale.y)
-end
+
+draw(s::Sprite) = defaultDrawSprite(s)

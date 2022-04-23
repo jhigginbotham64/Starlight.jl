@@ -22,8 +22,6 @@ const POSITION = :pos
 const ROTATION = :rot
 const ABSOLUTE_POSITION = :abs_pos
 const ABSOLUTE_ROTATION = :abs_rot
-const ACTIVE = :active
-const HIDDEN = :hidden
 const PROPS = :props
 
 # position, rotation, velocity, acceleration, whatever
@@ -51,8 +49,6 @@ const components = Dict(
   CHILDREN=>Set{Int},
   POSITION=>XYZ,
   ROTATION=>XYZ,
-  ACTIVE=>Bool,
-  HIDDEN=>Bool,
   PROPS=>Dict{Symbol, Any}
 )
 
@@ -89,8 +85,6 @@ function Base.propertynames(ent::Entity)
     ROTATION,
     ABSOLUTE_POSITION,
     ABSOLUTE_ROTATION,
-    ACTIVE,
-    HIDDEN,
     PROPS,
     [n for n in keys(getproperty(ent, PROPS))]...
   )
@@ -187,28 +181,26 @@ end
 
 function handleMessage(e::ECS, m::TICK)
   @debug "ECS tick"
-  function _update!(ent::Entity)
-    if getproperty(ent, ACTIVE) update!(ent, m.Δ) end
-  end
   try
-    map(_update!, Level()) # TODO investigate parallelization
+    map((ent) -> update!(ent, m.Δ), Level()) # TODO investigate parallelization
   catch
     handleException()
   end
 end
 
 function awake!(e::ECS)
-  e.awoken = all(map(awake!, Level()))
+  e.awoken = true
+  map(awake!, Level())
   listenFor(e, TICK)
 end
 
 function shutdown!(e::ECS) 
   unlistenFrom(e, TICK)
-  e.awoken = all(map(destroy!, Level()))
+  all(map(shutdown!, Level()))
+  e.awoken = false
 end
 
 function instantiate!(e::Entity; kw...)
-
   lock(ecs().lock)
 
   id = ecs().next_id
@@ -224,11 +216,9 @@ function instantiate!(e::Entity; kw...)
     PARENT=>get(kw, :pid, 0),
     POSITION=>get(kw, :pos, XYZ()),
     ROTATION=>get(kw, :rot, XYZ()),
-    ACTIVE=>get(kw, :active, true),
-    HIDDEN=>get(kw, :hidden, false),
     PROPS=>merge(get(kw, :props, Dict{Symbol, Any}()), 
       Dict(k=>v for (k,v) in kw if k ∉ 
-      [:children, :pid, :pos, :rot, :active, :hidden, :props]))
+      [:children, :pid, :pos, :rot, :props]))
   ))
 
   if id != 0 # root has no parent but itself
@@ -244,7 +234,7 @@ function instantiate!(e::Entity; kw...)
 end
 
 function destroy!(e::Entity)
-  sd = shutdown!(e)
+  shutdown!(e)
 
   lock(ecs().lock)
 
@@ -259,8 +249,6 @@ function destroy!(e::Entity)
   end
 
   unlock(ecs().lock)
-
-  return sd
 end
 
 function destroy!(es...)
@@ -273,7 +261,7 @@ end
 # and destroy however we want...sorry, it took me
 # a long time to come up with this design, and i'm
 # a little bit psyched about it. :)
-scene_view() = ecs().df[(ecs().df.type .<: [Renderable]) .& (ecs().df.hidden .== [false]), :]
+scene_view() = ecs().df[ecs().df.type .<: [Renderable], :]
 
 mutable struct Scene <: ECSIterator end
 
