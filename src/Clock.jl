@@ -1,5 +1,5 @@
 export Clock, TICK, SLEEP_TIME
-export tick, job!
+export tick, job!, oneshot!
 
 mutable struct Clock <: System
   started::Base.Event
@@ -39,6 +39,14 @@ function job!(c::Clock, f, arg=1)
     end
   end
   schedule(Task(job))
+end
+
+function oneshot!(c::Clock, f, arg=1)
+  function oneshot()
+    Base.wait(c.started)
+    f(arg)
+  end
+  schedule(Task(oneshot))
 end
 
 function awake!(c::Clock)
