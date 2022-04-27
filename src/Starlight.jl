@@ -14,7 +14,7 @@ using Reexport
 
 export handleMessage!, sendMessage, listenFor, unlistenFrom, handleException, dispatchMessage
 export System, App, awake!, shutdown!, run!, system!, on, off
-export app, clk, ecs, inp, ts, phys, scn
+export clk, ecs, inp, ts, phys, scn
 
 const listeners = Dict{DataType, Set{Any}}()
 const messages = Channel(Inf)

@@ -8,7 +8,7 @@ function draw()
 
   map(draw, scn()) # TODO investigate parallelization
 
-  TS_VkEndDrawPass(vulkan_colors(app[].bgrd)...)
+  TS_VkEndDrawPass(vulkan_colors(App().bgrd)...)
 end
 
 function handleMessage!(t::TS, m::TICK)
@@ -31,14 +31,14 @@ sdl_colors(c::ARGB) = Int.(reinterpret.((red(c), green(c), blue(c), alpha(c))))
 
 vulkan_colors(c::Colorant) = Float32.(sdl_colors(c) ./ 255)
 
-clear() = fill(app[].bgrd)
+clear() = fill(App().bgrd)
 
 function Base.fill(c::Colorant)
   TS_VkCmdClearColorImage(vulkan_colors(c)...)
 end
 
 function awake!(t::TS)
-  TS_Init("Hello SDL!", app[].wdth, app[].hght)
+  TS_Init("Hello SDL!", App().wdth, App().hght)
   draw()
   listenFor(t, TICK)
 end
