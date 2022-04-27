@@ -192,12 +192,14 @@ function handleMessage!(e::ECS, m::TICK)
 end
 
 function awake!(e::ECS)
+  @debug "ECS awake!"
   e.awoken = true
   map(awake!, Level())
   listenFor(e, TICK)
 end
 
-function shutdown!(e::ECS) 
+function shutdown!(e::ECS)
+  @debug "ECS shutdown!"
   unlistenFrom(e, TICK)
   all(map(shutdown!, Level()))
   e.awoken = false
@@ -281,10 +283,12 @@ function Base.iterate(s::Scene, state::ECSIteratorState=ECSIteratorState())
 end
 
 function awake!(s::Scene)
+  @debug "Scene awake!"
   listenFor(s, TICK)
 end
 
 function shutdown!(s::Scene)
+  @debug "Scene shutdown!"
   unlistenFrom(s, TICK)
 end
 

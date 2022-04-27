@@ -61,9 +61,11 @@ function handleMessage!(i::Input, m::TICK)
 end
 
 function awake!(i::Input)
+  @debug "Input awake!"
   listenFor(i, TICK)
 end
 
 function shutdown!(i::Input)
+  @debug "Input shutdown!"
   unlistenFrom(i, TICK)
 end

@@ -38,12 +38,14 @@ function Base.fill(c::Colorant)
 end
 
 function awake!(t::TS)
+  @debug "TS awake!"
   TS_Init("Hello SDL!", App().wdth, App().hght)
   draw()
   listenFor(t, TICK)
 end
 
-function shutdown!(t::TS)  
+function shutdown!(t::TS) 
+  @debug "TS shutdown!" 
   unlistenFrom(t, TICK)
   TS_Quit()
 end

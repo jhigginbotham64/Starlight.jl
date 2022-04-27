@@ -24,9 +24,11 @@ function handleMessage!(p::Physics, m::TICK)
 end
 
 function awake!(p::Physics)
+  @debug "Physics awake!"
   listenFor(p, TICK)
 end
 
 function shutdown!(p::Physics)
+  @debug "Physics shutdown!"
   unlistenFrom(p, TICK)
 end

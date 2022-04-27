@@ -54,6 +54,7 @@ end
 # being called as a job by a Clock,
 # see Clock.jl for that interface
 function dispatchMessage(arg)
+  @debug "dispatchMessage"
   try
     m = take!(messages) # NOTE messages are fully processed in the order they are received
     d = typeof(m)

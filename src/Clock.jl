@@ -5,7 +5,7 @@ mutable struct Clock <: System
   started::Base.Event
   stopped::Bool
   freq::AbstractFloat
-  Clock() = new(Base.Event(), true, 1.0 / 60.0)
+  Clock() = new(Base.Event(), true, 0.01667)
 end
 
 struct TICK
@@ -50,6 +50,8 @@ function oneshot!(c::Clock, f, arg=1)
 end
 
 function awake!(c::Clock)
+  @debug "Clock awake!"
+
   job!(c, tick, c.freq)
 
   c.stopped = false
@@ -58,6 +60,7 @@ function awake!(c::Clock)
 end
 
 function shutdown!(c::Clock)
+  @debug "Clock shutdown!"
   c.stopped = true
   c.started = Base.Event() # old one remains signaled no matter what, replace
 end
