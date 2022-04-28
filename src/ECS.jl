@@ -1,6 +1,6 @@
 export Entity, update!
-export ECS, XYZ, accumulate_XYZ, get_entity_row, get_entity_by_id
-export get_entity_row_by_id, get_df_row_prop, set_df_row_prop!
+export ECS, XYZ, accumulate_XYZ, getEntityRow, getEntityById
+export getEntityRowById, getDfRowProp, setDfRowProp!
 export ECSIterator, ECSIteratorState, Level
 export Root, instantiate!, destroy!
 export Scene, scene_view
@@ -70,11 +70,11 @@ end
 
 # internally uses Base.getproperty directly so
 # as to not break if the symbol values change
-get_entity_row(ent::Entity) = @view ecs().df[getproperty(ecs().df, ENT) .== [ent], :]
-get_entity_by_id(id::Int) = ecs().df[getproperty(ecs().df, ID) .== [id], ENT][1]
-get_entity_row_by_id(id::Int) = @view ecs().df[getproperty(ecs().df, ID) .== [id], :]
-get_df_row_prop(r, s) = r[!, s][1]
-set_df_row_prop!(r, s, x) = r[!, s][1] = x
+getEntityRow(ent::Entity) = @view ecs().df[getproperty(ecs().df, ENT) .== [ent], :]
+getEntityById(id::Int) = ecs().df[getproperty(ecs().df, ID) .== [id], ENT][1]
+getEntityRowById(id::Int) = @view ecs().df[getproperty(ecs().df, ID) .== [id], :]
+getDfRowProp(r, s) = r[!, s][1]
+setDfRowProp!(r, s, x) = r[!, s][1] = x
 
 function Base.propertynames(ent::Entity)
   return (
@@ -100,25 +100,25 @@ end
 function accumulate_XYZ(r, s)
   acc = XYZ()
   while true
-    inc = get_df_row_prop(r, s)
+    inc = getDfRowProp(r, s)
     acc += inc
-    r = get_entity_row_by_id(get_df_row_prop(r, PARENT))
-    get_df_row_prop(r, PARENT) != 0 || return acc
+    r = getEntityRowById(getDfRowProp(r, PARENT))
+    getDfRowProp(r, PARENT) != 0 || return acc
   end
 end
 
 function Base.getproperty(ent::Entity, s::Symbol)
-  e = get_entity_row(ent)
+  e = getEntityRow(ent)
   if s == ABSOLUTE_POSITION return accumulate_XYZ(e, POSITION)
   elseif s == ABSOLUTE_ROTATION return accumulate_XYZ(e, ROTATION)
-  elseif s in keys(components) return get_df_row_prop(e, s)
-  elseif s in keys(get_df_row_prop(e, PROPS)) return get_df_row_prop(e, PROPS)[s]
+  elseif s in keys(components) return getDfRowProp(e, s)
+  elseif s in keys(getDfRowProp(e, PROPS)) return getDfRowProp(e, PROPS)[s]
   else return getfield(ent, s)
   end
 end
 
 function Base.setproperty!(ent::Entity, s::Symbol, x)
-  e = get_entity_row(ent)
+  e = getEntityRow(ent)
   if s in [
     ENT, # immutable
     TYPE, # automatically set
@@ -131,12 +131,12 @@ function Base.setproperty!(ent::Entity, s::Symbol, x)
 
   lock(ecs().lock)
   if s == PARENT
-    par = get_entity_by_id(get_df_row_prop(e, PARENT))
-    push!(getproperty(par, CHILDREN), get_df_row_prop(e, ID))
+    par = getEntityById(getDfRowProp(e, PARENT))
+    push!(getproperty(par, CHILDREN), getDfRowProp(e, ID))
   elseif s in keys(components) && s != PROPS
-    set_df_row_prop!(e, s, x)
+    setDfRowProp!(e, s, x)
   else
-    get_df_row_prop(e, PROPS)[s] = x
+    getDfRowProp(e, PROPS)[s] = x
   end
   unlock(ecs().lock)
 end
@@ -173,7 +173,7 @@ function Base.iterate(l::Level, state::ECSIteratorState=ECSIteratorState())
     end
   end
 
-  ent = get_entity_by_id(dequeue!(state.q))
+  ent = getEntityById(dequeue!(state.q))
 
   for c in getproperty(ent, CHILDREN) 
     enqueue!(state.q, c)
@@ -228,7 +228,7 @@ function instantiate!(e::Entity; kw...)
   ))
 
   if id != 0 # root has no parent but itself
-    par = get_entity_by_id(get(kw, PARENT, 0))
+    par = getEntityById(get(kw, PARENT, 0))
     push!(getproperty(par, CHILDREN), id)
   end
 
@@ -244,7 +244,7 @@ function destroy!(e::Entity)
 
   lock(ecs().lock)
 
-  p = get_entity_by_id(getproperty(e, PARENT))
+  p = getEntityById(getproperty(e, PARENT))
 
   # if not root
   if getproperty(p, ID) != getproperty(e, ID)

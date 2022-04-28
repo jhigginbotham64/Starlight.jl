@@ -38,7 +38,7 @@ Starlight.update!(t::TestEntity, Δ::AbstractFloat) = t.updated = true
   ]
 
   # test manipulations on root
-  root = get_entity_by_id(0)
+  root = getEntityById(0)
 
   root.updated = false
 
