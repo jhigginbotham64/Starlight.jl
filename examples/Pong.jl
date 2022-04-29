@@ -305,10 +305,10 @@ function Starlight.handleMessage!(p::PongBall, col::TS_CollisionEvent)
   vel = TS_BtGetLinearVelocity(p.id)
   if col.colliding
     if otherId ∈ [wallt.id, wallb.id]
-      play_sound(joinpath(asset_base, "sounds", "ping_pong_8bit_plop.ogg"))
+      TS_PlaySound(joinpath(asset_base, "sounds", "ping_pong_8bit_plop.ogg"), 0, -1)
       TS_BtSetLinearVelocity(p.id, vel.x, -vel.y, vel.z)
     elseif otherId ∈ [goal1.id, goal2.id]
-      play_sound(joinpath(asset_base, "sounds", "ping_pong_8bit_peeeeeep.ogg"))
+      TS_PlaySound(joinpath(asset_base, "sounds", "ping_pong_8bit_peeeeeep.ogg"), 0, -1)
       destroy!(p)
 
       if otherId == goal2.id
@@ -325,7 +325,7 @@ function Starlight.handleMessage!(p::PongBall, col::TS_CollisionEvent)
         oneshot!(clk(), wait_and_start_new_round)
       end
     elseif otherId ∈ [p1.id, p2.id]
-      play_sound(joinpath(asset_base, "sounds", "ping_pong_8bit_beeep.ogg"))
+      TS_PlaySound(joinpath(asset_base, "sounds", "ping_pong_8bit_beeep.ogg"), 0, -1)
       o = getEntityById(otherId)
       TS_BtSetLinearVelocity(p.id, (hit_edge(p, o) ? 1 : -1) * vel.x, ball_vel_y(hit_angle(p, o)), vel.z)
     end
