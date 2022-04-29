@@ -2,7 +2,7 @@ export Renderable
 export draw, image_surface, ColorRect, Sprite
 export defaultDrawRect, defaultDrawSprite
 
-draw(e::Entity) = nothing
+draw(e) = nothing
 
 mutable struct Root <: Entity end # used for root of ECS tree
 

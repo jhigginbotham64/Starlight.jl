@@ -13,7 +13,7 @@ using Reexport
 @reexport using Telescope
 
 export handleMessage!, sendMessage, listenFor, unlistenFrom, handleException, dispatchMessage
-export System, App, awake!, shutdown!, run!, system!, on, off
+export App, awake!, shutdown!, run!, system!, on, off
 export clk, ecs, inp, ts, phys, scn
 
 const listeners = Dict{DataType, Set{Any}}()
@@ -73,10 +73,8 @@ function dispatchMessage(arg)
   end
 end
 
-abstract type System end
-
-awake!(s::System) = nothing
-shutdown!(s::System) = nothing
+awake!(s) = nothing
+shutdown!(s) = nothing
 
 # order is determined by which systems
 # need to be awakened before which
@@ -87,8 +85,8 @@ include("Entities.jl")
 include("Input.jl")
 include("Physics.jl")
 
-mutable struct App <: System
-  systems::Dict{DataType, System}
+mutable struct App
+  systems::Dict{DataType, Any}
   running::Bool
   wdth::Int
   hght::Int
@@ -100,7 +98,7 @@ mutable struct App <: System
     lock(app_lock)
     try 
       if !isassigned(app)
-        a = new(Dict{DataType, System}(), false, wdth, hght, bgrd)
+        a = new(Dict{DataType, Any}(), false, wdth, hght, bgrd)
 
         system!(a, Clock())
         system!(a, ECS())
@@ -143,7 +141,7 @@ off(a::App) = !a.running
 systemAwakeOrder = () -> [clk(), ts(), inp(), phys(), ecs(), scn()]
 systemShutdownOrder = () -> reverse(systemAwakeOrder())
 
-system!(a::App, s::System) = a.systems[typeof(s)] = s
+system!(a::App, s) = a.systems[typeof(s)] = s
 # note that if running from a script the app will
 # still exit when julia exits, it will never block.
 # figuring out whether/how to keep it alive is

@@ -1,7 +1,7 @@
 export TS
 export to_ARGB, getSDLError, sdl_colors, vulkan_colors, clear, clrclr
 
-mutable struct TS <: System end
+mutable struct TS end
 
 function draw()
   TS_VkBeginDrawPass()

@@ -16,7 +16,7 @@ mutable struct PhysicsObjectInfo
   PhysicsObjectInfo(hx = 0, hy = 0, hz = 0, m = 0, isKinematic = false, mx = 0, my = 0, mz = 0) = new(hx, hy, hz, m, isKinematic, mx, my, mz)
 end
 
-mutable struct Physics <: System 
+mutable struct Physics 
   ids::Dict{Number, PhysicsObjectInfo}
   Physics() = new(Dict{Number, PhysicsObjectInfo}())
 end

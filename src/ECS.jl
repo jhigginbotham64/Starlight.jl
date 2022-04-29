@@ -5,12 +5,9 @@ export ECSIterator, ECSIteratorState, Level
 export Root, instantiate!, destroy!
 export Scene, scene_view
 
+abstract type Entity end
 
-abstract type Entity <: System end
-
-awake!(e::Entity) = true
-shutdown!(e::Entity) = false
-update!(e::Entity, Δ::AbstractFloat) = nothing
+update!(e, Δ) = nothing
 
 # magic symbols that getproperty and setproperty! (and end users) care about
 const ENT = :ent
@@ -54,7 +51,7 @@ const components = Dict(
   PROPS=>Dict{Symbol, Any}
 )
 
-mutable struct ECS <: System
+mutable struct ECS
   df::DataFrame
   awoken::Bool
   lock::ReentrantLock
@@ -154,7 +151,7 @@ Base.length(e::ECS) = size(e.df)[1]
 # constants, and by defining them as structs
 # rather than enums we can pass arbitrary
 # parameters to the iterator
-abstract type ECSIterator <: System end
+abstract type ECSIterator end
 
 mutable struct ECSIteratorState
   root::Number
@@ -189,7 +186,7 @@ function Base.iterate(l::Level, state::ECSIteratorState=ECSIteratorState())
 end
 
 function handleMessage!(e::ECS, m::TICK)
-  # @debug "ECS tick"
+  @debug "ECS tick"
   try
     map((ent) -> update!(ent, m.Δ), Level()) # TODO investigate parallelization
   catch
@@ -198,16 +195,16 @@ function handleMessage!(e::ECS, m::TICK)
 end
 
 function awake!(e::ECS)
-  # @debug "ECS awake!"
+  @debug "ECS awake!"
   e.awoken = true
   map(awake!, Level())
   listenFor(e, TICK)
 end
 
 function shutdown!(e::ECS)
-  # @debug "ECS shutdown!"
+  @debug "ECS shutdown!"
   unlistenFrom(e, TICK)
-  all(map(shutdown!, Level()))
+  map(shutdown!, Level())
   e.awoken = false
 end
 

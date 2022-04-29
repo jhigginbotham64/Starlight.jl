@@ -1,7 +1,7 @@
 export Clock, TICK, SLEEP_NSEC, SLEEP_SEC
 export tick, job!, oneshot!
 
-mutable struct Clock <: System
+mutable struct Clock
   started::Base.Event
   stopped::Bool
   freq::AbstractFloat
@@ -13,7 +13,7 @@ struct TICK
 end
 
 struct SLEEP_SEC
-  Δ::UInt
+  Δ::AbstractFloat
 end
 
 struct SLEEP_NSEC

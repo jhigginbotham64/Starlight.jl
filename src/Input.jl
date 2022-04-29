@@ -1,6 +1,6 @@
 export Input
 
-mutable struct Input <: System end
+mutable struct Input end
 
 function handleMessage!(i::Input, m::TICK)
   @debug "Input tick"
