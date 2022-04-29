@@ -33,7 +33,7 @@ const msg_scale = 2
 const center_line_dash_w = 10
 const center_line_dash_h = 40
 const center_line_dash_spacing = 20
-asset_base = joinpath(artifact"test", "test")
+const asset_base = joinpath(artifact"test", "test")
 const secs_between_rounds = 2
 const score_to_win = 10
 
