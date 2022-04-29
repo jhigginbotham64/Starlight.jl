@@ -45,9 +45,9 @@ import Base.+, Base.-, Base.*, Base.÷, Base./, Base.%
 const components = Dict(
   ENT=>Entity,
   TYPE=>DataType,
-  ID=>Int,
-  PARENT=>Int,
-  CHILDREN=>Set{Int},
+  ID=>Number,
+  PARENT=>Number,
+  CHILDREN=>Set{Number},
   POSITION=>XYZ,
   ROTATION=>XYZ,
   HIDDEN=>Bool,
@@ -58,7 +58,7 @@ mutable struct ECS <: System
   df::DataFrame
   awoken::Bool
   lock::ReentrantLock
-  next_id::Int
+  next_id::Number
   function ECS()
     df = DataFrame(
       NamedTuple{Tuple(keys(components))}(
@@ -71,8 +71,14 @@ end
 # internally uses Base.getproperty directly so
 # as to not break if the symbol values change
 getEntityRow(ent::Entity) = @view ecs().df[getproperty(ecs().df, ENT) .== [ent], :]
-getEntityById(id::Int) = ecs().df[getproperty(ecs().df, ID) .== [id], ENT][1]
-getEntityRowById(id::Int) = @view ecs().df[getproperty(ecs().df, ID) .== [id], :]
+function getEntityById(id::Number)
+  arr = ecs().df[getproperty(ecs().df, ID) .== [id], ENT]
+  if length(arr) > 0
+    return arr[1]
+  end
+  return nothing
+end
+getEntityRowById(id::Number) = @view ecs().df[getproperty(ecs().df, ID) .== [id], :]
 getDfRowProp(r, s) = r[!, s][1]
 setDfRowProp!(r, s, x) = r[!, s][1] = x
 
@@ -151,11 +157,11 @@ Base.length(e::ECS) = size(e.df)[1]
 abstract type ECSIterator <: System end
 
 mutable struct ECSIteratorState
-  root::Int
-  q::Queue{Int}
+  root::Number
+  q::Queue{Number}
   root_visited::Bool
-  index::Int
-  ECSIteratorState(; root=0, q=Queue{Int}(), root_visited=false, index=1) = new(root, q, root_visited, index)
+  index::Number
+  ECSIteratorState(; root=0, q=Queue{Number}(), root_visited=false, index=1) = new(root, q, root_visited, index)
 end
 
 # refers to tree level, i.e. breadth-first,
@@ -183,7 +189,7 @@ function Base.iterate(l::Level, state::ECSIteratorState=ECSIteratorState())
 end
 
 function handleMessage!(e::ECS, m::TICK)
-  @debug "ECS tick"
+  # @debug "ECS tick"
   try
     map((ent) -> update!(ent, m.Δ), Level()) # TODO investigate parallelization
   catch
@@ -192,14 +198,14 @@ function handleMessage!(e::ECS, m::TICK)
 end
 
 function awake!(e::ECS)
-  @debug "ECS awake!"
+  # @debug "ECS awake!"
   e.awoken = true
   map(awake!, Level())
   listenFor(e, TICK)
 end
 
 function shutdown!(e::ECS)
-  @debug "ECS shutdown!"
+  # @debug "ECS shutdown!"
   unlistenFrom(e, TICK)
   all(map(shutdown!, Level()))
   e.awoken = false
@@ -217,7 +223,7 @@ function instantiate!(e::Entity; kw...)
     ENT=>e,
     TYPE=>typeof(e),
     ID=>id,
-    CHILDREN=>get(kw, CHILDREN, Set{Int}()),
+    CHILDREN=>get(kw, CHILDREN, Set{Number}()),
     PARENT=>get(kw, PARENT, 0),
     POSITION=>get(kw, POSITION, XYZ()),
     ROTATION=>get(kw, ROTATION, XYZ()),
@@ -283,18 +289,18 @@ function Base.iterate(s::Scene, state::ECSIteratorState=ECSIteratorState())
 end
 
 function awake!(s::Scene)
-  @debug "Scene awake!"
+  # @debug "Scene awake!"
   listenFor(s, TICK)
 end
 
 function shutdown!(s::Scene)
-  @debug "Scene shutdown!"
+  # @debug "Scene shutdown!"
   unlistenFrom(s, TICK)
 end
 
 function handleMessage!(s::Scene, m::TICK)
   # sort just once per tick rather than every time we iterate
-  @debug "Scene tick"
+  # @debug "Scene tick"
   try
     sort!(ecs().df, [order(POSITION, rev=true, by=(pos)->pos.z)])
   catch

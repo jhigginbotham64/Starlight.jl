@@ -63,7 +63,8 @@ function dispatchMessage(arg)
       # Threads.@threads doesn't work on raw sets
       # because it needs to use indexing to split
       # up memory, i work around it this way
-      Threads.@threads for l in Vector([listeners[d]...])
+      # Threads.@threads for l in Vector([listeners[d]...])
+      for l in Vector([listeners[d]...])
         handleMessage!(l, m)
       end
     end
@@ -140,6 +141,9 @@ phys() = app[].systems[Physics]
 on(a::App) = a.running
 off(a::App) = !a.running
 
+systemAwakeOrder = () -> [clk(), ts(), inp(), phys(), ecs(), scn()]
+systemShutdownOrder = () -> reverse(systemAwakeOrder())
+
 system!(a::App, s::System) = a.systems[typeof(s)] = s
 # note that if running from a script the app will
 # still exit when julia exits, it will never block.
@@ -148,21 +152,21 @@ system!(a::App, s::System) = a.systems[typeof(s)] = s
 function awake!(a::App)
   if !on(a)
     job!(a.systems[Clock], dispatchMessage) # this could be parallelized if not for mqueue_lock
-    map(awake!, values(a.systems))
+    map(awake!, systemAwakeOrder())
+    listenFor(a, SDL_QuitEvent)
     a.running = true
   end
 end
 
 function shutdown!(a::App)
   if !off(a)
-    map(shutdown!, values(a.systems))
+    map(shutdown!, systemShutdownOrder())
+    unlistenFrom(a, SDL_QuitEvent)
     a.running = false
   end
-  return a.running
 end
 
 function run!(a::App)
-  listenFor(a, SDL_QuitEvent)
   awake!(a)
   if !isinteractive()
     while on(a)

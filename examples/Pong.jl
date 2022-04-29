@@ -1,14 +1,48 @@
 using Starlight
 
-a = App(; wdth=600, hght=400, bgrd=colorant"black")
+const window_width = 600
+const window_height = 400
+const paddle_width = 10
+const paddle_height = 60
+const ball_width = 10
+const ball_height = 10
+const wall_height = 10
+const goal_width = 10
+const hz = 1
 
-# TODO: make sure z values are set properly
-# TODO: short delay between score and new ball (use Clock for coroutines?) -> Clock function
+# collision margins
+const wmx = 0 # wall
+const wmy = 0
+const gmx = 0 # goal
+const gmy = 0
+const pmx = 0 # paddle
+const pmy = 0
+const bmx = 0 # ball
+const bmy = 0
+
+const pv = window_height # paddle velocity
+const ball_vel_x_mult = 0.25
+const ball_vel_y_mult = 1.5
+const ball_vel_x = ball_vel_x_mult * window_width
+const ball_vel_y_max = ball_vel_y_mult * window_height
+const paddle_ball_x_tolerance = 2
+ball_vel_y(i) =  -i * ball_vel_y_max
+const score_scale = 10
+const score_y_offset = 50
+const msg_scale = 2
+const center_line_dash_w = 10
+const center_line_dash_h = 40
+const center_line_dash_spacing = 20
+asset_base = joinpath(artifact"test", "test")
+const secs_between_rounds = 2
+const score_to_win = 10
+
+a = App(; wdth=window_width, hght=window_height, bgrd=colorant"black")
 
 # center line
 center_line = []
-for i in 30:60:330
-  push!(center_line, ColorRect(10, 40; color=colorant"grey", pos=XYZ(295, i)))
+for i in (wall_height + center_line_dash_spacing):(center_line_dash_h + center_line_dash_spacing):(window_height - wall_height - center_line_dash_h - center_line_dash_spacing)
+  push!(center_line, ColorRect(center_line_dash_w, center_line_dash_h; color=colorant"grey", pos=XYZ((window_width - center_line_dash_w) / 2, i)))
 end
 
 # working with Cellphone strings
@@ -117,7 +151,7 @@ mutable struct CellphoneString <: Renderable
 end
 
 function Starlight.draw(s::CellphoneString)
-  img = (s.white) ? artifact"test/test/sprites/charmap-cellphone_white.png" : artifact"test/test/sprites/charmap-cellphone_black.png"
+  img = (s.white) ? joinpath(asset_base, "sprites", "charmap-cellphone_white.png") : joinpath(asset_base, "sprites", "charmap-cellphone_black.png")
   for (i,c) in enumerate(s.str)
     cell_ind = cpchars[c]
     TS_VkCmdDrawSprite(img, vulkan_colors(s.color)...,
@@ -128,13 +162,13 @@ function Starlight.draw(s::CellphoneString)
 end
 
 # p1 score
-score1 = CellphoneString('0'; color=colorant"grey", scale=XYZ(10,10), pos=XYZ(115,50))
+score1 = CellphoneString('0'; color=colorant"grey", scale=XYZ(score_scale, score_scale), pos=XYZ((window_width / 2) - (window_width / 4) - (7 * score_scale / 2), score_y_offset))
 
 # p2 score
-score2 = CellphoneString('0'; color=colorant"grey", scale=XYZ(10,10), pos=XYZ(415,50))
+score2 = CellphoneString('0'; color=colorant"grey", scale=XYZ(score_scale, score_scale), pos=XYZ((window_width / 2) + (window_width / 4) - (7 * score_scale / 2), score_y_offset))
 
 # welcome message
-msg = CellphoneString("Press SPACE to start", false; scale=XYZ(2,2), pos=XYZ(160, 191))
+msg = CellphoneString("Press SPACE to start", false; scale=XYZ(msg_scale, msg_scale), pos=XYZ((window_width - 140 * msg_scale) / 2, (window_height - 9 * msg_scale) / 2))
 
 @enum PongArenaSide LEFT RIGHT TOP BOTTOM
 
@@ -146,11 +180,38 @@ end
 
 Starlight.draw(p::PongPaddle) = defaultDrawRect(p)
 
+function Starlight.awake!(p::PongPaddle)
+  hw = paddle_width / 2
+  hh = paddle_height / 2
+  addTriggerBox!(p, hw, hh, hz, p.pos.x + hw, p.pos.y + hh, 0, pmx, pmy, 0)
+end
+
+function Starlight.shutdown!(p::PongPaddle)
+  removePhysicsObject!(p)
+end
+
+function Starlight.handleMessage!(p::PongPaddle, col::TS_CollisionEvent)
+  otherId = other(p, col)
+  if otherId == wallt.id
+    if p.id == p1.id
+      pg.p1TouchingTopWall = col.colliding
+    elseif p.id == p2.id
+      pg.p2TouchingTopWall = col.colliding
+    end
+  elseif otherId == wallb.id
+    if p.id == p1.id
+      pg.p1TouchingBottomWall = col.colliding
+    elseif p.id == p2.id
+      pg.p2TouchingBottomWall = col.colliding
+    end
+  end
+end
+
 # p1
-p1 = PongPaddle(10, 60, LEFT; pos=XYZ(10, 170))
+p1 = PongPaddle(paddle_width, paddle_height, LEFT; pos=XYZ(paddle_width, (window_height - paddle_height) / 2))
 
 # p2
-p2 = PongPaddle(10, 60, RIGHT; pos=XYZ(580, 170))
+p2 = PongPaddle(paddle_width, paddle_height, RIGHT; pos=XYZ(window_width - 2 * paddle_width, (window_height - paddle_height) / 2))
 
 mutable struct PongArenaWall <: Starlight.Renderable
   function PongArenaWall(w, h, side; kw...)
@@ -160,11 +221,21 @@ end
 
 Starlight.draw(p::PongArenaWall) = defaultDrawRect(p)
 
+function Starlight.awake!(p::PongArenaWall)
+  hw = window_width / 2
+  hh = wall_height / 2
+  addTriggerBox!(p, hw, hh, hz, p.pos.x + hw, p.pos.y + hh, 0, wmx, wmy, 0)
+end
+
+function Starlight.shutdown!(p::PongArenaWall)
+  removePhysicsObject!(p)
+end
+
 # top wall
-wallt = PongArenaWall(600, 10, TOP; pos=XYZ(0, 0))
+wallt = PongArenaWall(window_width, wall_height, TOP; pos=XYZ(0, 0))
 
 # bottom wall
-wallb = PongArenaWall(600, 10, BOTTOM; pos=XYZ(0, 390))
+wallb = PongArenaWall(window_width, wall_height, BOTTOM; pos=XYZ(0, window_height - wall_height))
 
 mutable struct PongArenaGoal <: Starlight.Entity
   function PongArenaGoal(w, h, side; kw...)
@@ -172,11 +243,21 @@ mutable struct PongArenaGoal <: Starlight.Entity
   end
 end
 
+function Starlight.awake!(p::PongArenaGoal)
+  hw = goal_width / 2
+  hh = window_height / 2
+  addTriggerBox!(p, hw, hh, hz, p.pos.x + hw, p.pos.y + hh, 0, gmx, gmy, 0)
+end
+
+function Starlight.shutdown!(p::PongArenaGoal)
+  removePhysicsObject!(p)
+end
+
 # left goal
-walll = PongArenaGoal(400, 10, LEFT; pos=XYZ(-10, 0))
+goal1 = PongArenaGoal(window_height * 2, goal_width, LEFT; pos=XYZ(-goal_width, 0))
 
 # right goal
-wallr = PongArenaGoal(400, 10, RIGHT; pos=XYZ(610, 0))
+goal2 = PongArenaGoal(window_height * 2, goal_width, RIGHT; pos=XYZ(window_width, 0))
 
 mutable struct PongBall <: Starlight.Renderable
   function PongBall(w, h; kw...)
@@ -186,21 +267,89 @@ end
 
 Starlight.draw(p::PongBall) = defaultDrawRect(p)
 
-mutable struct PongGame <: Starlight.Entity
-  ball::Union{PongBall, Nothing}
-  w::Bool
-  s::Bool
-  up::Bool
-  down::Bool
-  function PongGame() 
-    instantiate!(new(); ball=nothing, w=false, s=false, up=false, down=false)
+function Starlight.awake!(p::PongBall)
+  hw = ball_width / 2
+  hh = ball_height / 2
+  addTriggerBox!(p, hw, hh, hz, p.pos.x + hw, p.pos.y + hh, 0, bmx, bmy, 0)
+end
+
+function Starlight.shutdown!(p::PongBall)
+  removePhysicsObject!(p)
+end
+
+function hit_edge(p::PongBall, o::PongPaddle)
+  if o.side == LEFT
+    return p.abs_pos.x < (o.abs_pos.x + paddle_width - paddle_ball_x_tolerance)
+  else
+    return p.abs_pos.x > (o.abs_pos.x - ball_width + paddle_ball_x_tolerance)
   end
 end
 
-Starlight.awake!(p::PongGame) = listenFor(p, SDL_KeyboardEvent)
+function hit_angle(p::PongBall, o::PongPaddle)
+  paddle_top = o.abs_pos.y - ball_height / 2
+  ball_center = p.abs_pos.y + ball_height / 2
+  paddle_hit_area = paddle_height + ball_height
+  return -(2 * ((ball_center - paddle_top) / paddle_hit_area) - 1)
+end
+
+function wait_and_start_new_round(arg)
+  sleep(SLEEP_SEC(secs_between_rounds))
+  pg.ball = newball()
+end
+
+getP1Score() = parse(Int, score1.str)
+getP2Score() = parse(Int, score2.str)
+
+function Starlight.handleMessage!(p::PongBall, col::TS_CollisionEvent)
+  otherId = other(p, col)
+  vel = TS_BtGetLinearVelocity(p.id)
+  if col.colliding
+    if otherId ∈ [wallt.id, wallb.id]
+      play_sound(joinpath(asset_base, "sounds", "ping_pong_8bit_plop.ogg"))
+      TS_BtSetLinearVelocity(p.id, vel.x, -vel.y, vel.z)
+    elseif otherId ∈ [goal1.id, goal2.id]
+      play_sound(joinpath(asset_base, "sounds", "ping_pong_8bit_peeeeeep.ogg"))
+      destroy!(p)
+
+      if otherId == goal2.id
+        score1.str = string(getP1Score() + 1)
+      elseif otherId == goal1.id
+        score2.str = string(getP2Score() + 1)
+      end
+
+      if getP1Score() == score_to_win || getP2Score() == score_to_win
+        msg.hidden = false
+        score1.str = "0"
+        score2.str = "0"
+      else
+        oneshot!(clk(), wait_and_start_new_round)
+      end
+    elseif otherId ∈ [p1.id, p2.id]
+      play_sound(joinpath(asset_base, "sounds", "ping_pong_8bit_beeep.ogg"))
+      o = getEntityById(otherId)
+      TS_BtSetLinearVelocity(p.id, (hit_edge(p, o) ? 1 : -1) * vel.x, ball_vel_y(hit_angle(p, o)), vel.z)
+    end
+  end
+end
+
+mutable struct PongGame <: Starlight.Entity
+  function PongGame() 
+    instantiate!(new(); ball=nothing, w=false, s=false, up=false, down=false, p1TouchingTopWall=false, p2TouchingTopWall=false, p1TouchingBottomWall=false, p2TouchingBottomWall=false)
+  end
+end
+
+function Starlight.awake!(p::PongGame)
+  listenFor(p, SDL_KeyboardEvent)
+  TS_BtSetGravity(0, 0, 0)
+end
+
 Starlight.shutdown!(p::PongGame) = unlistenFrom(p, SDL_KeyboardEvent)
 
-newball() = PongBall(10, 10; pos=XYZ(295, 195))
+function newball()
+  p = PongBall(ball_width, ball_height; pos=XYZ((window_width - ball_width) / 2, (window_height - ball_height) / 2))
+  TS_BtSetLinearVelocity(p.id, ((rand(Bool)) ? 1 : -1) * ball_vel_x, ball_vel_y(2 * rand() - 1), 0)
+  return p
+end
 
 function Starlight.handleMessage!(p::PongGame, key::SDL_KeyboardEvent)
   if key.keysym.scancode == SDL_SCANCODE_SPACE && !msg.hidden
@@ -218,19 +367,17 @@ function Starlight.handleMessage!(p::PongGame, key::SDL_KeyboardEvent)
 end
 
 function Starlight.update!(p::PongGame, Δ::AbstractFloat)
-  if !(p.w ⊻ p.s)
-    # set left paddle velocity to 0
-  elseif p.w
-    # set left paddle velocity to up
-  elseif p.s
-    # set left paddle velocity to down
+  TS_BtSetLinearVelocity(p1.id, 0, 0, 0)
+  TS_BtSetLinearVelocity(p2.id, 0, 0, 0)
+  if p.w && !p.p1TouchingTopWall
+    TS_BtSetLinearVelocity(p1.id, 0, -pv, 0)
+  elseif p.s && !p.p1TouchingBottomWall
+    TS_BtSetLinearVelocity(p1.id, 0, pv, 0)
   end
-  if !(p.up ⊻ p.down)
-    # set right paddle velocity to 0
-  elseif p.up
-    # set right paddle velocity to up
-  elseif p.down
-    # set right paddle velocity to down
+  if p.up && !p.p2TouchingTopWall
+    TS_BtSetLinearVelocity(p2.id, 0, -pv, 0)
+  elseif p.down && !p.p2TouchingBottomWall
+    TS_BtSetLinearVelocity(p2.id, 0, pv, 0)
   end
 end
 

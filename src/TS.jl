@@ -29,7 +29,7 @@ to_ARGB(c::Colorant) = ARGB(c)
 sdl_colors(c::Colorant) = sdl_colors(convert(ARGB{Colors.FixedPointNumbers.Normed{UInt8,8}}, c))
 sdl_colors(c::ARGB) = Int.(reinterpret.((red(c), green(c), blue(c), alpha(c))))
 
-vulkan_colors(c::Colorant) = Float32.(sdl_colors(c) ./ 255)
+vulkan_colors(c::Colorant) = Cfloat.(sdl_colors(c) ./ 255)
 
 clear() = fill(App().bgrd)
 

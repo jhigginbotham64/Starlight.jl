@@ -1,4 +1,4 @@
-export Clock, TICK, SLEEP_TIME
+export Clock, TICK, SLEEP_NSEC, SLEEP_SEC
 export tick, job!, oneshot!
 
 mutable struct Clock <: System
@@ -9,14 +9,27 @@ mutable struct Clock <: System
 end
 
 struct TICK
-  Δ::AbstractFloat # seconds, but has a distinct meaning from from RT_SEC
+  Δ::AbstractFloat # seconds
 end
 
-struct SLEEP_TIME
-  Δ::UInt # time in nanoseconds to sleep for
+struct SLEEP_SEC
+  Δ::UInt
 end
 
-function Base.sleep(s::SLEEP_TIME)
+struct SLEEP_NSEC
+  Δ::UInt
+end
+
+function Base.sleep(s::SLEEP_SEC)
+  t1 = time()
+  while true
+    if time() - t1 >= s.Δ break end
+    yield()
+  end
+  return time() - t1
+end
+
+function Base.sleep(s::SLEEP_NSEC)
   t1 = time_ns()
   while true
     if time_ns() - t1 >= s.Δ break end
@@ -26,7 +39,7 @@ function Base.sleep(s::SLEEP_TIME)
 end
 
 function tick(Δ)
-  δ = sleep(SLEEP_TIME(Δ * 1e9))
+  δ = sleep(SLEEP_NSEC(Δ * 1e9))
   sendMessage(TICK(δ / 1e9))
   @debug "tick"
 end
