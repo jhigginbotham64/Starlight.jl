@@ -20,7 +20,7 @@ Starlight projects are simply Julia projects, no special structure or anything, 
 julia> using Starlight
 ```
 
-Before you write any code that hooks into the library, you must create an App:
+To take advantage of the magic of Starlight you must first create an App:
 
 ```julia
 julia> a = App()
@@ -46,7 +46,7 @@ julia> run!(a)
 
 ...which, as shown, works in the REPL as well.
 
-Before you try doing anything interesting with the library, it is recommended that you read the docs (coming soon!).
+Before you try doing anything interesting with the library, it is recommended that you read the docs.
 
 ### Contact
 
