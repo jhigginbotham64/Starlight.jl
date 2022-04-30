@@ -12,33 +12,33 @@ In your Julia environment, you can simply
 
 ### Basic Usage
 
-Starlight project are simply Julia projects, no special structure or anything, so you simply declare that you are
+Starlight projects are simply Julia projects, no special structure or anything, so you simply declare that you are
 
-```julia-repl
+```julia
 julia> using Starlight
 ```
 
 Before you write any code that hooks into the library, you must create an App:
 
-```julia-repl
+```julia
 julia> a = App()
 ```
 
 This gets you an internal clock, message bus, entity component system, rendering, physics, input, and sound, although it doesn't do anything with them yet. To open a window and start running the initialized subsystems, you can call
 
-```julia-repl
+```julia
 julia> awake!(a)
 ```
 
 To close everything down, call
 
-```julia-repl
+```julia
 julia> shutdown!(a)
 ```
 
 If running in a script you will need to keep the Julia process alive, so instead of `awake!(a)` you can use
 
-```julia-repl
+```julia
 julia> run!(a)
 ```
 
