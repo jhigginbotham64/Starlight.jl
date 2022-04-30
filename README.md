@@ -8,7 +8,9 @@ With a focus on flexibility and code quality, Starlight aims to be such a framew
 
 In your Julia environment, you can simply
 
-`] add Starlight`
+```julia
+julia> ] add Starlight
+```
 
 ### Basic Usage
 
