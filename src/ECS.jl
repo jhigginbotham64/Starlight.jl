@@ -1,8 +1,8 @@
 export Entity, update!
-export ECS, XYZ, accumulate_XYZ, getEntityRow, getEntityById
-export getEntityRowById, getDfRowProp, setDfRowProp!
+export ECS, XYZ, accumulate_XYZ
+export getEntityRow, getEntityById, getEntityRowById, getDfRowProp, setDfRowProp!
 export ECSIterator, ECSIteratorState, Level
-export Root, instantiate!, destroy!
+export instantiate!, destroy!
 export Scene, scene_view
 
 abstract type Entity end

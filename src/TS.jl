@@ -1,5 +1,5 @@
 export TS
-export to_ARGB, getSDLError, sdl_colors, vulkan_colors, clear, clrclr
+export to_ARGB, getSDLError, sdl_colors, vulkan_colors, clear
 
 mutable struct TS end
 

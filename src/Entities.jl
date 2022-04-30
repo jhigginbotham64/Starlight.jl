@@ -1,5 +1,5 @@
-export Renderable
-export draw, image_surface, ColorRect, Sprite
+export Root, Renderable
+export draw, ColorRect, Sprite
 export defaultDrawRect, defaultDrawSprite
 
 draw(e) = nothing

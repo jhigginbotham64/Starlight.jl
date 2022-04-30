@@ -13,7 +13,7 @@ using Reexport
 @reexport using Telescope
 
 export handleMessage!, sendMessage, listenFor, unlistenFrom, handleException, dispatchMessage
-export App, awake!, shutdown!, run!, system!, on, off
+export App, awake!, shutdown!, run!, on, off
 export clk, ecs, inp, ts, phys, scn
 
 const listeners = Dict{DataType, Set{Any}}()
@@ -76,8 +76,6 @@ end
 awake!(s) = nothing
 shutdown!(s) = nothing
 
-# order is determined by which systems
-# need to be awakened before which
 include("Clock.jl")
 include("ECS.jl")
 include("TS.jl")
