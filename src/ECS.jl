@@ -1,7 +1,7 @@
 export Entity, update!
 export ECS, XYZ, accumulate_XYZ
 export getEntityRow, getEntityById, getEntityRowById, getDfRowProp, setDfRowProp!
-export ECSIterator, ECSIteratorState, Level
+export ECSIteratorState, Level
 export instantiate!, destroy!
 export Scene, scene_view
 
@@ -65,7 +65,7 @@ mutable struct ECS
   end
 end
 
-# internally uses Base.getproperty directly so
+# internally using Base.getproperty directly so
 # as to not break if the symbol values change
 getEntityRow(ent::Entity) = @view ecs().df[getproperty(ecs().df, ENT) .== [ent], :]
 function getEntityById(id::Number)
@@ -81,17 +81,9 @@ setDfRowProp!(r, s, x) = r[!, s][1] = x
 
 function Base.propertynames(ent::Entity)
   return (
-    ENT,
-    TYPE,
-    ID,
-    CHILDREN,
-    PARENT,
-    POSITION,
-    ROTATION,
+    keys(components)...,
     ABSOLUTE_POSITION,
     ABSOLUTE_ROTATION,
-    HIDDEN,
-    PROPS,
     [n for n in keys(getproperty(ent, PROPS))]...
   )
 end
@@ -146,11 +138,7 @@ end
 
 Base.length(e::ECS) = size(e.df)[1]
 
-# can define multiple iteration types using
-# multiple dispatch thanks to all the global
-# constants, and by defining them as structs
-# rather than enums we can pass arbitrary
-# parameters to the iterator
+# TODO: the type/struct approach feels clunky, fix with Vals?
 abstract type ECSIterator end
 
 mutable struct ECSIteratorState
@@ -158,12 +146,13 @@ mutable struct ECSIteratorState
   q::Queue{Number}
   root_visited::Bool
   index::Number
-  ECSIteratorState(; root=0, q=Queue{Number}(), root_visited=false, index=1) = new(root, q, root_visited, index)
+  ECSIteratorState(; root=0, q=Queue{Number}(), 
+  root_visited=false, index=1) = new(root, q, root_visited, index)
 end
 
 # refers to tree level, i.e. breadth-first,
 # nothing special to see here
-struct Level <: ECSIterator end 
+struct Level end 
 Base.length(l::Level) = length(ecs())
 
 function Base.iterate(l::Level, state::ECSIteratorState=ECSIteratorState())
@@ -272,7 +261,7 @@ end
 # a little bit psyched about it. :)
 scene_view() = ecs().df[(ecs().df.type .<: [Renderable]) .& (ecs().df.hidden .== [false]), :]
 
-mutable struct Scene <: ECSIterator end
+struct Scene end
 
 Base.length(s::Scene) = size(scene_view())[1]
 
@@ -286,18 +275,18 @@ function Base.iterate(s::Scene, state::ECSIteratorState=ECSIteratorState())
 end
 
 function awake!(s::Scene)
-  # @debug "Scene awake!"
+  @debug "Scene awake!"
   listenFor(s, TICK)
 end
 
 function shutdown!(s::Scene)
-  # @debug "Scene shutdown!"
+  @debug "Scene shutdown!"
   unlistenFrom(s, TICK)
 end
 
 function handleMessage!(s::Scene, m::TICK)
   # sort just once per tick rather than every time we iterate
-  # @debug "Scene tick"
+  @debug "Scene tick"
   try
     sort!(ecs().df, [order(POSITION, rev=true, by=(pos)->pos.z)])
   catch

@@ -74,6 +74,8 @@ end
 
 function shutdown!(c::Clock)
   @debug "Clock shutdown!"
+
   c.stopped = true
+  
   c.started = Base.Event() # old one remains signaled no matter what, replace
 end

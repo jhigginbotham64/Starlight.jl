@@ -47,7 +47,7 @@ function handleException()
   for s in stacktrace(catch_backtrace())
     println(s)
   end
-  rethrow()
+  shutdown!(App())
 end
 
 # uses single argument to support
@@ -63,8 +63,7 @@ function dispatchMessage(arg)
       # Threads.@threads doesn't work on raw sets
       # because it needs to use indexing to split
       # up memory, i work around it this way
-      # Threads.@threads for l in Vector([listeners[d]...])
-      for l in Vector([listeners[d]...])
+      Threads.@threads for l in Vector([listeners[d]...])
         handleMessage!(l, m)
       end
     end
@@ -73,8 +72,8 @@ function dispatchMessage(arg)
   end
 end
 
-awake!(s) = nothing
-shutdown!(s) = nothing
+awake!(a) = nothing
+shutdown!(a) = nothing
 
 include("Clock.jl")
 include("ECS.jl")
@@ -126,6 +125,7 @@ end
 const app = Ref{App}()
 const app_lock = ReentrantLock()
 
+# TODO: fix this, it feels hacky
 clk() = app[].systems[Clock]
 scn() = app[].systems[Scene]
 ts() = app[].systems[TS]
@@ -136,9 +136,11 @@ phys() = app[].systems[Physics]
 on(a::App) = a.running
 off(a::App) = !a.running
 
+# TODO: fix this with an ordered dict or something
 systemAwakeOrder = () -> [clk(), ts(), inp(), phys(), ecs(), scn()]
-systemShutdownOrder = () -> reverse(systemAwakeOrder())
+systemShutdownOrder = () -> [clk(), inp(), phys(), scn(), ecs(), ts()]
 
+# TODO: need an elegant way to remove systems
 system!(a::App, s) = a.systems[typeof(s)] = s
 # note that if running from a script the app will
 # still exit when julia exits, it will never block.
@@ -146,9 +148,8 @@ system!(a::App, s) = a.systems[typeof(s)] = s
 # on the user. see run! below for one method.
 function awake!(a::App)
   if !on(a)
-    job!(a.systems[Clock], dispatchMessage) # this could be parallelized if not for mqueue_lock
+    job!(clk(), dispatchMessage) # this could be parallelized if not for mqueue_lock
     map(awake!, systemAwakeOrder())
-    listenFor(a, SDL_QuitEvent)
     a.running = true
   end
 end
@@ -156,7 +157,6 @@ end
 function shutdown!(a::App)
   if !off(a)
     map(shutdown!, systemShutdownOrder())
-    unlistenFrom(a, SDL_QuitEvent)
     a.running = false
   end
 end
@@ -168,10 +168,6 @@ function run!(a::App)
       yield()
     end
   end
-end
-
-function handleMessage!(a::App, q::SDL_QuitEvent)
-  shutdown!(a)
 end
 
 end

@@ -41,8 +41,11 @@ a = App(; wdth=window_width, hght=window_height, bgrd=colorant"black")
 
 # center line
 center_line = []
-for i in (wall_height + center_line_dash_spacing):(center_line_dash_h + center_line_dash_spacing):(window_height - wall_height - center_line_dash_h - center_line_dash_spacing)
-  push!(center_line, ColorRect(center_line_dash_w, center_line_dash_h; color=colorant"grey", pos=XYZ((window_width - center_line_dash_w) / 2, i)))
+for i in (wall_height + center_line_dash_spacing):\
+  (center_line_dash_h + center_line_dash_spacing):\
+  (window_height - wall_height - center_line_dash_h - center_line_dash_spacing)
+  push!(center_line, ColorRect(center_line_dash_w, center_line_dash_h; 
+  color=colorant"grey", pos=XYZ((window_width - center_line_dash_w) / 2, i)))
 end
 
 # working with Cellphone strings
@@ -145,30 +148,44 @@ cpchars = Dict(
 )
 
 mutable struct CellphoneString <: Renderable
-  function CellphoneString(str="", white=true; scale=XYZ(1,1), color=colorant"white", kw...)
+  function CellphoneString(str="", white=true; 
+    scale=XYZ(1,1), color=colorant"white", kw...)
     instantiate!(new(); str=str, white=white, scale=scale, color=color, kw...)
   end
 end
 
 function Starlight.draw(s::CellphoneString)
-  img = (s.white) ? joinpath(asset_base, "sprites", "charmap-cellphone_white.png") : joinpath(asset_base, "sprites", "charmap-cellphone_black.png")
+  img = (s.white) ? joinpath(asset_base,
+                      "sprites", "charmap-cellphone_white.png") : \
+                    joinpath(asset_base, 
+                      "sprites", "charmap-cellphone_black.png")
   for (i,c) in enumerate(s.str)
     cell_ind = cpchars[c]
     TS_VkCmdDrawSprite(img, vulkan_colors(s.color)...,
     0, 0, 0, 0,
     7, 9, cell_ind[1], cell_ind[2],
-    Int(floor(s.scale.x * 7)) * (i - 1) + s.abs_pos.x, s.abs_pos.y, s.scale.x, s.scale.y)
+    Int(floor(s.scale.x * 7)) * (i - 1) + s.abs_pos.x, s.abs_pos.y, 
+              s.scale.x, s.scale.y)
   end
 end
 
 # p1 score
-score1 = CellphoneString('0'; color=colorant"grey", scale=XYZ(score_scale, score_scale), pos=XYZ((window_width / 2) - (window_width / 4) - (7 * score_scale / 2), score_y_offset))
+score1 = CellphoneString('0'; color=colorant"grey", 
+  scale=XYZ(score_scale, score_scale), 
+  pos=XYZ((window_width / 2) - (window_width / 4) - 
+  (7 * score_scale / 2), score_y_offset))
 
 # p2 score
-score2 = CellphoneString('0'; color=colorant"grey", scale=XYZ(score_scale, score_scale), pos=XYZ((window_width / 2) + (window_width / 4) - (7 * score_scale / 2), score_y_offset))
+score2 = CellphoneString('0'; color=colorant"grey", 
+  scale=XYZ(score_scale, score_scale), 
+  pos=XYZ((window_width / 2) + (window_width / 4) - 
+  (7 * score_scale / 2), score_y_offset))
 
 # welcome message
-msg = CellphoneString("Press SPACE to start", false; scale=XYZ(msg_scale, msg_scale), pos=XYZ((window_width - 140 * msg_scale) / 2, (window_height - 9 * msg_scale) / 2))
+msg = CellphoneString("Press SPACE to start", false; 
+  scale=XYZ(msg_scale, msg_scale), 
+  pos=XYZ((window_width - 140 * msg_scale) / 2, 
+  (window_height - 9 * msg_scale) / 2))
 
 @enum PongArenaSide LEFT RIGHT TOP BOTTOM
 
@@ -208,10 +225,13 @@ function Starlight.handleMessage!(p::PongPaddle, col::TS_CollisionEvent)
 end
 
 # p1
-p1 = PongPaddle(paddle_width, paddle_height, LEFT; pos=XYZ(paddle_width, (window_height - paddle_height) / 2))
+p1 = PongPaddle(paddle_width, paddle_height, LEFT; 
+  pos=XYZ(paddle_width, (window_height - paddle_height) / 2))
 
 # p2
-p2 = PongPaddle(paddle_width, paddle_height, RIGHT; pos=XYZ(window_width - 2 * paddle_width, (window_height - paddle_height) / 2))
+p2 = PongPaddle(paddle_width, paddle_height, RIGHT; 
+  pos=XYZ(window_width - 2 * paddle_width, 
+  (window_height - paddle_height) / 2))
 
 mutable struct PongArenaWall <: Starlight.Renderable
   function PongArenaWall(w, h, side; kw...)
@@ -235,7 +255,8 @@ end
 wallt = PongArenaWall(window_width, wall_height, TOP; pos=XYZ(0, 0))
 
 # bottom wall
-wallb = PongArenaWall(window_width, wall_height, BOTTOM; pos=XYZ(0, window_height - wall_height))
+wallb = PongArenaWall(window_width, wall_height, BOTTOM; 
+  pos=XYZ(0, window_height - wall_height))
 
 mutable struct PongArenaGoal <: Starlight.Entity
   function PongArenaGoal(w, h, side; kw...)
@@ -254,10 +275,12 @@ function Starlight.shutdown!(p::PongArenaGoal)
 end
 
 # left goal
-goal1 = PongArenaGoal(window_height * 2, goal_width, LEFT; pos=XYZ(-goal_width, 0))
+goal1 = PongArenaGoal(window_height * 2, goal_width, LEFT; 
+  pos=XYZ(-goal_width, 0))
 
 # right goal
-goal2 = PongArenaGoal(window_height * 2, goal_width, RIGHT; pos=XYZ(window_width, 0))
+goal2 = PongArenaGoal(window_height * 2, goal_width, RIGHT; 
+  pos=XYZ(window_width, 0))
 
 mutable struct PongBall <: Starlight.Renderable
   function PongBall(w, h; kw...)
@@ -305,10 +328,12 @@ function Starlight.handleMessage!(p::PongBall, col::TS_CollisionEvent)
   vel = TS_BtGetLinearVelocity(p.id)
   if col.colliding
     if otherId ∈ [wallt.id, wallb.id]
-      TS_PlaySound(joinpath(asset_base, "sounds", "ping_pong_8bit_plop.ogg"), 0, -1)
+      TS_PlaySound(joinpath(asset_base, 
+        "sounds", "ping_pong_8bit_plop.ogg"), 0, -1)
       TS_BtSetLinearVelocity(p.id, vel.x, -vel.y, vel.z)
     elseif otherId ∈ [goal1.id, goal2.id]
-      TS_PlaySound(joinpath(asset_base, "sounds", "ping_pong_8bit_peeeeeep.ogg"), 0, -1)
+      TS_PlaySound(joinpath(asset_base, 
+        "sounds", "ping_pong_8bit_peeeeeep.ogg"), 0, -1)
       destroy!(p)
 
       if otherId == goal2.id
@@ -325,29 +350,40 @@ function Starlight.handleMessage!(p::PongBall, col::TS_CollisionEvent)
         oneshot!(clk(), wait_and_start_new_round)
       end
     elseif otherId ∈ [p1.id, p2.id]
-      TS_PlaySound(joinpath(asset_base, "sounds", "ping_pong_8bit_beeep.ogg"), 0, -1)
+      TS_PlaySound(joinpath(asset_base, 
+        "sounds", "ping_pong_8bit_beeep.ogg"), 0, -1)
       o = getEntityById(otherId)
-      TS_BtSetLinearVelocity(p.id, (hit_edge(p, o) ? 1 : -1) * vel.x, ball_vel_y(hit_angle(p, o)), vel.z)
+      TS_BtSetLinearVelocity(p.id, (hit_edge(p, o) ? 1 : -1) * vel.x,
+        ball_vel_y(hit_angle(p, o)), vel.z)
     end
   end
 end
 
 mutable struct PongGame <: Starlight.Entity
   function PongGame() 
-    instantiate!(new(); ball=nothing, w=false, s=false, up=false, down=false, p1TouchingTopWall=false, p2TouchingTopWall=false, p1TouchingBottomWall=false, p2TouchingBottomWall=false)
+    instantiate!(new(); ball=nothing, w=false, s=false, up=false, down=false, 
+      p1TouchingTopWall=false, p2TouchingTopWall=false, 
+      p1TouchingBottomWall=false, p2TouchingBottomWall=false)
   end
 end
 
 function Starlight.awake!(p::PongGame)
   listenFor(p, SDL_KeyboardEvent)
+  listenFor(p, SDL_QuitEvent)
   TS_BtSetGravity(0, 0, 0)
 end
 
-Starlight.shutdown!(p::PongGame) = unlistenFrom(p, SDL_KeyboardEvent)
+function Starlight.shutdown!(p::PongGame)
+  unlistenFrom(p, SDL_KeyboardEvent)
+  unlistenFrom(p, SDL_QuitEvent)
+end
 
 function newball()
-  p = PongBall(ball_width, ball_height; pos=XYZ((window_width - ball_width) / 2, (window_height - ball_height) / 2))
-  TS_BtSetLinearVelocity(p.id, ((rand(Bool)) ? 1 : -1) * ball_vel_x, ball_vel_y(2 * rand() - 1), 0)
+  p = PongBall(ball_width, ball_height; 
+    pos=XYZ((window_width - ball_width) / 2, 
+    (window_height - ball_height) / 2))
+  TS_BtSetLinearVelocity(p.id, 
+    ((rand(Bool)) ? 1 : -1) * ball_vel_x, ball_vel_y(2 * rand() - 1), 0)
   return p
 end
 
@@ -364,6 +400,11 @@ function Starlight.handleMessage!(p::PongGame, key::SDL_KeyboardEvent)
   elseif key.keysym.scancode == SDL_SCANCODE_DOWN
     p.down = key.state == SDL_PRESSED
   end
+end
+
+
+function Starlight.handleMessage!(p::PongGame, q::SDL_QuitEvent)
+  shutdown!(p)
 end
 
 function Starlight.update!(p::PongGame, Δ::AbstractFloat)
@@ -384,3 +425,34 @@ end
 pg = PongGame()
 
 run!(a)
+
+# <!-- export handleMessage!, sendMessage, listenFor, unlistenFrom, handleException, dispatchMessage
+# export App, awake!, shutdown!, run!, on, off
+# export clk, ecs, inp, ts, phys, scn
+
+# export Clock, TICK, SLEEP_NSEC, SLEEP_SEC
+# export tick, job!, oneshot!
+
+# export Entity, update!
+# export ECS, XYZ, accumulate_XYZ
+# export getEntityRow, getEntityById, getEntityRowById, getDfRowProp, setDfRowProp!
+# export ECSIteratorState, Level
+# export instantiate!, destroy!
+# export Scene, scene_view
+
+# export TS
+# export to_ARGB, getSDLError, sdl_colors, vulkan_colors, clear
+
+# export Root, Renderable
+# export draw, ColorRect, Sprite
+# export defaultDrawRect, defaultDrawSprite
+
+# export Input
+
+# export Physics
+# export addRigidBox!, addStaticBox!, addTriggerBox!, removePhysicsObject!
+# export other
+
+# export Physics
+# export addRigidBox!, addStaticBox!, addTriggerBox!, removePhysicsObject!
+# export other -->
