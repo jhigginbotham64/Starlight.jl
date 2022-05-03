@@ -17,6 +17,7 @@ Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
 SimpleDirectMediaLayer = "98e33af6-2ee5-5afd-9e75-cbc738b767c4"
 Telescope = "5cda3ad9-a1fd-4c59-8c0c-bd6100725b84"
+Telescope_jll = "ae456e04-aaf2-55ce-80c6-09193969412e"
 alsa_plugins_jll = "5ac2f6bb-493e-5871-9171-112d4c21a6e7"
 
 [compat]
