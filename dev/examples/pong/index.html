@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Pong · Starlight</title><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.044/juliamono.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.11/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">Starlight</a></span></div><form class="docs-search" action="../../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><span class="tocitem">Guide</span><ul><li><input class="collapse-toggle" id="menuitem-2-1" type="checkbox"/><label class="tocitem" for="menuitem-2-1"><span class="docs-label">Walkthrough</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../guide/walkthrough/intro/">Intro</a></li><li><a class="tocitem" href="../../guide/walkthrough/getting-started/">Getting Started</a></li><li><a class="tocitem" href="../../guide/walkthrough/app-lifecycle/">App Lifecycle</a></li><li><a class="tocitem" href="../../guide/walkthrough/message-passing/">Message Passing</a></li><li><a class="tocitem" href="../../guide/walkthrough/clock/">Clock</a></li><li><a class="tocitem" href="../../guide/walkthrough/ecs/">Entity Component System</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-2-2" type="checkbox"/><label class="tocitem" for="menuitem-2-2"><span class="docs-label">Telescope</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../guide/telescope/intro/">Intro</a></li><li><a class="tocitem" href="../../guide/telescope/rendering/">Rendering</a></li><li><a class="tocitem" href="../../guide/telescope/input/">Input</a></li><li><a class="tocitem" href="../../guide/telescope/physics/">Physics</a></li></ul></li></ul></li><li><span class="tocitem">Examples</span><ul><li class="is-active"><a class="tocitem" href>Pong</a></li></ul></li><li><a class="tocitem" href="../../api/">API</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Pong</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Pong</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/jhigginbotham64/Starlight.jl/blob/master/docs/src/examples/pong.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Pong"><a class="docs-heading-anchor" href="#Pong">Pong</a><a id="Pong-1"></a><a class="docs-heading-anchor-permalink" href="#Pong" title="Permalink"></a></h1><div class="admonition is-warning"><header class="admonition-header">Warning</header><div class="admonition-body"><p>This example assumes familiarity with Starlight&#39;s API, as well as with Telescope. It is more focused on describing how to use these libraries than on what they do.</p></div></div><p>This example will walk you through the source code of Pong as implemented in Starlight&#39;s example subdirectory.</p><p>First off, the obligatory</p><pre><code class="language-julia hljs">using Starlight</code></pre><p>Then, since the maintainer hates hardcoding <em>anything</em>, there are a lot of configurable parameters. You can play around with these if you download the source code. Their usage should make sense once you see them in context. If you forget what one is or what its default value is, or just want to know where it&#39;s used, Ctrl-F is your friend. :)</p><pre><code class="language-julia hljs">const window_width = 600
+const window_height = 400
+const paddle_width = 10
+const paddle_height = 60
+const ball_width = 10
+const ball_height = 10
+const wall_height = 10
+const goal_width = 10
+const hz = 1
+
+# collision margins
+const wmx = 0 # wall
+const wmy = 0
+const gmx = 0 # goal
+const gmy = 0
+const pmx = 0 # paddle
+const pmy = 0
+const bmx = 0 # ball
+const bmy = 0
+
+const pv = window_height # paddle velocity
+const ball_vel_x_mult = 0.25
+const ball_vel_y_mult = 1.5
+const ball_vel_x = ball_vel_x_mult * window_width
+const ball_vel_y_max = ball_vel_y_mult * window_height
+const paddle_ball_x_tolerance = 2
+ball_vel_y(i) =  -i * ball_vel_y_max
+const score_scale = 10
+const score_y_offset = 50
+const msg_scale = 2
+const center_line_dash_w = 10
+const center_line_dash_h = 40
+const center_line_dash_spacing = 20
+const asset_base = joinpath(artifact&quot;test&quot;, &quot;test&quot;)
+const secs_between_rounds = 2
+const score_to_win = 10</code></pre><p>Create an <code>App</code> with the given settings, and make sure to set the background to black instead of using the default grey:</p><pre><code class="language-julia hljs">a = App(; wdth=window_width, hght=window_height, bgrd=colorant&quot;black&quot;)</code></pre><p>We can now begin defining the static UI elements, like the centerline and scores, i.e. things that don&#39;t require their own message handlers. </p><p>We can start with the center line, which is an array of <code>ColorRect</code>s evenly spaced between the two walls:</p><pre><code class="language-julia hljs">center_line = []
+for i in (wall_height + center_line_dash_spacing):\
+  (center_line_dash_h + center_line_dash_spacing):\
+  (window_height - wall_height - center_line_dash_h - center_line_dash_spacing)
+  push!(center_line, ColorRect(center_line_dash_w, center_line_dash_h; 
+  color=colorant&quot;grey&quot;, pos=XYZ((window_width - center_line_dash_w) / 2, i)))
+end</code></pre><p>Next we&#39;ll use Julia&#39;s Artifacts system to pull in a couple of <a href="https://opengameart.org/content/ascii-bitmap-font-cellphone">public-domain spritesheets</a> that we&#39;ll be using for text. But first, if we want to define things in terms of text strings, and since we&#39;re not using a standard format like TTF, we need to define what characters belong to which cells on the spritesheet. Feel free to just scroll past this, it&#39;s only included for the sake of completeness, normally such things would be handled by an asset importer or something, but we don&#39;t have anything like that for Starlight yet.</p><pre><code class="language-julia hljs">cpchars = Dict(
+  &#39; &#39; =&gt; [0,0],
+  &#39;!&#39; =&gt; [0,1],
+  &#39;\&quot;&#39; =&gt; [0,2],
+  &#39;#&#39; =&gt; [0,3],
+  &#39;$&#39; =&gt; [0,4],
+  &#39;%&#39; =&gt; [0,5],
+  &#39;&amp;&#39; =&gt; [0,6],
+  &#39;\&#39;&#39; =&gt; [0,7],
+  &#39;(&#39; =&gt; [0,8],
+  &#39;)&#39; =&gt; [0,9],
+  &#39;*&#39; =&gt; [0,10],
+  &#39;+&#39; =&gt; [0,11],
+  &#39;,&#39; =&gt; [0,12],
+  &#39;-&#39; =&gt; [0,13],
+  &#39;.&#39; =&gt; [0,14],
+  &#39;/&#39; =&gt; [0,15],
+  &#39;0&#39; =&gt; [0,16],
+  &#39;1&#39; =&gt; [0,17],
+  &#39;2&#39; =&gt; [1,0],
+  &#39;3&#39; =&gt; [1,1],
+  &#39;4&#39; =&gt; [1,2],
+  &#39;5&#39; =&gt; [1,3],
+  &#39;6&#39; =&gt; [1,4],
+  &#39;7&#39; =&gt; [1,5],
+  &#39;8&#39; =&gt; [1,6],
+  &#39;9&#39; =&gt; [1,7],
+  &#39;:&#39; =&gt; [1,8],
+  &#39;;&#39; =&gt; [1,9],
+  &#39;&lt;&#39; =&gt; [1,10],
+  &#39;=&#39; =&gt; [1,11],
+  &#39;&gt;&#39; =&gt; [1,12],
+  &#39;?&#39; =&gt; [1,13],
+  &#39;@&#39; =&gt; [1,14],
+  &#39;A&#39; =&gt; [1,15],
+  &#39;B&#39; =&gt; [1,16],
+  &#39;C&#39; =&gt; [1,17],
+  &#39;D&#39; =&gt; [2,0],
+  &#39;E&#39; =&gt; [2,1],
+  &#39;F&#39; =&gt; [2,2],
+  &#39;G&#39; =&gt; [2,3],
+  &#39;H&#39; =&gt; [2,4],
+  &#39;I&#39; =&gt; [2,5],
+  &#39;J&#39; =&gt; [2,6],
+  &#39;K&#39; =&gt; [2,7],
+  &#39;L&#39; =&gt; [2,8],
+  &#39;M&#39; =&gt; [2,9],
+  &#39;N&#39; =&gt; [2,10],
+  &#39;O&#39; =&gt; [2,11],
+  &#39;P&#39; =&gt; [2,12],
+  &#39;Q&#39; =&gt; [2,13],
+  &#39;R&#39; =&gt; [2,14],
+  &#39;S&#39; =&gt; [2,15],
+  &#39;T&#39; =&gt; [2,16],
+  &#39;U&#39; =&gt; [2,17],
+  &#39;V&#39; =&gt; [3,0],
+  &#39;W&#39; =&gt; [3,1],
+  &#39;X&#39; =&gt; [3,2],
+  &#39;Y&#39; =&gt; [3,3],
+  &#39;Z&#39; =&gt; [3,4],
+  &#39;[&#39; =&gt; [3,5],
+  &#39;\\&#39; =&gt; [3,6],
+  &#39;]&#39; =&gt; [3,7],
+  &#39;^&#39; =&gt; [3,8],
+  &#39;_&#39; =&gt; [3,9],
+  &#39;`&#39; =&gt; [3,10],
+  &#39;a&#39; =&gt; [3,11],
+  &#39;b&#39; =&gt; [3,12],
+  &#39;c&#39; =&gt; [3,13],
+  &#39;d&#39; =&gt; [3,14],
+  &#39;e&#39; =&gt; [3,15],
+  &#39;f&#39; =&gt; [3,16],
+  &#39;g&#39; =&gt; [3,17],
+  &#39;h&#39; =&gt; [4,0],
+  &#39;i&#39; =&gt; [4,1],
+  &#39;j&#39; =&gt; [4,2],
+  &#39;k&#39; =&gt; [4,3],
+  &#39;l&#39; =&gt; [4,4],
+  &#39;m&#39; =&gt; [4,5],
+  &#39;n&#39; =&gt; [4,6],
+  &#39;o&#39; =&gt; [4,7],
+  &#39;p&#39; =&gt; [4,8],
+  &#39;q&#39; =&gt; [4,9],
+  &#39;r&#39; =&gt; [4,10],
+  &#39;s&#39; =&gt; [4,11],
+  &#39;t&#39; =&gt; [4,12],
+  &#39;u&#39; =&gt; [4,13],
+  &#39;v&#39; =&gt; [4,14],
+  &#39;w&#39; =&gt; [4,15],
+  &#39;x&#39; =&gt; [4,16],
+  &#39;y&#39; =&gt; [4,17],
+  &#39;z&#39; =&gt; [5,0],
+  &#39;{&#39; =&gt; [5,1],
+  &#39;|&#39; =&gt; [5,2],
+  &#39;}&#39; =&gt; [5,3],
+  &#39;~&#39; =&gt; [5,4],
+)</code></pre><p>Now our text strings are going to be composed of sprites, so we&#39;ll have some of the normal sprite attributes in addition to one that tells us which spritesheet to use:</p><pre><code class="language-julia hljs">mutable struct CellphoneString &lt;: Renderable
+  function CellphoneString(str=&quot;&quot;, white=true; 
+    scale=XYZ(1,1), color=colorant&quot;white&quot;, kw...)
+    instantiate!(new(); str=str, white=white, scale=scale, color=color, kw...)
+  end
+end</code></pre><p>Now we can define its <code>draw</code> function, which determines which spritesheet to use and draws each character based on its position in the spritesheet:</p><pre><code class="language-julia hljs">function Starlight.draw(s::CellphoneString)
+  img = (s.white) ? joinpath(asset_base,
+                      &quot;sprites&quot;, &quot;charmap-cellphone_white.png&quot;) : \
+                    joinpath(asset_base, 
+                      &quot;sprites&quot;, &quot;charmap-cellphone_black.png&quot;)
+  for (i,c) in enumerate(s.str)
+    cell_ind = cpchars[c]
+    TS_VkCmdDrawSprite(img, vulkan_colors(s.color)...,
+    0, 0, 0, 0,
+    7, 9, cell_ind[1], cell_ind[2],
+    Int(floor(s.scale.x * 7)) * (i - 1) + s.abs_pos.x, s.abs_pos.y, 
+              s.scale.x, s.scale.y)
+  end
+end</code></pre><p>Note that for this and all other method &quot;overloads&quot;, you must specify <code>Starlight.</code> or Julia will assume you want to define a method with that name inside the <code>Main</code> module and nothing will work.</p><p>Now, with all that complexity out of the way, we are free to write some excessively simple UI code (well, if you don&#39;t count the positioning calculations):</p><pre><code class="language-julia hljs"># p1 score
+score1 = CellphoneString(&#39;0&#39;; color=colorant&quot;grey&quot;, 
+  scale=XYZ(score_scale, score_scale), 
+  pos=XYZ((window_width / 2) - (window_width / 4) - 
+  (7 * score_scale / 2), score_y_offset))
+
+# p2 score
+score2 = CellphoneString(&#39;0&#39;; color=colorant&quot;grey&quot;, 
+  scale=XYZ(score_scale, score_scale), 
+  pos=XYZ((window_width / 2) + (window_width / 4) - 
+  (7 * score_scale / 2), score_y_offset))
+
+# welcome message
+msg = CellphoneString(&quot;Press SPACE to start&quot;, false; 
+  scale=XYZ(msg_scale, msg_scale), 
+  pos=XYZ((window_width - 140 * msg_scale) / 2, 
+  (window_height - 9 * msg_scale) / 2))</code></pre><p>We&#39;re going to start handholding even less now. By this point you should be well up to speed on how Starlight works.</p><p>Our paddles are simple rectangles, so we can reuse the <code>defaultDrawRect</code> function. Notice the (recommended) pattern of managing physics entities inside <code>awake!</code> and <code>shutdown!</code> rather than in the constructor and finalizer. This is so that entities can be awoken and shutdown without Bullet continuing to simulate them, and also without other subsystems needing to know about physics.</p><p>Recall that Bullet uses half extents for its box shapes, so we calculate and then use those here.</p><p>Probably the most interesting &quot;new&quot; thing here is the collision handler, which deals with paddle/wall contacts. <code>pg</code> is something we&#39;ll see later, it refers to an instance of a <code>PongGame</code> entity that handles game state and input. Basically this collision handler tells the game manager whether to allow paddle movement in a particular direction.</p><pre><code class="language-julia hljs">mutable struct PongPaddle &lt;: Starlight.Renderable 
+  function PongPaddle(w, h; kw...)
+    instantiate!(new(); w=w, h=h, color=colorant&quot;white&quot;, kw...)
+  end
+end
+
+Starlight.draw(p::PongPaddle) = defaultDrawRect(p)
+
+function Starlight.awake!(p::PongPaddle)
+  hw = paddle_width / 2
+  hh = paddle_height / 2
+  addTriggerBox!(p, hw, hh, hz, p.pos.x + hw, p.pos.y + hh, 0, pmx, pmy, 0)
+end
+
+function Starlight.shutdown!(p::PongPaddle)
+  removePhysicsObject!(p)
+end
+
+function Starlight.handleMessage!(p::PongPaddle, col::TS_CollisionEvent)
+  otherId = other(p, col)
+  if otherId == wallt.id
+    if p.id == p1.id
+      pg.p1TouchingTopWall = col.colliding
+    elseif p.id == p2.id
+      pg.p2TouchingTopWall = col.colliding
+    end
+  elseif otherId == wallb.id
+    if p.id == p1.id
+      pg.p1TouchingBottomWall = col.colliding
+    elseif p.id == p2.id
+      pg.p2TouchingBottomWall = col.colliding
+    end
+  end
+end
+
+# p1
+p1 = PongPaddle(paddle_width, paddle_height; 
+  pos=XYZ(paddle_width, (window_height - paddle_height) / 2))
+
+# p2
+p2 = PongPaddle(paddle_width, paddle_height; 
+  pos=XYZ(window_width - 2 * paddle_width, 
+  (window_height - paddle_height) / 2))</code></pre><p>Comparatively there is nothing special about the walls or goals, except that one gets drawn and the other doesn&#39;t:</p><pre><code class="language-julia hljs">mutable struct PongArenaWall &lt;: Starlight.Renderable
+  function PongArenaWall(w, h; kw...)
+    instantiate!(new(); w=w, h=h, color=colorant&quot;white&quot;, kw...)
+  end
+end
+
+Starlight.draw(p::PongArenaWall) = defaultDrawRect(p)
+
+function Starlight.awake!(p::PongArenaWall)
+  hw = window_width / 2
+  hh = wall_height / 2
+  addTriggerBox!(p, hw, hh, hz, p.pos.x + hw, p.pos.y + hh, 0, wmx, wmy, 0)
+end
+
+function Starlight.shutdown!(p::PongArenaWall)
+  removePhysicsObject!(p)
+end
+
+# top wall
+wallt = PongArenaWall(window_width, wall_height; pos=XYZ(0, 0))
+
+# bottom wall
+wallb = PongArenaWall(window_width, wall_height; 
+  pos=XYZ(0, window_height - wall_height))
+
+mutable struct PongArenaGoal &lt;: Starlight.Entity
+  function PongArenaGoal(w, h; kw...)
+    instantiate!(new(); w=w, h=h, kw...)
+  end
+end
+
+function Starlight.awake!(p::PongArenaGoal)
+  hw = goal_width / 2
+  hh = window_height / 2
+  addTriggerBox!(p, hw, hh, hz, p.pos.x + hw, p.pos.y + hh, 0, gmx, gmy, 0)
+end
+
+function Starlight.shutdown!(p::PongArenaGoal)
+  removePhysicsObject!(p)
+end
+
+# left goal
+goal1 = PongArenaGoal(window_height * 2, goal_width; 
+  pos=XYZ(-goal_width, 0))
+
+# right goal
+goal2 = PongArenaGoal(window_height * 2, goal_width; 
+  pos=XYZ(window_width, 0))</code></pre><p>The ball is a simple rectangle, but its collision handler is where most of the game logic is run. Let&#39;s get the easy stuff out of the way:</p><pre><code class="language-julia hljs">mutable struct PongBall &lt;: Starlight.Renderable
+  function PongBall(w, h; kw...)
+    instantiate!(new(); w=w, h=h, color=colorant&quot;white&quot;, kw...)
+  end 
+end
+
+Starlight.draw(p::PongBall) = defaultDrawRect(p)
+
+function Starlight.awake!(p::PongBall)
+  hw = ball_width / 2
+  hh = ball_height / 2
+  addTriggerBox!(p, hw, hh, hz, p.pos.x + hw, p.pos.y + hh, 0, bmx, bmy, 0)
+end
+
+function Starlight.shutdown!(p::PongBall)
+  removePhysicsObject!(p)
+end</code></pre><p>...and now, the hard part. We confess that this Pong implementation is buggy, and a few of the bugs are in the following code. If you can fix them, please submit a pull request, we would greatly appreciate it.</p><p>Understand that this is mostly &quot;Pong logic&quot; however: there&#39;s not much here that&#39;s instructive about Starlight, except that it shows you how different components can be used to implement the logic of an actual game.</p><p>Combined with everything we&#39;ve already covered, we have no compunction telling you to simply read the code if you&#39;re interested in it. :)</p><pre><code class="language-julia hljs">function hit_edge(p::PongBall, o::PongPaddle)
+  if o.id == p1.id # left
+    return p.abs_pos.x &lt; (o.abs_pos.x + paddle_width - paddle_ball_x_tolerance)
+  else # right
+    return p.abs_pos.x &gt; (o.abs_pos.x - ball_width + paddle_ball_x_tolerance)
+  end
+end
+
+function hit_angle(p::PongBall, o::PongPaddle)
+  paddle_top = o.abs_pos.y - ball_height / 2
+  ball_center = p.abs_pos.y + ball_height / 2
+  paddle_hit_area = paddle_height + ball_height
+  return -(2 * ((ball_center - paddle_top) / paddle_hit_area) - 1)
+end
+
+function wait_and_start_new_round(arg)
+  sleep(SLEEP_SEC(secs_between_rounds))
+  pg.ball = newball()
+end
+
+getP1Score() = parse(Int, score1.str)
+getP2Score() = parse(Int, score2.str)
+
+function Starlight.handleMessage!(p::PongBall, col::TS_CollisionEvent)
+  otherId = other(p, col)
+  vel = TS_BtGetLinearVelocity(p.id)
+  if col.colliding
+    if otherId ∈ [wallt.id, wallb.id]
+      TS_PlaySound(joinpath(asset_base, 
+        &quot;sounds&quot;, &quot;ping_pong_8bit_plop.ogg&quot;), 0, -1)
+      TS_BtSetLinearVelocity(p.id, vel.x, -vel.y, vel.z)
+    elseif otherId ∈ [goal1.id, goal2.id]
+      TS_PlaySound(joinpath(asset_base, 
+        &quot;sounds&quot;, &quot;ping_pong_8bit_peeeeeep.ogg&quot;), 0, -1)
+      destroy!(p)
+
+      if otherId == goal2.id
+        score1.str = string(getP1Score() + 1)
+      elseif otherId == goal1.id
+        score2.str = string(getP2Score() + 1)
+      end
+
+      if getP1Score() == score_to_win || getP2Score() == score_to_win
+        msg.hidden = false
+        score1.str = &quot;0&quot;
+        score2.str = &quot;0&quot;
+      else
+        oneshot!(clk(), wait_and_start_new_round)
+      end
+    elseif otherId ∈ [p1.id, p2.id]
+      TS_PlaySound(joinpath(asset_base, 
+        &quot;sounds&quot;, &quot;ping_pong_8bit_beeep.ogg&quot;), 0, -1)
+      o = getEntityById(otherId)
+      TS_BtSetLinearVelocity(p.id, (hit_edge(p, o) ? 1 : -1) * vel.x,
+        ball_vel_y(hit_angle(p, o)), vel.z)
+    end
+  end
+end</code></pre><p>The <code>PongGame</code> does however have a few interesting things about it. It shows the use of input events and how they can help manage game state, as well as the recommended way to exit out of a Starlight app: defining an <code>SDL_QuitEvent</code> handler. Leaving this up to the user allows them to define custom behavior like &quot;Do you really want to quit?&quot; dialogs.</p><pre><code class="language-julia hljs">mutable struct PongGame &lt;: Starlight.Entity
+  function PongGame() 
+    instantiate!(new(); ball=nothing, w=false, s=false, up=false, down=false, 
+      p1TouchingTopWall=false, p2TouchingTopWall=false, 
+      p1TouchingBottomWall=false, p2TouchingBottomWall=false)
+  end
+end
+
+function Starlight.awake!(p::PongGame)
+  listenFor(p, SDL_KeyboardEvent)
+  listenFor(p, SDL_QuitEvent)
+  TS_BtSetGravity(0, 0, 0)
+end
+
+function Starlight.shutdown!(p::PongGame)
+  unlistenFrom(p, SDL_KeyboardEvent)
+  unlistenFrom(p, SDL_QuitEvent)
+end
+
+function newball()
+  p = PongBall(ball_width, ball_height; 
+    pos=XYZ((window_width - ball_width) / 2, 
+    (window_height - ball_height) / 2))
+  TS_BtSetLinearVelocity(p.id, 
+    ((rand(Bool)) ? 1 : -1) * ball_vel_x, ball_vel_y(2 * rand() - 1), 0)
+  return p
+end
+
+function Starlight.handleMessage!(p::PongGame, key::SDL_KeyboardEvent)
+  if key.keysym.scancode == SDL_SCANCODE_SPACE &amp;&amp; !msg.hidden
+    msg.hidden = true
+    p.ball = newball()
+  elseif key.keysym.scancode == SDL_SCANCODE_W
+    p.w = key.state == SDL_PRESSED
+  elseif key.keysym.scancode == SDL_SCANCODE_S
+    p.s = key.state == SDL_PRESSED
+  elseif key.keysym.scancode == SDL_SCANCODE_UP
+    p.up = key.state == SDL_PRESSED
+  elseif key.keysym.scancode == SDL_SCANCODE_DOWN
+    p.down = key.state == SDL_PRESSED
+  end
+end
+
+
+function Starlight.handleMessage!(p::PongGame, q::SDL_QuitEvent)
+  shutdown!(p)
+end
+
+function Starlight.update!(p::PongGame, Δ::AbstractFloat)
+  TS_BtSetLinearVelocity(p1.id, 0, 0, 0)
+  TS_BtSetLinearVelocity(p2.id, 0, 0, 0)
+  if p.w &amp;&amp; !p.p1TouchingTopWall
+    TS_BtSetLinearVelocity(p1.id, 0, -pv, 0)
+  elseif p.s &amp;&amp; !p.p1TouchingBottomWall
+    TS_BtSetLinearVelocity(p1.id, 0, pv, 0)
+  end
+  if p.up &amp;&amp; !p.p2TouchingTopWall
+    TS_BtSetLinearVelocity(p2.id, 0, -pv, 0)
+  elseif p.down &amp;&amp; !p.p2TouchingBottomWall
+    TS_BtSetLinearVelocity(p2.id, 0, pv, 0)
+  end
+end
+
+pg = PongGame()</code></pre><p>And with that, all that&#39;s left to do is run the <code>App</code>:</p><pre><code class="language-julia hljs">run!(a)</code></pre><p>And...that&#39;s Pong with Starlight!</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../guide/telescope/physics/">« Physics</a><a class="docs-footer-nextpage" href="../../api/">API »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.16 on <span class="colophon-date" title="Wednesday 4 May 2022 13:39">Wednesday 4 May 2022</span>. Using Julia version 1.7.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

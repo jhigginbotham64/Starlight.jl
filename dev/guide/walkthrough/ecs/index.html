@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Entity Component System · Starlight</title><script data-outdated-warner src="../../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.044/juliamono.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.11/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../../assets/documenter.js"></script><script src="../../../siteinfo.js"></script><script src="../../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../../">Starlight</a></span></div><form class="docs-search" action="../../../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../../../">Home</a></li><li><span class="tocitem">Guide</span><ul><li><input class="collapse-toggle" id="menuitem-2-1" type="checkbox" checked/><label class="tocitem" for="menuitem-2-1"><span class="docs-label">Walkthrough</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../intro/">Intro</a></li><li><a class="tocitem" href="../getting-started/">Getting Started</a></li><li><a class="tocitem" href="../app-lifecycle/">App Lifecycle</a></li><li><a class="tocitem" href="../message-passing/">Message Passing</a></li><li><a class="tocitem" href="../clock/">Clock</a></li><li class="is-active"><a class="tocitem" href>Entity Component System</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-2-2" type="checkbox"/><label class="tocitem" for="menuitem-2-2"><span class="docs-label">Telescope</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../telescope/intro/">Intro</a></li><li><a class="tocitem" href="../../telescope/rendering/">Rendering</a></li><li><a class="tocitem" href="../../telescope/input/">Input</a></li><li><a class="tocitem" href="../../telescope/physics/">Physics</a></li></ul></li></ul></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../../../examples/pong/">Pong</a></li></ul></li><li><a class="tocitem" href="../../../api/">API</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Guide</a></li><li><a class="is-disabled">Walkthrough</a></li><li class="is-active"><a href>Entity Component System</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Entity Component System</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/jhigginbotham64/Starlight.jl/blob/master/docs/src/guide/walkthrough/ecs.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Entity-Component-System"><a class="docs-heading-anchor" href="#Entity-Component-System">Entity Component System</a><a id="Entity-Component-System-1"></a><a class="docs-heading-anchor-permalink" href="#Entity-Component-System" title="Permalink"></a></h1><p>An <a href="https://en.wikipedia.org/wiki/Entity_component_system">Entity Component System</a> (or &quot;ECS&quot; for short) is an in-memory object database where rows are instances and columns are properties. Arbitrary properties can be supported if one or more of the columns contain dictionaries.</p><p>Are we going to use database connectors and <a href="https://en.wikipedia.org/wiki/Object%E2%80%93relational_mapping">ORM</a>? Not exactly, but sort of. We definitely <em>could</em> do it that way, but it would be much more difficult to set up. We can achieve a similar effect, however, if we use a <a href="https://dataframes.juliadata.org/stable/">DataFrame</a>, an abstract type, and special methods for <code>getproperty</code> and <code>setproperty!</code>.</p><p>But what attributes is our DataFrame going to have? That depends on what semantics we want our data to have.</p><p>GUI applications, including video games, typically arrange objects in a tree, where child nodes move with their parent nodes. So we want to know what a node&#39;s local position and rotation are, and what its &quot;absolute&quot; (inherited + local) position and rotation are. We also need to keep track of parent nodes and lists of children. We need to be able to fetch nodes at any time, so being able to look them up by ID will be useful. Keeping track of the node&#39;s Julia type and instance will allow us to reuse the property-accessing semantics and apply operations to type-based subsets of nodes. Having a way to distinguish between what&#39;s visible in a window and what isn&#39;t may be useful. Finally, having a dictionary column will not only allow arbitrary properties, but it will allow users to create arbitrary custom types with appropriate semantics. This will come in handy later. A lot.</p><p>Let&#39;s start with that abstract type we mentioned. From here on out we&#39;re going to start referring to &quot;entities&quot;, since they are not only nodes in a tree but also members of an entity component system.</p><pre><code class="language-julia hljs">abstract type Entity end</code></pre><p>Let&#39;s establish what symbolic names we&#39;re going to use for our columns:</p><pre><code class="language-julia hljs">const ENT = :ent # entity, the original Julia object instance
+const TYPE = :type
+const ID = :id
+const PARENT = :parent
+const CHILDREN = :children
+const POSITION = :pos
+const ROTATION = :rot
+const ABSOLUTE_POSITION = :abs_pos
+const ABSOLUTE_ROTATION = :abs_rot
+const HIDDEN = :hidden
+const PROPS = :props</code></pre><p>Position and rotation usually have X, Y, and Z components, and it&#39;s helpful to be able to refer to those components as properties. We&#39;re looking for a better way to do things, but for now the following will suffice:</p><pre><code class="language-julia hljs">mutable struct XYZ
+  x::Number
+  y::Number
+  z::Number
+  XYZ(x=0, y=0, z=0) = new(x, y, z)
+end
+
+import Base.+, Base.-, Base.*, Base.÷, Base./, Base.%
++(a::XYZ, b::XYZ) = XYZ(a.x+b.x,a.y+b.y,a.z+b.z)
+-(a::XYZ, b::XYZ) = XYZ(a.x-b.x,a.y-b.y,a.z-b.z)
+*(a::XYZ, b::Number) = XYZ(a.x*b,a.y*b,a.z*b)
+÷(a::XYZ, b::Number) = XYZ(a.x÷b,a.y÷b,a.z÷b)
+/(a::XYZ, b::Number) = XYZ(a.x/b,a.y/b,a.z/b)
+%(a::XYZ, b::Number) = XYZ(a.x%b,a.y%b,a.z%b)</code></pre><p>Now we can define the types that the columns of our DataFrame will have:</p><pre><code class="language-julia hljs">const components = Dict(
+  ENT=&gt;Entity,
+  TYPE=&gt;DataType,
+  ID=&gt;Number,
+  PARENT=&gt;Number,
+  CHILDREN=&gt;Set{Number},
+  POSITION=&gt;XYZ,
+  ROTATION=&gt;XYZ,
+  HIDDEN=&gt;Bool,
+  PROPS=&gt;Dict{Symbol, Any}
+)</code></pre><p>Now we&#39;re almost ready to create our DataFrame. But first, a few more observations. We&#39;re still assuming a parallel environment where we don&#39;t know what order systems will be running in, so we need to synchronize access to the DataFrame. A simple lock will suffice. The ECS can also be responsible for calling the lifecycle functions of entities, but since these can be added or removed at any time, we need to know whether <code>awake!</code> has already been called. Finally, we need to keep track of what IDs are available and in use. A simple integer will do the trick.</p><p>With that our DataFrame and ECS struct become surprisingly simple:</p><pre><code class="language-julia hljs">mutable struct ECS
+  df::DataFrame
+  awoken::Bool
+  lock::ReentrantLock
+  next_id::Number
+  function ECS()
+    df = DataFrame(
+      NamedTuple{Tuple(keys(components))}(
+        t[] for t in values(components)
+      ))
+    return new(df, false, ReentrantLock(), 0)
+  end
+end</code></pre><p>...but don&#39;t worry, there&#39;s plenty of complexity just around the corner. The reason is that we we&#39;re going to be implementing a tree structure on top of this DataFrame. We can now add an <code>ECS</code> to our <code>App</code>&#39;s constructor...</p><pre><code class="language-julia hljs">...
+system!(a, ECS())
+...</code></pre><p>...and the associated helper function...</p><pre><code class="language-julia hljs">ecs() = a.systems[ECS]</code></pre><p>...but we&#39;re not ready to implement the <code>ECS</code>&#39;s <code>awake!</code> and <code>shutdown!</code> just yet. We&#39;ll need to have tree traversal in place first, and for that we&#39;re going to need some custom iterators. And for that...well, we&#39;ll be looking at our entities&#39; parent and children properties, so we&#39;ll need to start with getters and setters.</p><p>First, some helpers. The names are self-explanatory, but we encourage you to read up on the DataFrames documentation so as to understand what exactly they do.</p><pre><code class="language-julia hljs"># internally using Base.getproperty directly so
+# as to not break if the symbol values change
+getEntityRow(ent::Entity) = @view ecs().df[getproperty(ecs().df, ENT) .== [ent], :]
+function getEntityById(id::Number)
+  arr = ecs().df[getproperty(ecs().df, ID) .== [id], ENT]
+  if length(arr) &gt; 0
+    return arr[1]
+  end
+  return nothing
+end
+getEntityRowById(id::Number) = @view ecs().df[getproperty(ecs().df, ID) .== [id], :]
+getDfRowProp(r, s) = r[!, s][1]
+setDfRowProp!(r, s, x) = r[!, s][1] = x</code></pre><p>Then a bit more custom-property boilerplate:</p><pre><code class="language-julia hljs">function Base.propertynames(ent::Entity)
+  return (
+    keys(components)...,
+    ABSOLUTE_POSITION,
+    ABSOLUTE_ROTATION,
+    [n for n in keys(getproperty(ent, PROPS))]...
+  )
+end
+
+function Base.hasproperty(ent::Entity, s::Symbol)
+  return s in Base.propertynames(ent)
+end</code></pre><p>Then the fun part:</p><pre><code class="language-julia hljs">function accumulate_XYZ(r, s)
+  acc = XYZ()
+  while true
+    inc = getDfRowProp(r, s)
+    acc += inc
+    r = getEntityRowById(getDfRowProp(r, PARENT))
+    getDfRowProp(r, PARENT) != 0 || return acc
+  end
+end
+
+function Base.getproperty(ent::Entity, s::Symbol)
+  e = getEntityRow(ent)
+  if s == ABSOLUTE_POSITION return accumulate_XYZ(e, POSITION)
+  elseif s == ABSOLUTE_ROTATION return accumulate_XYZ(e, ROTATION)
+  elseif s in keys(components) return getDfRowProp(e, s)
+  elseif s in keys(getDfRowProp(e, PROPS)) return getDfRowProp(e, PROPS)[s]
+  else return getfield(ent, s)
+  end
+end
+
+function Base.setproperty!(ent::Entity, s::Symbol, x)
+  e = getEntityRow(ent)
+  if s in [
+    ENT, # immutable
+    TYPE, # automatically set
+    ID, # automatically set
+    ABSOLUTE_POSITION, # computed
+    ABSOLUTE_ROTATION # computed
+  ]
+    error(&quot;cannot set property $(s) on Entity&quot;)
+  end
+
+  lock(ecs().lock)
+  if s == PARENT
+    par = getEntityById(getDfRowProp(e, PARENT))
+    push!(getproperty(par, CHILDREN), getDfRowProp(e, ID))
+  elseif s in keys(components) &amp;&amp; s != PROPS
+    setDfRowProp!(e, s, x)
+  else
+    getDfRowProp(e, PROPS)[s] = x
+  end
+  unlock(ecs().lock)
+end</code></pre><p>We just threw a lot at you. Take some time to digest it before moving on.</p><p>We&#39;re going to want to use <code>map</code> with <code>awake!</code> on entities, which means we need a custom iterator type for the <code>ECS</code> as well as a <code>length</code> function. Since we&#39;ll eventually want to iterate multiple different ways, we&#39;ll define special iterator types rather than just an iterator for <code>ECS</code>. The first one will be <code>Level</code>, i.e. traversing nodes by tree level, or in breadth-first order.</p><p>This is all we need to make that happen:</p><pre><code class="language-julia hljs">Base.length(e::ECS) = size(e.df)[1]
+
+struct Level end 
+Base.length(l::Level) = length(ecs())
+
+mutable struct ECSIteratorState
+  root::Number
+  q::Queue{Number}
+  root_visited::Bool
+  index::Number
+  ECSIteratorState(; root=0, q=Queue{Number}(), 
+  root_visited=false, index=1) = new(root, q, root_visited, index)
+end
+
+function Base.iterate(l::Level, state::ECSIteratorState=ECSIteratorState())
+  if isempty(state.q)
+    if !state.root_visited # just started
+      enqueue!(state.q, state.root)
+      state.root_visited = true
+    else # just finished
+      return nothing
+    end
+  end
+
+  ent = getEntityById(dequeue!(state.q))
+
+  for c in getproperty(ent, CHILDREN) 
+    enqueue!(state.q, c)
+  end
+
+  return (ent, state)
+end</code></pre><p>Now we can add <code>awake!</code> and <code>shutdown!</code>:</p><pre><code class="language-julia hljs">function awake!(e::ECS)
+  e.awoken = true
+  map(awake!, Level())
+  listenFor(e, TICK)
+end
+
+function shutdown!(e::ECS)
+  unlistenFrom(e, TICK)
+  map(shutdown!, Level())
+  e.awoken = false
+end</code></pre><p>And about that tick handler...having entities that call an update function every frame is a very common use case that we want to support. We could just define tick handlers for all new entity types, but that&#39;s a lot of boilerplate and doesn&#39;t allow us to ensure that entities are updated in a deterministic order, in case that becomes important. So we have the following:</p><pre><code class="language-julia hljs">update!(e, Δ) = nothing
+
+function handleMessage!(e::ECS, m::TICK)
+  map((ent) -&gt; update!(ent, m.Δ), Level()) 
+end</code></pre><p>Now entities can simply define an <code>update!</code> method and it will be called every frame deterministically.</p><p>So we can work with entities and with the <code>ECS</code>, but how do we actually add and remove entities?</p><p>We have to handle assigning their ID&#39;s, keeping parent and child information updated, and also allow users to define any initial values for custom properties. Notice that we&#39;ve been assuming that there is a &quot;root&quot; note with an ID of 0. This is the first entity that will be created, and we&#39;ll get to it in a moment.</p><p>But first, here&#39;s how you add a new entity instance to the <code>ECS</code>:</p><pre><code class="language-julia hljs">function instantiate!(e::Entity; kw...)
+  lock(ecs().lock)
+
+  id = ecs().next_id
+  ecs().next_id += 1
+
+  push!(ecs().df, Dict(
+    ENT=&gt;e,
+    TYPE=&gt;typeof(e),
+    ID=&gt;id,
+    CHILDREN=&gt;get(kw, CHILDREN, Set{Number}()),
+    PARENT=&gt;get(kw, PARENT, 0),
+    POSITION=&gt;get(kw, POSITION, XYZ()),
+    ROTATION=&gt;get(kw, ROTATION, XYZ()),
+    HIDDEN=&gt;get(kw, HIDDEN, false),
+    PROPS=&gt;merge(get(kw, PROPS, Dict{Symbol, Any}()), 
+      Dict(k=&gt;v for (k,v) in kw if k ∉ 
+      [CHILDREN, PARENT, POSITION, ROTATION, HIDDEN, PROPS]))
+  ))
+
+  if id != 0
+    par = getEntityById(get(kw, PARENT, 0))
+    push!(getproperty(par, CHILDREN), id)
+  end
+
+  unlock(ecs().lock)
+
+  if ecs().awoken awake!(e) end
+
+  return e
+end</code></pre><p>And here&#39;s how you remove them:</p><pre><code class="language-julia hljs">function destroy!(e::Entity)
+  shutdown!(e)
+
+  lock(ecs().lock)
+
+  p = getEntityById(getproperty(e, PARENT))
+
+  # if not root
+  if getproperty(p, ID) != getproperty(e, ID)
+    # update parent
+    delete!(getproperty(p, CHILDREN), getproperty(e, ID))
+    # update dataframe
+    deleteat!(ecs().df, getproperty(ecs().df, ENT) .== [e])
+  end
+
+  unlock(ecs().lock)
+end
+
+function destroy!(es...)
+  map(destroy!, es)
+end</code></pre><p>And now we have a functioning entity component system.</p><p>And that&#39;s all so far as Starlight&#39;s core subsystems go. To do anything meaningful you&#39;ll need to hook up a backend for things like input, rendering, and physics, but that will be much easier now that we&#39;ve established a means to create new subsystems and allow them to communicate and share objects.</p><p>This is also the end of the &quot;framework from scratch&quot; narrative. Everything else in the Starlight package is tailored for video games, which may not be your use case. The &quot;framework&quot; as such is pretty much complete at this point.</p><p>If you want to make video games or otherwise use Starlight&#39;s default backend, Telescope, read on. Otherwise you&#39;re better off reading the API docs, or even striking out on your own to extend Starlight for whatever your personal use case is.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../clock/">« Clock</a><a class="docs-footer-nextpage" href="../../telescope/intro/">Intro »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.16 on <span class="colophon-date" title="Wednesday 4 May 2022 13:39">Wednesday 4 May 2022</span>. Using Julia version 1.7.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
