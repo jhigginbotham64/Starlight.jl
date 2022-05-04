@@ -66,6 +66,14 @@ He didn't. He is taking a calculated risk that 1) being in debt to contributors 
 
 Otherwise problems would arise if the issue in question was resolved by a different contributor.
 
+##### READ THIS BEFORE YOU WORK ON A BOUNTY ISSUE
+
+Get in touch with the maintainer first. Collaborate with him on a proper proposal. Then he will assign you the issue(s) and pay you when they are resolved.
+
+**If you resolve an issue without submitting a proposal first, your code will get used but you will not be paid.**
+
+You have been warned.
+
 ### Contact
 
 You are invited to join us on [Discord](https://discord.gg/jUwaymK2as).
