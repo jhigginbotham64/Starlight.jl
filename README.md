@@ -70,7 +70,7 @@ Otherwise problems would arise if the issue in question was resolved by a differ
 
 Get in touch with the maintainer first. Collaborate with him on a proper proposal. Then he will assign you the issue(s) and pay you when they are resolved.
 
-**If you resolve an issue without submitting a proposal first, your code will get used but you will not be paid.**
+**If you resolve a bounty issue without submitting a proposal first, your code will get used but you will not be paid.**
 
 You have been warned.
 
