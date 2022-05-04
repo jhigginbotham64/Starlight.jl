@@ -60,9 +60,7 @@ Some issues may have monetary rewards attached to them. Pull requests addressing
 
 ##### Where did the maintainer get so much money for bounties?
 
-He didn't. He is taking a calculated risk that 1) being in debt to contributors is better than being in debt to, say, a credit card company and 2) that the rate of issue resolution will not exceed his income. Note that this means you may not get paid immediately.
-
-...but on my honor, you *will* get paid. - @jhigginbotham64
+He didn't. He is taking a calculated risk that 1) being in debt to contributors is better than being in debt to, say, a credit card company and 2) that the rate of issue resolution will not exceed his income. Note that this means you may not get paid immediately. But on our honor, you *will* get paid.
 
 ##### **No advance payments will be made under any circumstances**
 
