@@ -422,36 +422,3 @@ end
 pg = PongGame()
 
 run!(a)
-
-# export handleMessage!, sendMessage, listenFor, unlistenFrom, handleException, dispatchMessage
-# export awake!, shutdown!, run!, on, off
-# export clk, ecs, inp, ts, phys, scn
-
-# export TICK, SLEEP_NSEC, SLEEP_SEC
-# export tick, job!, oneshot!
-
-# export Entity, update!
-# export XYZ, accumulate_XYZ
-# export getEntityRow, getEntityById, getEntityRowById, getDfRowProp, setDfRowProp!
-# export ECSIteratorState, Level
-# export instantiate!, destroy!
-# export Scene, scene_view
-
-# export Root, Renderable
-# export draw, ColorRect, Sprite
-# export defaultDrawRect, defaultDrawSprite
-
-# export addRigidBox!, addStaticBox!, addTriggerBox!, removePhysicsObject!
-# export other
-
-# Core Subsystems
-# App, Clock, ECS
-
-# Telescope Subsystems
-# TS, Input, Physics
-
-# Core Entities
-# Root
-
-# Telescope Entities
-# ColorRect, Sprite
