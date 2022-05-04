@@ -1,3 +1,5 @@
+# Entity Component System
+
 An [Entity Component System](https://en.wikipedia.org/wiki/Entity_component_system) (or "ECS" for short) is an in-memory object database where rows are instances and columns are properties. Arbitrary properties can be supported if one or more of the columns contain dictionaries.
 
 Are we going to use database connectors and [ORM](https://en.wikipedia.org/wiki/Object%E2%80%93relational_mapping)? Not exactly, but sort of. We definitely *could* do it that way, but it would be much more difficult to set up. We can achieve a similar effect, however, if we use a [DataFrame](https://dataframes.juliadata.org/stable/), an abstract type, and special methods for `getproperty` and `setproperty!`.
@@ -318,3 +320,9 @@ end
 ```
 
 And now we have a functioning entity component system.
+
+And that's all so far as Starlight's core subsystems go. To do anything meaningful you'll need to hook up a backend for things like input, rendering, and physics, but that will be much easier now that we've established a means to create new subsystems and allow them to communicate and share objects.
+
+This is also the end of the "framework from scratch" narrative. Everything else in the Starlight package is tailored for video games, which may not be your use case. The "framework" as such is pretty much complete at this point.
+
+If you want to make video games or otherwise use Starlight's default backend, Telescope, read on. Otherwise you're better off reading the API docs, or even striking out on your own to extend Starlight for whatever your personal use case is.

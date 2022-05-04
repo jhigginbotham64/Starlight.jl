@@ -1,5 +1,22 @@
-using Starlight
+# Pong
 
+!!! warning
+
+    This example assumes familiarity with Starlight's API, as well as with Telescope. It is more
+    focused on describing how to use these libraries than on what they
+    do.
+
+This example will walk you through the source code of Pong as implemented in Starlight's example subdirectory.
+
+First off, the obligatory
+
+```julia
+using Starlight
+```
+
+Then, since the maintainer hates hardcoding *anything*, there are a lot of configurable parameters. You can play around with these if you download the source code. Their usage should make sense once you see them in context. If you forget what one is or what its default value is, or just want to know where it's used, Ctrl-F is your friend. :)
+
+```julia
 const window_width = 600
 const window_height = 400
 const paddle_width = 10
@@ -36,10 +53,19 @@ const center_line_dash_spacing = 20
 const asset_base = joinpath(artifact"test", "test")
 const secs_between_rounds = 2
 const score_to_win = 10
+```
 
+Create an `App` with the given settings, and make sure to set the background to black instead of using the default grey:
+
+```julia
 a = App(; wdth=window_width, hght=window_height, bgrd=colorant"black")
+```
 
-# center line
+We can now begin defining the static UI elements, like the centerline and scores, i.e. things that don't require their own message handlers. 
+
+We can start with the center line, which is an array of `ColorRect`s evenly spaced between the two walls:
+
+```julia
 center_line = []
 for i in (wall_height + center_line_dash_spacing):\
   (center_line_dash_h + center_line_dash_spacing):\
@@ -47,8 +73,11 @@ for i in (wall_height + center_line_dash_spacing):\
   push!(center_line, ColorRect(center_line_dash_w, center_line_dash_h; 
   color=colorant"grey", pos=XYZ((window_width - center_line_dash_w) / 2, i)))
 end
+```
 
-# working with Cellphone strings
+Next we'll use Julia's Artifacts system to pull in a couple of [public-domain spritesheets](https://opengameart.org/content/ascii-bitmap-font-cellphone) that we'll be using for text. But first, if we want to define things in terms of text strings, and since we're not using a standard format like TTF, we need to define what characters belong to which cells on the spritesheet. Feel free to just scroll past this, it's only included for the sake of completeness, normally such things would be handled by an asset importer or something, but we don't have anything like that for Starlight yet.
+
+```julia
 cpchars = Dict(
   ' ' => [0,0],
   '!' => [0,1],
@@ -146,14 +175,22 @@ cpchars = Dict(
   '}' => [5,3],
   '~' => [5,4],
 )
+```
 
+Now our text strings are going to be composed of sprites, so we'll have some of the normal sprite attributes in addition to one that tells us which spritesheet to use:
+
+```julia
 mutable struct CellphoneString <: Renderable
   function CellphoneString(str="", white=true; 
     scale=XYZ(1,1), color=colorant"white", kw...)
     instantiate!(new(); str=str, white=white, scale=scale, color=color, kw...)
   end
 end
+```
 
+Now we can define its `draw` function, which determines which spritesheet to use and draws each character based on its position in the spritesheet:
+
+```julia
 function Starlight.draw(s::CellphoneString)
   img = (s.white) ? joinpath(asset_base,
                       "sprites", "charmap-cellphone_white.png") : \
@@ -168,7 +205,13 @@ function Starlight.draw(s::CellphoneString)
               s.scale.x, s.scale.y)
   end
 end
+```
 
+Note that for this and all other method "overloads", you must specify `Starlight.` or Julia will assume you want to define a method with that name inside the `Main` module and nothing will work.
+
+Now, with all that complexity out of the way, we are free to write some excessively simple UI code (well, if you don't count the positioning calculations):
+
+```julia
 # p1 score
 score1 = CellphoneString('0'; color=colorant"grey", 
   scale=XYZ(score_scale, score_scale), 
@@ -186,7 +229,17 @@ msg = CellphoneString("Press SPACE to start", false;
   scale=XYZ(msg_scale, msg_scale), 
   pos=XYZ((window_width - 140 * msg_scale) / 2, 
   (window_height - 9 * msg_scale) / 2))
+```
 
+We're going to start handholding even less now. By this point you should be well up to speed on how Starlight works.
+
+Our paddles are simple rectangles, so we can reuse the `defaultDrawRect` function. Notice the (recommended) pattern of managing physics entities inside `awake!` and `shutdown!` rather than in the constructor and finalizer. This is so that entities can be awoken and shutdown without Bullet continuing to simulate them, and also without other subsystems needing to know about physics.
+
+Recall that Bullet uses half extents for its box shapes, so we calculate and then use those here.
+
+Probably the most interesting "new" thing here is the collision handler, which deals with paddle/wall contacts. `pg` is something we'll see later, it refers to an instance of a `PongGame` entity that handles game state and input. Basically this collision handler tells the game manager whether to allow paddle movement in a particular direction.
+
+```julia
 mutable struct PongPaddle <: Starlight.Renderable 
   function PongPaddle(w, h; kw...)
     instantiate!(new(); w=w, h=h, color=colorant"white", kw...)
@@ -230,7 +283,11 @@ p1 = PongPaddle(paddle_width, paddle_height;
 p2 = PongPaddle(paddle_width, paddle_height; 
   pos=XYZ(window_width - 2 * paddle_width, 
   (window_height - paddle_height) / 2))
+```
 
+Comparatively there is nothing special about the walls or goals, except that one gets drawn and the other doesn't:
+
+```julia
 mutable struct PongArenaWall <: Starlight.Renderable
   function PongArenaWall(w, h; kw...)
     instantiate!(new(); w=w, h=h, color=colorant"white", kw...)
@@ -279,7 +336,11 @@ goal1 = PongArenaGoal(window_height * 2, goal_width;
 # right goal
 goal2 = PongArenaGoal(window_height * 2, goal_width; 
   pos=XYZ(window_width, 0))
+```
 
+The ball is a simple rectangle, but its collision handler is where most of the game logic is run. Let's get the easy stuff out of the way:
+
+```julia
 mutable struct PongBall <: Starlight.Renderable
   function PongBall(w, h; kw...)
     instantiate!(new(); w=w, h=h, color=colorant"white", kw...)
@@ -297,7 +358,15 @@ end
 function Starlight.shutdown!(p::PongBall)
   removePhysicsObject!(p)
 end
+```
 
+...and now, the hard part. We confess that this Pong implementation is buggy, and a few of the bugs are in the following code. If you can fix them, please submit a pull request, we would greatly appreciate it.
+
+Understand that this is mostly "Pong logic" however: there's not much here that's instructive about Starlight, except that it shows you how different components can be used to implement the logic of an actual game.
+
+Combined with everything we've already covered, we have no compunction telling you to simply read the code if you're interested in it. :)
+
+```julia
 function hit_edge(p::PongBall, o::PongPaddle)
   if o.id == p1.id # left
     return p.abs_pos.x < (o.abs_pos.x + paddle_width - paddle_ball_x_tolerance)
@@ -356,7 +425,11 @@ function Starlight.handleMessage!(p::PongBall, col::TS_CollisionEvent)
     end
   end
 end
+```
 
+The `PongGame` does however have a few interesting things about it. It shows the use of input events and how they can help manage game state, as well as the recommended way to exit out of a Starlight app: defining an `SDL_QuitEvent` handler. Leaving this up to the user allows them to define custom behavior like "Do you really want to quit?" dialogs.
+
+```julia
 mutable struct PongGame <: Starlight.Entity
   function PongGame() 
     instantiate!(new(); ball=nothing, w=false, s=false, up=false, down=false, 
@@ -400,8 +473,9 @@ function Starlight.handleMessage!(p::PongGame, key::SDL_KeyboardEvent)
   end
 end
 
+
 function Starlight.handleMessage!(p::PongGame, q::SDL_QuitEvent)
-  shutdown!(a)
+  shutdown!(p)
 end
 
 function Starlight.update!(p::PongGame, Δ::AbstractFloat)
@@ -420,38 +494,12 @@ function Starlight.update!(p::PongGame, Δ::AbstractFloat)
 end
 
 pg = PongGame()
+```
 
+And with that, all that's left to do is run the `App`:
+
+```julia
 run!(a)
+```
 
-# export handleMessage!, sendMessage, listenFor, unlistenFrom, handleException, dispatchMessage
-# export awake!, shutdown!, run!, on, off
-# export clk, ecs, inp, ts, phys, scn
-
-# export TICK, SLEEP_NSEC, SLEEP_SEC
-# export tick, job!, oneshot!
-
-# export Entity, update!
-# export XYZ, accumulate_XYZ
-# export getEntityRow, getEntityById, getEntityRowById, getDfRowProp, setDfRowProp!
-# export ECSIteratorState, Level
-# export instantiate!, destroy!
-# export Scene, scene_view
-
-# export Root, Renderable
-# export draw, ColorRect, Sprite
-# export defaultDrawRect, defaultDrawSprite
-
-# export addRigidBox!, addStaticBox!, addTriggerBox!, removePhysicsObject!
-# export other
-
-# Core Subsystems
-# App, Clock, ECS
-
-# Telescope Subsystems
-# TS, Input, Physics
-
-# Core Entities
-# Root
-
-# Telescope Entities
-# ColorRect, Sprite
+And...that's Pong with Starlight!

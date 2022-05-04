@@ -4,7 +4,7 @@ export to_ARGB, getSDLError, sdl_colors, vulkan_colors, clear
 mutable struct TS end
 
 function draw()
-  TS_VkBeginDrawPass()
+  TS_VkBeginDrawPass() # clears screen automatically
 
   map(draw, scn()) # TODO investigate parallelization
 

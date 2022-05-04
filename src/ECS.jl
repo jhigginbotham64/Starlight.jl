@@ -22,6 +22,8 @@ const ABSOLUTE_ROTATION = :abs_rot
 const HIDDEN = :hidden
 const PROPS = :props
 
+# TODO: replace XYZ with something more elegant
+
 # position, rotation, velocity, acceleration, whatever
 mutable struct XYZ
   x::Number
