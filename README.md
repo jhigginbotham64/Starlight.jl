@@ -58,7 +58,15 @@ The maintainer is willing to personally mentor anyone who wants to either contri
 
 Some issues may have monetary rewards attached to them. Pull requests addressing these issues will be scrutinized more thoroughly than others. Get in touch with the maintainer to discuss payment arrangements. 
 
-##### No advance payments will be made under any circumstances
+##### Where did the maintainer get so much money for bounties?
+
+He didn't. He is taking a calculated risk that 1) being in debt to contributors is better than being in debt to, say, a credit card company and 2) that the rate of issue resolution will not exceed his income. Note that this means you may not get paid immediately.
+
+...but on my honor, you *will* get paid. - @jhigginbotham64
+
+##### **No advance payments will be made under any circumstances**
+
+Otherwise problems would arise if the issue in question was resolved by a different contributor.
 
 ### Contact
 
