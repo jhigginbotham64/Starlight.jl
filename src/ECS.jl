@@ -25,12 +25,14 @@ const PROPS = :props
 # TODO: replace XYZ with something more elegant
 
 # position, rotation, velocity, acceleration, whatever
-mutable struct XYZ
-  x::Number
-  y::Number
-  z::Number
-  XYZ(x=0, y=0, z=0) = new(x, y, z)
+@with_kw mutable struct XYZ{T<:Number}
+  x::T = zero(T)
+  y::T = zero(T)
+  z::T = zero(T)
 end
+# NB this sets the default type to Int
+# Because @with_kw already defines a XYZ() constructor, this will raise a warning during precompilation
+XYZ() = XYZ{Int}() 
 
 import Base.+, Base.-, Base.*, Base.÷, Base./, Base.%
 +(a::XYZ, b::XYZ) = XYZ(a.x+b.x,a.y+b.y,a.z+b.z)
@@ -53,18 +55,19 @@ const components = Dict(
   PROPS=>Dict{Symbol, Any}
 )
 
-mutable struct ECS
-  df::DataFrame
-  awoken::Bool
-  lock::ReentrantLock
-  next_id::Number
-  function ECS()
+function component_df()
     df = DataFrame(
       NamedTuple{Tuple(keys(components))}(
         t[] for t in values(components)
       ))
-    return new(df, false, ReentrantLock(), 0)
-  end
+    return df 
+end
+
+@with_kw mutable struct ECS{I<:Number}
+  df::DataFrame = component_df()
+  awoken::Bool = false
+  lock::ReentrantLock = ReentrantLock()
+  next_id::I = 0
 end
 
 # internally using Base.getproperty directly so
@@ -143,14 +146,14 @@ Base.length(e::ECS) = size(e.df)[1]
 # TODO: the type/struct approach feels clunky, fix with Vals?
 abstract type ECSIterator end
 
-mutable struct ECSIteratorState
-  root::Number
-  q::Queue{Number}
-  root_visited::Bool
-  index::Number
-  ECSIteratorState(; root=0, q=Queue{Number}(), 
-  root_visited=false, index=1) = new(root, q, root_visited, index)
+@with_kw mutable struct ECSIteratorState{T<:Number}
+  root::T = zero(T)
+  q::Queue{T} = Queue{T}()
+  root_visited::Bool = false
+  index::T = one(T)
 end
+
+ECSIteratorState() = ECSIteratorState{Int}()
 
 # refers to tree level, i.e. breadth-first,
 # nothing special to see here

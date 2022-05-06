@@ -28,6 +28,8 @@ using Reexport
 @reexport using SimpleDirectMediaLayer.LibSDL2
 @reexport using Telescope
 
+import Parameters: @with_kw
+
 export handleMessage!, sendMessage, listenFor, unlistenFrom, handleException, dispatchMessage
 export App, awake!, shutdown!, system!, run!, on, off
 export clk, ecs, inp, ts, phys, scn

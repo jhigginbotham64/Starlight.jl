@@ -3,11 +3,10 @@ export tick, job!, oneshot!
 
 """
 ```julia
-mutable struct Clock
-  started::Base.Event
-  stopped::Bool
-  freq::AbstractFloat
-  Clock() = new(Base.Event(), true, 0.01667)
+@with_kw mutable struct Clock{T<:AbstractFloat}
+  started::Base.Event = Base.Event()
+  stopped::Bool = true
+  freq::T = 0.01667
 end
 ```
 # Fields
@@ -15,33 +14,32 @@ end
 - stopped::Bool Whether shutdown! has been called
 - freq::AbstractFloat Tick frequency
 """
-mutable struct Clock
-  started::Base.Event
-  stopped::Bool
-  freq::AbstractFloat
-  Clock() = new(Base.Event(), true, 0.01667)
+@with_kw mutable struct Clock{T<:AbstractFloat}
+  started::Base.Event = Base.Event()
+  stopped::Bool = true
+  freq::T = 0.01667
 end
 
 """
 ```julia
-struct TICK
-  Δ::AbstractFloat # seconds
+struct TICK{T<:AbstractFloat}
+  Δ::T # seconds
 end
 ```
 """
-struct TICK
-  Δ::AbstractFloat # seconds
+struct TICK{T<:AbstractFloat}
+  Δ::T # seconds
 end
 
 """
 ```julia
-struct SLEEP_SEC
-  Δ::AbstractFloat
+struct SLEEP_SEC{T<:AbstractFloat}
+  Δ::T
 end
 ```
 """
-struct SLEEP_SEC
-  Δ::AbstractFloat
+struct SLEEP_SEC{T<:AbstractFloat}
+  Δ::T
 end
 
 """

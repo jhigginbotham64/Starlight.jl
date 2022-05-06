@@ -4,22 +4,24 @@ export other
 
 other(e::Entity, col::TS_CollisionEvent) = (e.id == col.id1) ? col.id2 : col.id1
 
-mutable struct PhysicsObjectInfo
-  hx::AbstractFloat
-  hy::AbstractFloat
-  hz::AbstractFloat
-  m::AbstractFloat
-  isKinematic::Bool
-  mx::AbstractFloat
-  my::AbstractFloat
-  mz::AbstractFloat
-  PhysicsObjectInfo(hx = 0, hy = 0, hz = 0, m = 0, isKinematic = false, mx = 0, my = 0, mz = 0) = new(hx, hy, hz, m, isKinematic, mx, my, mz)
+@with_kw mutable struct PhysicsObjectInfo{T<:AbstractFloat}
+  hx::T = zero(T)
+  hy::T = zero(T)
+  hz::T = zero(T)
+  m::T = zero(T)
+  isKinematic::Bool = false
+  mx::T = zero(T)
+  my::T = zero(T)
+  mz::T = zero(T)
 end
 
-mutable struct Physics 
-  ids::Dict{Number, PhysicsObjectInfo}
-  Physics() = new(Dict{Number, PhysicsObjectInfo}())
+PhysicsObjectInfo() = PhysicsObjectInfo{Int}()
+
+@with_kw mutable struct Physics{T<:Number} 
+  ids::Dict{T, PhysicsObjectInfo} = Dict{T,PhysicsObjectInfo}()
 end
+
+Physics() = Physics{Int}()
 
 function addRigidBox!(e, hx, hy, hz, m, px, py, pz, isKinematic = false, mx = 0, my = 0, mz = 0)
   phys().ids[e.id] = PhysicsObjectInfo(hx, hy, hz, m, isKinematic, mx, my, mz)
