@@ -41,9 +41,7 @@ a = App(; wdth=window_width, hght=window_height, bgrd=colorant"black")
 
 # center line
 center_line = []
-for i in (wall_height + center_line_dash_spacing):\
-  (center_line_dash_h + center_line_dash_spacing):\
-  (window_height - wall_height - center_line_dash_h - center_line_dash_spacing)
+for i in (wall_height + center_line_dash_spacing):(center_line_dash_h + center_line_dash_spacing):(window_height - wall_height - center_line_dash_h - center_line_dash_spacing)
   push!(center_line, ColorRect(center_line_dash_w, center_line_dash_h; 
   color=colorant"grey", pos=XYZ((window_width - center_line_dash_w) / 2, i)))
 end
@@ -155,10 +153,7 @@ mutable struct CellphoneString <: Renderable
 end
 
 function Starlight.draw(s::CellphoneString)
-  img = (s.white) ? joinpath(asset_base,
-                      "sprites", "charmap-cellphone_white.png") : \
-                    joinpath(asset_base, 
-                      "sprites", "charmap-cellphone_black.png")
+  img = (s.white) ? joinpath(asset_base, "sprites", "charmap-cellphone_white.png") : joinpath(asset_base, "sprites", "charmap-cellphone_black.png")
   for (i,c) in enumerate(s.str)
     cell_ind = cpchars[c]
     TS_VkCmdDrawSprite(img, vulkan_colors(s.color)...,
