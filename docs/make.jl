@@ -5,6 +5,7 @@ makedocs(
     sitename = "Starlight",
     format = Documenter.HTML(prettyurls = !("local" in ARGS)),
     modules = [Starlight],
+    strict = true,
     pages = [
       "Home" => "index.md",
       "Guide" => Any[
