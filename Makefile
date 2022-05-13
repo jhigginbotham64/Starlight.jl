@@ -1,4 +1,4 @@
-.PHONY: repl clean_docs clean deps docs docs_deploy docs_view test build
+.PHONY: repl clean_docs clean deps docs docs_view test
 SHELL:=/bin/bash
 
 repl:
