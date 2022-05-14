@@ -1,297 +1,130 @@
-export Entity, update!
-export ECS, XYZ, accumulate_XYZ
-export getEntityRow, getEntityById, getEntityRowById, getDfRowProp, setDfRowProp!
-export ECSIteratorState, Level
-export instantiate!, destroy!
-export Scene, scene_view
+export Entity, ECS
+export nextid!, components, iscomponent, addentity!, delentity!, delcomponentfromentity!
+export runcomponent!, runcomponentforentities!
 
-abstract type Entity end
+setnesteddictval!(dict, key1, key2, val) = dict[key1][key2] = val
 
-update!(e, Δ) = nothing
+deldictkey!(dict, key) = delete!(dict, key)
 
-# magic symbols that getproperty and setproperty! (and end users) care about
-const ENT = :ent
-const TYPE = :type
-const ID = :id
-const PARENT = :parent
-const CHILDREN = :children
-const POSITION = :pos
-const ROTATION = :rot
-const ABSOLUTE_POSITION = :abs_pos
-const ABSOLUTE_ROTATION = :abs_rot
-const HIDDEN = :hidden
-const PROPS = :props
+delnesteddictkey!(dict, key1, key2) = delete!(dict[key1], key2)
 
-# TODO: replace XYZ with something more elegant
+getdictkeys(dict) = keys(dict)
 
-# position, rotation, velocity, acceleration, whatever
-mutable struct XYZ
-  x::Number
-  y::Number
-  z::Number
-  XYZ(x=0, y=0, z=0) = new(x, y, z)
-end
+dicthaskey(dict, key) = haskey(dict, key)
 
-import Base.+, Base.-, Base.*, Base.÷, Base./, Base.%
-+(a::XYZ, b::XYZ) = XYZ(a.x+b.x,a.y+b.y,a.z+b.z)
--(a::XYZ, b::XYZ) = XYZ(a.x-b.x,a.y-b.y,a.z-b.z)
-*(a::XYZ, b::Number) = XYZ(a.x*b,a.y*b,a.z*b)
-÷(a::XYZ, b::Number) = XYZ(a.x÷b,a.y÷b,a.z÷b)
-/(a::XYZ, b::Number) = XYZ(a.x/b,a.y/b,a.z/b)
-%(a::XYZ, b::Number) = XYZ(a.x%b,a.y%b,a.z%b)
-
-# columns of the in-memory database
-const components = Dict(
-  ENT=>Entity,
-  TYPE=>DataType,
-  ID=>Number,
-  PARENT=>Number,
-  CHILDREN=>Set{Number},
-  POSITION=>XYZ,
-  ROTATION=>XYZ,
-  HIDDEN=>Bool,
-  PROPS=>Dict{Symbol, Any}
-)
-
-mutable struct ECS
-  df::DataFrame
-  awoken::Bool
-  lock::ReentrantLock
-  next_id::Number
+struct ECS
+  meta
+  ids
+  entities
+  components
   function ECS()
-    df = DataFrame(
-      NamedTuple{Tuple(keys(components))}(
-        t[] for t in values(components)
-      ))
-    return new(df, false, ReentrantLock(), 0)
+    meta = guard(Dict{Symbol, Any}(
+      :nextid => 0,
+      :nentities => 0,
+    ))
+    ids = guard(Dict{Any, Int}())
+    entities = guard(Dict{Int, Any}())
+    components = guard(Dict{Symbol, DefaultDict{Int, Any, Nothing}}())
+    return new(meta, ids, entities, components)
   end
 end
 
-# internally using Base.getproperty directly so
-# as to not break if the symbol values change
-getEntityRow(ent::Entity) = @view ecs().df[getproperty(ecs().df, ENT) .== [ent], :]
-function getEntityById(id::Number)
-  arr = ecs().df[getproperty(ecs().df, ID) .== [id], ENT]
-  if length(arr) > 0
-    return arr[1]
-  end
-  return nothing
-end
-getEntityRowById(id::Number) = @view ecs().df[getproperty(ecs().df, ID) .== [id], :]
-getDfRowProp(r, s) = r[!, s][1]
-setDfRowProp!(r, s, x) = r[!, s][1] = x
-
-function Base.propertynames(ent::Entity)
-  return (
-    keys(components)...,
-    ABSOLUTE_POSITION,
-    ABSOLUTE_ROTATION,
-    [n for n in keys(getproperty(ent, PROPS))]...
-  )
+function nextid!(ecs::ECS)  
+  return ecs.meta[:nextid] += 1
 end
 
-function Base.hasproperty(ent::Entity, s::Symbol)
-  return s in Base.propertynames(ent)
+function components(ecs::ECS)
+  @grd getdictkeys(ecs.components)
 end
 
-function accumulate_XYZ(r, s)
-  acc = XYZ()
-  while true
-    inc = getDfRowProp(r, s)
-    acc += inc
-    r = getEntityRowById(getDfRowProp(r, PARENT))
-    getDfRowProp(r, PARENT) != 0 || return acc
-  end
+function iscomponent(ecs::ECS, c::Symbol)
+  @grd dicthaskey(ecs.components, c)
 end
 
-function Base.getproperty(ent::Entity, s::Symbol)
-  e = getEntityRow(ent)
-  if s == ABSOLUTE_POSITION return accumulate_XYZ(e, POSITION)
-  elseif s == ABSOLUTE_ROTATION return accumulate_XYZ(e, ROTATION)
-  elseif s in keys(components) return getDfRowProp(e, s)
-  elseif s in keys(getDfRowProp(e, PROPS)) return getDfRowProp(e, PROPS)[s]
-  else return getfield(ent, s)
-  end
+function delcomponentfromentity!(ecs::ECS, c::Symbol, id::Int)
+  @grd delnesteddictkey!(ecs.components, c, id)
 end
 
-function Base.setproperty!(ent::Entity, s::Symbol, x)
-  e = getEntityRow(ent)
-  if s in [
-    ENT, # immutable
-    TYPE, # automatically set
-    ID, # automatically set
-    ABSOLUTE_POSITION, # computed
-    ABSOLUTE_ROTATION # computed
-  ]
-    error("cannot set property $(s) on Entity")
-  end
+Base.length(ecs::ECS) = ecs.meta[:nentities]
+Base.size(ecs::ECS) = length(ecs)
 
-  lock(ecs().lock)
-  if s == PARENT
-    par = getEntityById(getDfRowProp(e, PARENT))
-    push!(getproperty(par, CHILDREN), getDfRowProp(e, ID))
-  elseif s in keys(components) && s != PROPS
-    setDfRowProp!(e, s, x)
+mutable struct Entity
+  ecs::ECS
+  Entity(ecs::ECS; kw...) = finalizer(destroy!, instantiate!(new(ecs); kw...))
+end
+
+function Base.getproperty(entity::Entity, s::Symbol)
+  ecs = entity.ecs
+  id = ecs.ids[entity]
+  if iscomponent(ecs, s)
+    return ecs.components[s][id]
   else
-    getDfRowProp(e, PROPS)[s] = x
+    return nothing
   end
-  unlock(ecs().lock)
 end
 
-Base.length(e::ECS) = size(e.df)[1]
-
-# TODO: the type/struct approach feels clunky, fix with Vals?
-abstract type ECSIterator end
-
-mutable struct ECSIteratorState
-  root::Number
-  q::Queue{Number}
-  root_visited::Bool
-  index::Number
-  ECSIteratorState(; root=0, q=Queue{Number}(), 
-  root_visited=false, index=1) = new(root, q, root_visited, index)
+function Base.setproperty!(entity::Entity, s::Symbol, val)
+  ecs = entity.ecs
+  id = ecs.ids[entity]
+  @grd setnesteddictval!(ecs.components, s, id, val)
 end
 
-# refers to tree level, i.e. breadth-first,
-# nothing special to see here
-struct Level end 
-Base.length(l::Level) = length(ecs())
-
-function Base.iterate(l::Level, state::ECSIteratorState=ECSIteratorState())
-  if isempty(state.q)
-    if !state.root_visited # just started
-      enqueue!(state.q, state.root)
-      state.root_visited = true
-    else # just finished
-      return nothing
+function Base.propertynames(entity::Entity)
+  ecs = entity.ecs
+  id = ecs.ids[entity]
+  pnames = []
+  for c ∈ components(ecs)
+    if !isnothing(ecs.components[c][id]) 
+      push!(pnames, c) 
     end
   end
+  return pnames
+end
 
-  ent = getEntityById(dequeue!(state.q))
+function Base.hasproperty(entity::Entity, s::Symbol)
+  ecs = entity.ecs
+  id = ecs.ids[entity]
+  return !isnothing(ecs.components[s][id])
+end
 
-  for c in getproperty(ent, CHILDREN) 
-    enqueue!(state.q, c)
+function instantiate!(entity::Entity; kw...)
+  ecs = entity.ecs
+  id = nextid!(ecs)
+  ecs.ids[entity] = id
+  ecs.entities[id] = entity
+  for (k, v) ∈ kw
+    setproperty!(entity, k, v)
   end
-
-  return (ent, state)
+  ecs.meta[:nentities] += 1
+  return entity
 end
 
-function handleMessage!(e::ECS, m::TICK)
-  @debug "ECS tick"
-  try
-    map((ent) -> update!(ent, m.Δ), Level()) # TODO investigate parallelization
-  catch
-    handleException()
+function destroy!(entity::Entity)
+  ecs = entity.ecs
+  id = ecs.ids[entity]
+  for p ∈ propertynames(entity)
+    delcomponentfromentity!(ecs, p, id)
+  end
+  @grd deldictkey!(ecs.entities, ecs.ids[entity])
+  @grd deldictkey!(ecs.ids, entity)
+  ecs.meta[:nentities] -= 1
+end
+
+function runcomponent!(ecs::ECS, c::Symbol, args...; kwargs...)
+  if iscomponent(ecs, c)
+    Threads.@threads for (k, v) ∈ collect(ecs.components[c])
+      v(ecs.entities[k], args...; kwargs...)
+    end
   end
 end
 
-function awake!(e::ECS)
-  @debug "ECS awake!"
-  e.awoken = true
-  map(awake!, Level())
-  listenFor(e, TICK)
-end
-
-function shutdown!(e::ECS)
-  @debug "ECS shutdown!"
-  unlistenFrom(e, TICK)
-  map(shutdown!, Level())
-  e.awoken = false
-end
-
-function instantiate!(e::Entity; kw...)
-  lock(ecs().lock)
-
-  id = ecs().next_id
-  ecs().next_id += 1
-
-  # update ecs
-  # allows invalid parents and children for now
-  push!(ecs().df, Dict(
-    ENT=>e,
-    TYPE=>typeof(e),
-    ID=>id,
-    CHILDREN=>get(kw, CHILDREN, Set{Number}()),
-    PARENT=>get(kw, PARENT, 0),
-    POSITION=>get(kw, POSITION, XYZ()),
-    ROTATION=>get(kw, ROTATION, XYZ()),
-    HIDDEN=>get(kw, HIDDEN, false),
-    PROPS=>merge(get(kw, PROPS, Dict{Symbol, Any}()), 
-      Dict(k=>v for (k,v) in kw if k ∉ 
-      [CHILDREN, PARENT, POSITION, ROTATION, HIDDEN, PROPS]))
-  ))
-
-  if id != 0 # root has no parent but itself
-    par = getEntityById(get(kw, PARENT, 0))
-    push!(getproperty(par, CHILDREN), id)
-  end
-
-  unlock(ecs().lock)
-
-  if ecs().awoken awake!(e) end
-
-  return e
-end
-
-function destroy!(e::Entity)
-  shutdown!(e)
-
-  lock(ecs().lock)
-
-  p = getEntityById(getproperty(e, PARENT))
-
-  # if not root
-  if getproperty(p, ID) != getproperty(e, ID)
-    # update parent
-    delete!(getproperty(p, CHILDREN), getproperty(e, ID))
-    # update dataframe
-    deleteat!(ecs().df, getproperty(ecs().df, ENT) .== [e])
-  end
-
-  unlock(ecs().lock)
-end
-
-function destroy!(es...)
-  map(destroy!, es) # TODO investigate parallelization
-end
-
-# this is the scene graph, ladies and gentlemen,
-# which we can traverse and mutate however we want
-# during iteration, and initialize however we want
-# and destroy however we want...sorry, it took me
-# a long time to come up with this design, and i'm
-# a little bit psyched about it. :)
-scene_view() = ecs().df[(ecs().df.type .<: [Renderable]) .& (ecs().df.hidden .== [false]), :]
-
-struct Scene end
-
-Base.length(s::Scene) = size(scene_view())[1]
-
-function Base.iterate(s::Scene, state::ECSIteratorState=ECSIteratorState())
-  # does reverse-z order for now, only 
-  # suitable for simple 2d drawing
-  if state.index > length(s) return nothing end
-  ent = scene_view()[!, ENT][state.index]
-  state.index += 1
-  return (ent, state)
-end
-
-function awake!(s::Scene)
-  @debug "Scene awake!"
-  listenFor(s, TICK)
-end
-
-function shutdown!(s::Scene)
-  @debug "Scene shutdown!"
-  unlistenFrom(s, TICK)
-end
-
-function handleMessage!(s::Scene, m::TICK)
-  # sort just once per tick rather than every time we iterate
-  @debug "Scene tick"
-  try
-    sort!(ecs().df, [order(POSITION, rev=true, by=(pos)->pos.z)])
-  catch
-    handleException()
+function runcomponentforentities!(ecs::ECS, entityIds, c::Symbol, args...; kwargs...)
+  if iscomponent(ecs, c)
+    Threads.@threads for id in entityIds
+      f = ecs.components[c][id]
+      if !isnothing(f)
+        f(ecs.entities[id], args...; kwargs...)
+      end
+    end
   end
 end

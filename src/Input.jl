@@ -1,71 +1,62 @@
-export Input
+export input!
 
-mutable struct Input end
+function input!(ecs::ECS)
+  events = []
+  event_ref = Ref{SDL_Event}()
+  while Bool(SDL_PollEvent(event_ref))
+    push!(events, event_ref[])
+  end
 
-function handleMessage!(i::Input, m::TICK)
-  @debug "Input tick"
-  evt_ref = Ref{SDL_Event}()
-  while Bool(SDL_PollEvent(evt_ref))
-    evt = evt_ref[]
-    ty = evt.type
+  Threads.@threads for event ∈ events
+    ty = event.type
     if ty ∈ [SDL_AUDIODEVICEADDED, SDL_AUDIODEVICEREMOVED]
-      sendMessage(evt.adevice)
+      runcomponent!(ecs, :onadevice, event.adevice)
     elseif ty == SDL_CONTROLLERAXISMOTION
-      sendMessage(evt.caxis)
+      runcomponent!(ecs, :oncaxis, event.caxis)
     elseif ty ∈ [SDL_CONTROLLERBUTTONDOWN, SDL_CONTROLLERBUTTONUP]
-      sendMessage(evt.cbutton)
+      runcomponent!(ecs, :oncbutton, event.cbutton)
     elseif ty ∈ [SDL_CONTROLLERDEVICEADDED, SDL_CONTROLLERDEVICEREMOVED, SDL_CONTROLLERDEVICEREMAPPED]
-      sendMessage(evt.cdevice)
+      runcomponent!(ecs, :oncdevice, event.cdevice)
     elseif ty ∈ [SDL_DOLLARGESTURE, SDL_DOLLARRECORD]
-      sendMessage(evt.dgesture)
+      runcomponent!(ecs, :ondgesture, event.dgesture)
     elseif ty ∈ [SDL_DROPFILE, SDL_DROPTEXT, SDL_DROPBEGIN, SDL_DROPCOMPLETE]
-      sendMessage(evt.drop)
+      runcomponent!(ecs, :ondrop, event.drop)
     elseif ty ∈ [SDL_FINGERMOTION, SDL_FINGERDOWN, SDL_FINGERUP]
-      sendMessage(evt.tfinger)
+      runcomponent!(ecs, :ontfinger, event.tfinger)
     elseif ty ∈ [SDL_KEYDOWN, SDL_KEYUP]
-      sendMessage(evt.key)
+      runcomponent!(ecs, :onkey, event.key)
     elseif ty == SDL_JOYAXISMOTION
-      sendMessage(evt.jaxis)
+      runcomponent!(ecs, :onjaxis, event.jaxis)
     elseif ty == SDL_JOYBALLMOTION
-      sendMessage(evt.jball)
+      runcomponent!(ecs, :onjball, event.jball)
     elseif ty == SDL_JOYHATMOTION
-      sendMessage(evt.jhat)
+      runcomponent!(ecs, :onjhat, event.jhat)
     elseif ty ∈ [SDL_JOYBUTTONDOWN, SDL_JOYBUTTONUP]
-      sendMessage(evt.jbutton)
+      runcomponent!(ecs, :onjbutton, event.jbutton)
     elseif ty ∈ [SDL_JOYDEVICEADDED, SDL_JOYDEVICEREMOVED]
-      sendMessage(evt.jdevice)
+      runcomponent!(ecs, :onjdevice, event.jdevice)
     elseif ty == SDL_MOUSEMOTION
-      sendMessage(evt.motion)
+      runcomponent!(ecs, :onmotion, event.motion)
     elseif ty ∈ [SDL_MOUSEBUTTONDOWN, SDL_MOUSEBUTTONUP]
-      sendMessage(evt.button)
+      runcomponent!(ecs, :onbutton, event.button)
     elseif ty == SDL_MOUSEWHEEL
-      sendMessage(evt.wheel)
+      runcomponent!(ecs, :onwheel, event.wheel)
     elseif ty == SDL_MULTIGESTURE
-      sendMessage(evt.mgesture)
+      runcomponent!(ecs, :onmgesture, event.mgesture)
     elseif ty == SDL_QUIT
-      sendMessage(evt.quit)
+      runcomponent!(ecs, :onquit, event.quit)
     elseif ty == SDL_SYSWMEVENT
-      sendMessage(evt.syswm)
+      runcomponent!(ecs, :onsyswm, event.syswm)
     elseif ty == SDL_TEXTEDITING
-      sendMessage(evt.edit)
+      runcomponent!(ecs, :onedit, event.edit)
     elseif ty == SDL_TEXTINPUT
-      sendMessage(evt.text)
+      runcomponent!(ecs, :ontext, event.text)
     elseif ty == SDL_USEREVENT
-      sendMessage(evt.user)
+      runcomponent!(ecs, :onuser, event.user)
     elseif ty == SDL_WINDOWEVENT
-      sendMessage(evt.window)
+      runcomponent!(ecs, :onwindow, event.window)
     else
-      sendMessage(evt)
+      runcomponent!(ecs, :oncommon, event)
     end
   end
-end
-
-function awake!(i::Input)
-  @debug "Input awake!"
-  listenFor(i, TICK)
-end
-
-function shutdown!(i::Input)
-  @debug "Input shutdown!"
-  unlistenFrom(i, TICK)
 end
