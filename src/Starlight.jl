@@ -1,16 +1,3 @@
-"""
-Main module for Starlight.jl - a greedy framework for greedy developers.
-
-  # Reexports
-
-  - Pkg.Artifacts
-  - LazyArtifacts
-  - DataStructures: DefaultDict
-  - Colors
-  - SimpleDirectMediaLayer
-  - SimpleDirectMediaLayer.LibSDL2
-  - Telescope
-"""
 module Starlight
 
 using Reexport

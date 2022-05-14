@@ -43,7 +43,7 @@ a = App(; wdth=window_width, hght=window_height, bgrd=colorant"black")
 center_line = []
 for i in (wall_height + center_line_dash_spacing):(center_line_dash_h + center_line_dash_spacing):(window_height - wall_height - center_line_dash_h - center_line_dash_spacing)
   push!(center_line, ColorRect(center_line_dash_w, center_line_dash_h; 
-  color=colorant"grey", pos=XYZ((window_width - center_line_dash_w) / 2, i)))
+  color=colorant"grey", pos=[(window_width - center_line_dash_w) / 2, i]))
 end
 
 # working with Cellphone strings
@@ -147,7 +147,7 @@ cpchars = Dict(
 
 mutable struct CellphoneString <: Renderable
   function CellphoneString(str="", white=true; 
-    scale=XYZ(1,1), color=colorant"white", kw...)
+    scale=[1,1], color=colorant"white", kw...)
     instantiate!(new(); str=str, white=white, scale=scale, color=color, kw...)
   end
 end
@@ -159,28 +159,28 @@ function Starlight.draw(s::CellphoneString)
     TS_VkCmdDrawSprite(img, vulkan_colors(s.color)...,
     0, 0, 0, 0,
     7, 9, cell_ind[1], cell_ind[2],
-    Int(floor(s.scale.x * 7)) * (i - 1) + s.abs_pos.x, s.abs_pos.y, 
-              s.scale.x, s.scale.y)
+    Int(floor(s.scale[1] * 7)) * (i - 1) + s.pos[1], s.pos[2], 
+              s.scale[1], s.scale[2])
   end
 end
 
 # p1 score
 score1 = CellphoneString('0'; color=colorant"grey", 
-  scale=XYZ(score_scale, score_scale), 
-  pos=XYZ((window_width / 2) - (window_width / 4) - 
-  (7 * score_scale / 2), score_y_offset))
+  scale=[score_scale, score_scale], 
+  pos=[(window_width / 2) - (window_width / 4) - 
+  (7 * score_scale / 2), score_y_offset])
 
 # p2 score
 score2 = CellphoneString('0'; color=colorant"grey", 
-  scale=XYZ(score_scale, score_scale), 
-  pos=XYZ((window_width / 2) + (window_width / 4) - 
-  (7 * score_scale / 2), score_y_offset))
+  scale=[score_scale, score_scale], 
+  pos=[(window_width / 2) + (window_width / 4) - 
+  (7 * score_scale / 2), score_y_offset])
 
 # welcome message
 msg = CellphoneString("Press SPACE to start", false; 
-  scale=XYZ(msg_scale, msg_scale), 
-  pos=XYZ((window_width - 140 * msg_scale) / 2, 
-  (window_height - 9 * msg_scale) / 2))
+  scale=[msg_scale, msg_scale], 
+  pos=[(window_width - 140 * msg_scale) / 2, 
+  (window_height - 9 * msg_scale) / 2])
 
 mutable struct PongPaddle <: Starlight.Renderable 
   function PongPaddle(w, h; kw...)
@@ -193,7 +193,7 @@ Starlight.draw(p::PongPaddle) = defaultDrawRect(p)
 function Starlight.awake!(p::PongPaddle)
   hw = paddle_width / 2
   hh = paddle_height / 2
-  addTriggerBox!(p, hw, hh, hz, p.pos.x + hw, p.pos.y + hh, 0, pmx, pmy, 0)
+  addTriggerBox!(p, hw, hh, hz, p.pos[1] + hw, p.pos[2] + hh, 0, pmx, pmy, 0)
 end
 
 function Starlight.shutdown!(p::PongPaddle)
@@ -219,12 +219,12 @@ end
 
 # p1
 p1 = PongPaddle(paddle_width, paddle_height; 
-  pos=XYZ(paddle_width, (window_height - paddle_height) / 2))
+  pos=[paddle_width, (window_height - paddle_height) / 2])
 
 # p2
 p2 = PongPaddle(paddle_width, paddle_height; 
-  pos=XYZ(window_width - 2 * paddle_width, 
-  (window_height - paddle_height) / 2))
+  pos=[window_width - 2 * paddle_width, 
+  (window_height - paddle_height) / 2])
 
 mutable struct PongArenaWall <: Starlight.Renderable
   function PongArenaWall(w, h; kw...)
@@ -237,7 +237,7 @@ Starlight.draw(p::PongArenaWall) = defaultDrawRect(p)
 function Starlight.awake!(p::PongArenaWall)
   hw = window_width / 2
   hh = wall_height / 2
-  addTriggerBox!(p, hw, hh, hz, p.pos.x + hw, p.pos.y + hh, 0, wmx, wmy, 0)
+  addTriggerBox!(p, hw, hh, hz, p.pos[1] + hw, p.pos[2] + hh, 0, wmx, wmy, 0)
 end
 
 function Starlight.shutdown!(p::PongArenaWall)
@@ -245,11 +245,11 @@ function Starlight.shutdown!(p::PongArenaWall)
 end
 
 # top wall
-wallt = PongArenaWall(window_width, wall_height; pos=XYZ(0, 0))
+wallt = PongArenaWall(window_width, wall_height; pos=[0,0])
 
 # bottom wall
 wallb = PongArenaWall(window_width, wall_height; 
-  pos=XYZ(0, window_height - wall_height))
+  pos=[0, window_height - wall_height])
 
 mutable struct PongArenaGoal <: Starlight.Entity
   function PongArenaGoal(w, h; kw...)
@@ -260,7 +260,7 @@ end
 function Starlight.awake!(p::PongArenaGoal)
   hw = goal_width / 2
   hh = window_height / 2
-  addTriggerBox!(p, hw, hh, hz, p.pos.x + hw, p.pos.y + hh, 0, gmx, gmy, 0)
+  addTriggerBox!(p, hw, hh, hz, p.pos[1] + hw, p.pos[2] + hh, 0, gmx, gmy, 0)
 end
 
 function Starlight.shutdown!(p::PongArenaGoal)
@@ -269,11 +269,11 @@ end
 
 # left goal
 goal1 = PongArenaGoal(window_height * 2, goal_width; 
-  pos=XYZ(-goal_width, 0))
+  pos=[-goal_width, 0])
 
 # right goal
 goal2 = PongArenaGoal(window_height * 2, goal_width; 
-  pos=XYZ(window_width, 0))
+  pos=[window_width, 0])
 
 mutable struct PongBall <: Starlight.Renderable
   function PongBall(w, h; kw...)
@@ -286,7 +286,7 @@ Starlight.draw(p::PongBall) = defaultDrawRect(p)
 function Starlight.awake!(p::PongBall)
   hw = ball_width / 2
   hh = ball_height / 2
-  addTriggerBox!(p, hw, hh, hz, p.pos.x + hw, p.pos.y + hh, 0, bmx, bmy, 0)
+  addTriggerBox!(p, hw, hh, hz, p.pos[1] + hw, p.pos[2] + hh, 0, bmx, bmy, 0)
 end
 
 function Starlight.shutdown!(p::PongBall)
@@ -295,15 +295,15 @@ end
 
 function hit_edge(p::PongBall, o::PongPaddle)
   if o.id == p1.id # left
-    return p.abs_pos.x < (o.abs_pos.x + paddle_width - paddle_ball_x_tolerance)
+    return p.pos[1] < (o.pos[1] + paddle_width - paddle_ball_x_tolerance)
   else # right
-    return p.abs_pos.x > (o.abs_pos.x - ball_width + paddle_ball_x_tolerance)
+    return p.pos[1] > (o.pos[1] - ball_width + paddle_ball_x_tolerance)
   end
 end
 
 function hit_angle(p::PongBall, o::PongPaddle)
-  paddle_top = o.abs_pos.y - ball_height / 2
-  ball_center = p.abs_pos.y + ball_height / 2
+  paddle_top = o.pos[2] - ball_height / 2
+  ball_center = p.pos[2] + ball_height / 2
   paddle_hit_area = paddle_height + ball_height
   return -(2 * ((ball_center - paddle_top) / paddle_hit_area) - 1)
 end
@@ -323,7 +323,7 @@ function Starlight.handleMessage!(p::PongBall, col::TS_CollisionEvent)
     if otherId ∈ [wallt.id, wallb.id]
       TS_PlaySound(joinpath(asset_base, 
         "sounds", "ping_pong_8bit_plop.ogg"), 0, -1)
-      TS_BtSetLinearVelocity(p.id, vel.x, -vel.y, vel.z)
+      TS_BtSetLinearVelocity(p.id, vel[1], -vel[2], vel.z)
     elseif otherId ∈ [goal1.id, goal2.id]
       TS_PlaySound(joinpath(asset_base, 
         "sounds", "ping_pong_8bit_peeeeeep.ogg"), 0, -1)
@@ -346,7 +346,7 @@ function Starlight.handleMessage!(p::PongBall, col::TS_CollisionEvent)
       TS_PlaySound(joinpath(asset_base, 
         "sounds", "ping_pong_8bit_beeep.ogg"), 0, -1)
       o = getEntityById(otherId)
-      TS_BtSetLinearVelocity(p.id, (hit_edge(p, o) ? 1 : -1) * vel.x,
+      TS_BtSetLinearVelocity(p.id, (hit_edge(p, o) ? 1 : -1) * vel[1],
         ball_vel_y(hit_angle(p, o)), vel.z)
     end
   end
@@ -373,8 +373,8 @@ end
 
 function newball()
   p = PongBall(ball_width, ball_height; 
-    pos=XYZ((window_width - ball_width) / 2, 
-    (window_height - ball_height) / 2))
+    pos=[(window_width - ball_width) / 2, 
+    (window_height - ball_height) / 2])
   TS_BtSetLinearVelocity(p.id, 
     ((rand(Bool)) ? 1 : -1) * ball_vel_x, ball_vel_y(2 * rand() - 1), 0)
   return p
