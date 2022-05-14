@@ -8,52 +8,52 @@ function input!(ecs::ECS)
   end
 
   Threads.@threads for event ∈ events
-    ty = event.type
-    if ty ∈ [SDL_AUDIODEVICEADDED, SDL_AUDIODEVICEREMOVED]
+    t = event.type
+    if t ∈ [SDL_AUDIODEVICEADDED, SDL_AUDIODEVICEREMOVED]
       runcomponent!(ecs, :onadevice, event.adevice)
-    elseif ty == SDL_CONTROLLERAXISMOTION
+    elseif t == SDL_CONTROLLERAXISMOTION
       runcomponent!(ecs, :oncaxis, event.caxis)
-    elseif ty ∈ [SDL_CONTROLLERBUTTONDOWN, SDL_CONTROLLERBUTTONUP]
+    elseif t ∈ [SDL_CONTROLLERBUTTONDOWN, SDL_CONTROLLERBUTTONUP]
       runcomponent!(ecs, :oncbutton, event.cbutton)
-    elseif ty ∈ [SDL_CONTROLLERDEVICEADDED, SDL_CONTROLLERDEVICEREMOVED, SDL_CONTROLLERDEVICEREMAPPED]
+    elseif t ∈ [SDL_CONTROLLERDEVICEADDED, SDL_CONTROLLERDEVICEREMOVED, SDL_CONTROLLERDEVICEREMAPPED]
       runcomponent!(ecs, :oncdevice, event.cdevice)
-    elseif ty ∈ [SDL_DOLLARGESTURE, SDL_DOLLARRECORD]
+    elseif t ∈ [SDL_DOLLARGESTURE, SDL_DOLLARRECORD]
       runcomponent!(ecs, :ondgesture, event.dgesture)
-    elseif ty ∈ [SDL_DROPFILE, SDL_DROPTEXT, SDL_DROPBEGIN, SDL_DROPCOMPLETE]
+    elseif t ∈ [SDL_DROPFILE, SDL_DROPTEXT, SDL_DROPBEGIN, SDL_DROPCOMPLETE]
       runcomponent!(ecs, :ondrop, event.drop)
-    elseif ty ∈ [SDL_FINGERMOTION, SDL_FINGERDOWN, SDL_FINGERUP]
+    elseif t ∈ [SDL_FINGERMOTION, SDL_FINGERDOWN, SDL_FINGERUP]
       runcomponent!(ecs, :ontfinger, event.tfinger)
-    elseif ty ∈ [SDL_KEYDOWN, SDL_KEYUP]
+    elseif t ∈ [SDL_KEYDOWN, SDL_KEYUP]
       runcomponent!(ecs, :onkey, event.key)
-    elseif ty == SDL_JOYAXISMOTION
+    elseif t == SDL_JOYAXISMOTION
       runcomponent!(ecs, :onjaxis, event.jaxis)
-    elseif ty == SDL_JOYBALLMOTION
+    elseif t == SDL_JOYBALLMOTION
       runcomponent!(ecs, :onjball, event.jball)
-    elseif ty == SDL_JOYHATMOTION
+    elseif t == SDL_JOYHATMOTION
       runcomponent!(ecs, :onjhat, event.jhat)
-    elseif ty ∈ [SDL_JOYBUTTONDOWN, SDL_JOYBUTTONUP]
+    elseif t ∈ [SDL_JOYBUTTONDOWN, SDL_JOYBUTTONUP]
       runcomponent!(ecs, :onjbutton, event.jbutton)
-    elseif ty ∈ [SDL_JOYDEVICEADDED, SDL_JOYDEVICEREMOVED]
+    elseif t ∈ [SDL_JOYDEVICEADDED, SDL_JOYDEVICEREMOVED]
       runcomponent!(ecs, :onjdevice, event.jdevice)
-    elseif ty == SDL_MOUSEMOTION
+    elseif t == SDL_MOUSEMOTION
       runcomponent!(ecs, :onmotion, event.motion)
-    elseif ty ∈ [SDL_MOUSEBUTTONDOWN, SDL_MOUSEBUTTONUP]
+    elseif t ∈ [SDL_MOUSEBUTTONDOWN, SDL_MOUSEBUTTONUP]
       runcomponent!(ecs, :onbutton, event.button)
-    elseif ty == SDL_MOUSEWHEEL
+    elseif t == SDL_MOUSEWHEEL
       runcomponent!(ecs, :onwheel, event.wheel)
-    elseif ty == SDL_MULTIGESTURE
+    elseif t == SDL_MULTIGESTURE
       runcomponent!(ecs, :onmgesture, event.mgesture)
-    elseif ty == SDL_QUIT
+    elseif t == SDL_QUIT
       runcomponent!(ecs, :onquit, event.quit)
-    elseif ty == SDL_SYSWMEVENT
+    elseif t == SDL_SYSWMEVENT
       runcomponent!(ecs, :onsyswm, event.syswm)
-    elseif ty == SDL_TEXTEDITING
+    elseif t == SDL_TEXTEDITING
       runcomponent!(ecs, :onedit, event.edit)
-    elseif ty == SDL_TEXTINPUT
+    elseif t == SDL_TEXTINPUT
       runcomponent!(ecs, :ontext, event.text)
-    elseif ty == SDL_USEREVENT
+    elseif t == SDL_USEREVENT
       runcomponent!(ecs, :onuser, event.user)
-    elseif ty == SDL_WINDOWEVENT
+    elseif t == SDL_WINDOWEVENT
       runcomponent!(ecs, :onwindow, event.window)
     else
       runcomponent!(ecs, :oncommon, event)
