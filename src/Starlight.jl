@@ -126,22 +126,31 @@ function unlistenFrom(e::Any, d::DataType)
 end
 
 """
-```julia
-function handleException()
-  for s in stacktrace(catch_backtrace())
-    println(s)
-  end
-  shutdown!(App())
-end
-```
+`handleException() -> Nothing`
 
-Print a stacktrace and exit gracefully.
+Print a stacktrace and exit safely.
 """
-function handleException()
-  for s in stacktrace(catch_backtrace())
-    println(s)
-  end
-  shutdown!(App())
+function handleException() ::Nothing
+
+    exception_stack = current_exceptions(backtrace=true)
+    if isempty(exception_stack)
+        return
+    end
+
+    exception = first(first(exception_stack)) # sic
+
+    # non-fatal exceptions go here, currently all exceptions are fatal
+    non_fatal_exception_types = Type[]
+    if typeof(exception) in non_fatal_exception_types
+        Log.@warning "a non-fatal exception occurred: " * string(exception)
+        return
+    end
+
+    Log.@error "an exception occurred: " * string(exception)
+    Log.@error "aborting..."
+    shutdown!(App())
+    throw(exception_stack)
+    return nothing
 end
 
 """
@@ -177,11 +186,11 @@ Normally runs in an infinite loop in a background Task started by awake!(::App).
     are doing.
 """
 function dispatchMessage(arg)
-  @debug "dispatchMessage"
+  Log.@debug "dispatchMessage"
   try
     m = take!(messages) # NOTE messages are fully processed in the order they are received
     d = typeof(m)
-    @debug "dequeued message $(m) of type $(d)"
+    Log.@debug "dequeued message $(m) of type $(d)"
     if haskey(listeners, d)
       # Threads.@threads doesn't work on raw sets
       # because it needs to use indexing to split
@@ -389,6 +398,7 @@ Note that if running from a script the app will still exit when Julia exits, it 
 """
 function awake!(a::App)
   if !on(a)
+    Log.init(Base.Filesystem.pwd() * "starlight.log") # log-file
     job!(clk(), dispatchMessage) # this could be parallelized if not for mqueue_lock
     map(awake!, systemAwakeOrder())
     a.running = true
@@ -411,6 +421,7 @@ function shutdown!(a::App)
   if !off(a)
     map(shutdown!, systemShutdownOrder())
     a.running = false
+    Log.quit()
   end
 end
 
