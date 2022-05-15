@@ -73,7 +73,7 @@ Sleep the specified number of seconds.
 """
 function Base.sleep(s::SLEEP_SEC) ::Float64
   t1 = time()
-  while true # TODO: NEVER busy wait, jc this will melt PCs because it spikes the thread to 100% usage. Use Base.Condition instead
+  while true
     if time() - t1 >= s.Δ break end
     yield()
   end
@@ -98,7 +98,7 @@ Sleep the specified number of nanoseconds
 """
 function Base.sleep(s::SLEEP_NSEC) ::UInt64
   t1 = time_ns()
-  while true # TODO: see above
+  while true
     if time_ns() - t1 >= s.Δ break end
     yield()
   end

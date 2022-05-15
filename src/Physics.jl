@@ -42,7 +42,7 @@ function removePhysicsObject!(e)
 end
 
 function handleMessage!(p::Physics, m::TICK)
-  @debug "Physics tick"
+  Log.@debug "Physics tick"
   TS_BtStepSimulation()
   for (id, pinfo) in p.ids
     pos = TS_BtGetPosition(id)
@@ -52,7 +52,7 @@ function handleMessage!(p::Physics, m::TICK)
   while true
     col = TS_BtGetNextCollision()
     if col.id1 == -1 && col.id2 == -1 break end
-    @debug "entities $(col.id1) and $(col.id2) have a collision event"
+    Log.@debug "entities $(col.id1) and $(col.id2) have a collision event"
     e1 = getEntityById(col.id1)
     e2 = getEntityById(col.id2)
     handleMessage!(e1, col)
@@ -61,11 +61,11 @@ function handleMessage!(p::Physics, m::TICK)
 end
 
 function awake!(p::Physics)
-  @debug "Physics awake!"
+  Log.@debug "Physics awake!"
   listenFor(p, TICK)
 end
 
 function shutdown!(p::Physics)
-  @debug "Physics shutdown!"
+  Log.@debug "Physics shutdown!"
   unlistenFrom(p, TICK)
 end

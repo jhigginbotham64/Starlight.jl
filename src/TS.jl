@@ -12,7 +12,7 @@ function draw()
 end
 
 function handleMessage!(t::TS, m::TICK)
-  @debug "TS tick"
+  Log.@debug "TS tick"
   try
     draw()
   catch
@@ -38,14 +38,14 @@ function Base.fill(c::Colorant)
 end
 
 function awake!(t::TS)
-  @debug "TS awake!"
+  Log.@debug "TS awake!"
   TS_Init("Hello SDL!", App().wdth, App().hght)
   draw()
   listenFor(t, TICK)
 end
 
 function shutdown!(t::TS) 
-  @debug "TS shutdown!" 
+  Log.@debug "TS shutdown!"
   unlistenFrom(t, TICK)
   TS_Quit()
 end

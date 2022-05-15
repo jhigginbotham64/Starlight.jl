@@ -1,10 +1,51 @@
 #
-# Copyright 2022 Clemens Cords
-# Created on 14.05.2022 by clem (mail@clemens-cords.com)
+# Author: https://github.com/Clemapfel/
 #
 
 """
-logging utilities, supports concurrent environments
+logging utilities, safe in concurrent environments
+
+# Basic Usage
+
+There are 4 types of log message levels:
+
+### Log / Info
+
+To send a simple log message, similar to `Base.@info`, use `Log.@log` called with any number
+of strings. These will be concatenated, similar to `Base.println`.
+
+### Warning
+
+To send a warning, use `Log.@warning`. The message will be displayed in yellow and should be
+reserved to non-critical issues raised during execution.
+
+### Errors
+
+To send a critical error message, use `Log.@error`. This message will be displayed in red
+and contains a stacktrace. It does not raise an actual exception, users are encouraged to
+manually do so immediately proceeding the `Log.@error` call.
+
+### Debug
+
+To send debug messages, use `Log.@debug`. These message will not be displayed or logged,
+unless `Log.set_debug_enabled(true)` was called before.
+
+# Logging To Files
+
+You can tell `Log` to write all its messages to a file (instead of `stdout`) by calling
+
+```julia
+Log.init("/path/to/file.log")
+```
+
+Where `"path/to/file.log"` is the log file. If it does not exist yet, it will be created. If the
+file already contains text, it will be cleared and overridden.
+
+By default, the output is in human readable form. To switch to csv (comma separated values),
+instead call `Log.init("/path/to/file.log", CSV)`.
+
+At the end of execution, call `Log.quit()` to safely close the logging environment. If the application
+crashes or otherwise quits unexpectedly, all already logged message will still be in the file.
 """
 module Log
 
@@ -94,7 +135,7 @@ module Log
 
         const _log_label = "LOG"
         const _warning_label = "WARNING"
-        const _exception_label = "ERROR"
+        const _exception_label = "FATAL"
         const _debug_label = "DEBUG"
 
         const _log_color = :cyan
@@ -431,48 +472,42 @@ module Log
     end
 
     """
-    `log(::Any...) -> Nothing`
+    `log(::Expr) -> Nothing`
 
     convert any arguments to strings, then print as log message
     """
-    macro log(xs...)
-        Log.write(xs..., type=Log.LOG)
+    function log(xs)
+        Log.write(__module__.eval(xs), type=Log.LOG)
     end
     export log
 
     """
-    `warning(::Any...) -> Nothing`
+    `warning(::Expr) -> Nothing`
 
     convert any arguments to strings, then print as warning message
     """
-    macro warning(xs...)
-        Log.write(xs..., type=Log.WARNING)
+    macro warning(xs)
+        Log.write(__module__.eval(xs), type=Log.WARNING)
     end
     export warning
 
     """
-    `debug(::Any...) -> Nothing`
+    `debug(::Expr) -> Nothing`
 
     convert any arguments to strings, then print as debug message
     if `Log.set_debug_enabled(true)` was called before
     """
-    macro debug(xs...)
-        Log.write(xs..., type=Log.DEBUG)
+    macro debug(xs)
+        Log.write(__module__.eval(xs), type=Log.DEBUG)
     end
     export debug
 
     """
-    `error(::Any...) -> Nothing`
+    `error(::Expr) -> Nothing`
 
     write to the log and print stacktrace, does not actually raise an exception
     """
-    macro error(xs...)
-        msg = prod(string.([xs...]))
-
-        if Log.detail._stream isa IOStream
-            Log.write(msg, type=Log.EXCEPTION) # writes to logging file
-        else
-            Base.@error msg
-        end
+    macro error(xs)
+        Log.write(__module__.eval(xs), type=Log.EXCEPTION)
     end
 end
