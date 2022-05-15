@@ -21,6 +21,9 @@ Starlight.update!(t::TestEntity, Δ::AbstractFloat) = t.updated = true
   # all systems should be running
   @test on(a)
 
+  # test logging
+  Log.detail.test()
+
   # close
   shutdown!(a)
 
