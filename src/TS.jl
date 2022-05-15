@@ -20,7 +20,41 @@ function handleMessage!(t::TS, m::TICK)
   end
 end
 
-getSDLError() = unsafe_string(TS_SDLGetError())
+"""
+error, forwarded from SDL to Julia
+
+# Fieds
+message: message as string. If empty, signals that no error occurred
+"""
+mutable struct SDLError <: Exception
+    message::String
+end
+Base.showerror()
+
+"""
+`hasSDLErrorOccurred() -> Bool`
+"""
+hasSDLErrorOccurred() = isempty(unsafe_string(TS_SDLGetError())) # TODO: is this correct?
+
+"""
+`forwardSDLError() -> Nothing`
+
+forward potential SDL errors to the starlight error handler
+"""
+function forwardSDLError() ::Nothing
+
+    if !hasSDLErrorOccurred()
+        return
+    end
+
+    error_maybe = SDLError(unsafe_string(TS_SDLGetError()))
+    try
+        throw(error_maybe)
+    catch
+        handleException()
+    end
+    return nothing
+end
 
 to_ARGB(c) = c
 to_ARGB(c::ARGB) = c
