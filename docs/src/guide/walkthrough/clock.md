@@ -8,9 +8,9 @@ We can start with the following struct:
 
 ```julia
 mutable struct Clock
-  started::Base.Event
-  stopped::Bool
-  freq::AbstractFloat
+  start_event::Base.Event
+  is_stopped::Bool
+  frequency::AbstractFloat
   Clock() = new(Base.Event(), true, 0.01667) # 60 Hz
 end
 ```
@@ -20,8 +20,8 @@ Background tasks might be scheduled as follows, with an optional `arg` parameter
 ```julia
 function job!(c::Clock, f, arg=1)
   function job()
-    Base.wait(c.started)
-    while !c.stopped
+    Base.wait(c.start_event)
+    while !c.is_stopped
       f(arg)
     end
   end
@@ -34,7 +34,7 @@ One-off tasks might look similar, just without the loop:
 ```julia
 function oneshot!(c::Clock, f, arg=1)
   function oneshot()
-    Base.wait(c.started)
+    Base.wait(c.start_event)
     f(arg)
   end
   schedule(Task(oneshot))
@@ -72,13 +72,13 @@ Now we have everything we need to implement the `Clock`'s `awake!` and `shutdown
 ```julia
 function awake!(c::Clock)
   job!(c, tick, c.freq)
-  c.stopped = false
-  Base.notify(c.started)
+  c.is_stopped = false
+  Base.notify(c.start_event)
 end
 
 function shutdown!(c::Clock)
-  c.stopped = true
-  c.started = Base.Event() # old one remains signaled no matter what, replace
+  c.is_stopped = true
+  c.start_event = Base.Event() # old one remains signaled no matter what, replace
 end
 ```
 
