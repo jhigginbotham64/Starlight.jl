@@ -6,9 +6,6 @@ using Reexport
 @reexport using Colors
 @reexport using DataStructures: DefaultDict
 @reexport using Guards
-@reexport using SimpleDirectMediaLayer
-@reexport using SimpleDirectMediaLayer.LibSDL2
-@reexport using Telescope
 
 export awake!, shutdown!
 
