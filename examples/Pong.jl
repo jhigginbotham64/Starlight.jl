@@ -42,7 +42,7 @@ a = App(; wdth=window_width, hght=window_height, bgrd=colorant"black")
 # center line
 center_line = []
 for i in (wall_height + center_line_dash_spacing):(center_line_dash_h + center_line_dash_spacing):(window_height - wall_height - center_line_dash_h - center_line_dash_spacing)
-  push!(center_line, ColorRect(center_line_dash_w, center_line_dash_h; 
+  push!(center_line, TS_ColorRect(center_line_dash_w, center_line_dash_h; 
   color=colorant"grey", pos=[(window_width - center_line_dash_w) / 2, i]))
 end
 
@@ -188,7 +188,7 @@ mutable struct PongPaddle <: Starlight.Renderable
   end
 end
 
-Starlight.draw(p::PongPaddle) = defaultDrawRect(p)
+Starlight.draw(p::PongPaddle) = tsDefaultDrawRect(p)
 
 function Starlight.awake!(p::PongPaddle)
   hw = paddle_width / 2
@@ -232,7 +232,7 @@ mutable struct PongArenaWall <: Starlight.Renderable
   end
 end
 
-Starlight.draw(p::PongArenaWall) = defaultDrawRect(p)
+Starlight.draw(p::PongArenaWall) = tsDefaultDrawRect(p)
 
 function Starlight.awake!(p::PongArenaWall)
   hw = window_width / 2
@@ -281,7 +281,7 @@ mutable struct PongBall <: Starlight.Renderable
   end 
 end
 
-Starlight.draw(p::PongBall) = defaultDrawRect(p)
+Starlight.draw(p::PongBall) = tsDefaultDrawRect(p)
 
 function Starlight.awake!(p::PongBall)
   hw = ball_width / 2
