@@ -221,6 +221,7 @@ The preferred way to call unlistenFrom is from inside a shutdown! method.
 """
 shutdown!(a) = nothing
 
+include("Logging.jl")
 include("Clock.jl")
 include("ECS.jl")
 include("TS.jl")
