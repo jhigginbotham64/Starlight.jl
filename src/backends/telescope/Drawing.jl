@@ -1,4 +1,4 @@
-export draw!
+export TS_Draw!
 export to_ARGB, sdl_colors, vulkan_colors
 
 to_ARGB(c) = c
@@ -14,10 +14,12 @@ function Base.fill(c::Colorant)
   TS_VkCmdClearColorImage(vulkan_colors(c)...)
 end
 
-function draw!(ecs::Guard{ECS})
-  TS_VkBeginDrawPass()
+function TS_Draw!(ecs::Guard{ECS})
+  while true
+    TS_VkBeginDrawPass()
 
-  @grd runcomponent!(ecs, :draw)
+    @grd runcomponent!(ecs, :draw)
 
-  TS_VkEndDrawPass(vulkan_colors(colorant"black")...)
+    TS_VkEndDrawPass(vulkan_colors(colorant"black")...)
+  end
 end

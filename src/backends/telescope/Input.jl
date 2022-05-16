@@ -1,6 +1,7 @@
-export input!
+export TS_Input!
 
-function input!(ecs::Guard{ECS})
+function TS_Input!(ecs::Guard{ECS})
+  while true
     events = []
     event_ref = Ref{SDL_Event}()
     while Bool(SDL_PollEvent(event_ref))
@@ -60,4 +61,5 @@ function input!(ecs::Guard{ECS})
       end
     end
   end
+end
   

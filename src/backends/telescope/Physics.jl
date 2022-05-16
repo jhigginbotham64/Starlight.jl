@@ -1,9 +1,10 @@
-export physics!
+export TS_Physics!
 export other
 
 other(e::Entity, col::TS_CollisionEvent) = (e.id == col.id1) ? col.id2 : col.id1
 
-function physics!(ecs::Guard{ECS})
+function TS_Physics!(ecs::Guard{ECS})
+  while true
     TS_BtStepSimulation()
   
     @grd runcomponent!(ecs, :physics_step)
@@ -21,3 +22,4 @@ function physics!(ecs::Guard{ECS})
       @grd runcomponentforentities!(ecs, [col.id1, col.id2], :oncollision, col)
     end
   end
+end
