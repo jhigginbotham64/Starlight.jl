@@ -476,7 +476,7 @@ module Log
 
     convert any arguments to strings, then print as log message
     """
-    function log(xs)
+    macro log(xs)
         Log.write(__module__.eval(xs), type=Log.LOG)
     end
     export log
