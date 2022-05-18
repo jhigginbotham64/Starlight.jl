@@ -29,7 +29,7 @@ message: message as string. If empty, signals that no error occurred
 mutable struct SDLError <: Exception
     message::String
 end
-Base.showerror()
+Base.showerror(error::SDLError) = print(stderr, "SDLError: " * error.message)
 
 """
 `hasSDLErrorOccurred() -> Bool`

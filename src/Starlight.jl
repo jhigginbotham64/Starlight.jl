@@ -28,6 +28,9 @@ using Reexport
 @reexport using SimpleDirectMediaLayer.LibSDL2
 @reexport using Telescope
 
+include("Logging.jl")
+using Main.Starlight.Log
+
 export handleMessage!, sendMessage, listenFor, unlistenFrom, handleException, dispatchMessage
 export App, awake!, shutdown!, system!, run!, on, off
 export clk, ecs, inp, ts, phys, scn
@@ -230,7 +233,6 @@ The preferred way to call unlistenFrom is from inside a shutdown! method.
 """
 shutdown!(a) = nothing
 
-include("Logging.jl")
 include("Clock.jl")
 include("ECS.jl")
 include("TS.jl")
