@@ -195,6 +195,7 @@ function dispatchMessage(arg)
     m = take!(messages) # NOTE messages are fully processed in the order they are received
     d = typeof(m)
     Log.@debug "dequeued message $(m) of type $(d)"
+    lock(listener_lock)
     if haskey(listeners, d)
       # Threads.@threads doesn't work on raw sets
       # because it needs to use indexing to split
@@ -203,6 +204,7 @@ function dispatchMessage(arg)
         handleMessage!(l, m)
       end
     end
+    unlock(listener_lock)
   catch
     handleException()
   end
