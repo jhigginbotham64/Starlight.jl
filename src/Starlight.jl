@@ -145,6 +145,7 @@ function handleException() ::Nothing
     # non-fatal exceptions go here, currently all exceptions are fatal
     non_fatal_exception_types = Type[]
     if typeof(exception) in non_fatal_exception_types
+        println(eval(exception))
         Log.@warning "a non-fatal exception occurred: " * string(exception)
         return
     end
