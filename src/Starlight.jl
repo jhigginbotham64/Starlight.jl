@@ -29,7 +29,7 @@ using Reexport
 @reexport using Telescope
 
 include("Logging.jl")
-using Log
+using Starlight.Log
 
 export handleMessage!, sendMessage, listenFor, unlistenFrom, handleException, dispatchMessage
 export App, awake!, shutdown!, system!, run!, on, off
