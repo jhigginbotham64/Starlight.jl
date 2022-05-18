@@ -475,8 +475,9 @@ module Log
 
     convert any arguments to strings, then print as log message
     """
-    macro log(xs)
-        return :(Log.write($(xs)))
+    macro log(xs::Expr)
+        as_string::String = __module__.eval(xs)
+        return :(Starlight.Log.write($as_string))
     end
     export log
 
@@ -486,7 +487,8 @@ module Log
     convert any arguments to strings, then print as warning message
     """
     macro warning(xs)
-        return :(Log.write($(xs), type=Log.WARNING))
+        as_string::String = __module__.eval(xs)
+        return :(Starlight.Log.write($as_string, type=Log.WARNING))
     end
     export warning
 
@@ -497,7 +499,8 @@ module Log
     if `Log.set_debug_enabled(true)` was called before
     """
     macro debug(xs)
-        return :(Log.write($(xs), type=Log.DEBUG))
+        as_string::String = __module__.eval(xs)
+        return :(Starlight.Log.write($as_string, type=Log.DEBUG))
     end
     export debug
 
@@ -507,6 +510,7 @@ module Log
     write to the log and print stacktrace, does not actually raise an exception
     """
     macro error(xs)
-        return :(Log.write($(xs), type=Log.EXCEPTION))
+        as_string::String = __module__.eval(xs)
+        return :(Starlight.Log.write($as_string, type=Log.EXCEPTION))
     end
 end
