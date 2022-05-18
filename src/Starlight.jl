@@ -401,7 +401,7 @@ Note that if running from a script the app will still exit when Julia exits, it 
 function awake!(a::App)
   if !on(a)
 
-    Log.init(Base.Filesystem.pwd() * "starlight.log") # log to file
+    Log.init() #Base.Filesystem.pwd() * "starlight.log")
     # Log.set_debug_enabled(true)
 
     job!(clk(), dispatchMessage) # this could be parallelized if not for mqueue_lock
