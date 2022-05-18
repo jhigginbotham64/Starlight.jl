@@ -3,8 +3,9 @@ using Starlight
 
 makedocs(
     sitename = "Starlight",
-    format = Documenter.HTML(prettyurls = !("local" in ARGS)),
+    format = Documenter.HTML(),
     modules = [Starlight],
+    strict = true,
     pages = [
       "Home" => "index.md",
       "Guide" => Any[
