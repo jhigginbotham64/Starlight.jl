@@ -161,8 +161,8 @@ module Log
             lock(_task_storage_lock)
 
             # cleanup finished tasks
-            while !isempty(detail._task_storage) && istaskdone(first(detail._task_storage))
-                dequeue!(detail._task_storage)
+            while !isempty(_task_storage) && istaskdone(first(_task_storage))
+                dequeue!(_task_storage)
             end
 
             enqueue!(_task_storage, Task(() -> begin
@@ -181,23 +181,23 @@ module Log
 
                     # type
                     if LABEL in _options
-                        out *= string(type) * detail._csv_delimiter
+                        out *= string(type) * _csv_delimiter
                     end
 
                     # day, month
                     if DATESTAMP in _options
-                        out *= string(Dates.day(now)) * detail._csv_delimiter
-                        out *= string(Dates.month(now)) * detail._csv_delimiter
+                        out *= string(Dates.day(now)) * _csv_delimiter
+                        out *= string(Dates.month(now)) * _csv_delimiter
                     end
 
                     # time
                     if TIMESTAMP in _options
-                        out *= string(Dates.format(Dates.now(), DateFormat("H:M:S.MS"))) * detail._csv_delimiter
+                        out *= string(Dates.format(Dates.now(), DateFormat("H:M:S.MS"))) * _csv_delimiter
                     end
 
                     # thread_id
                     if THREADID in _options
-                        out *= string(Threads.threadid()) * detail._csv_delimiter
+                        out *= string(Threads.threadid()) * _csv_delimiter
                     end
 
                     # message
@@ -300,17 +300,17 @@ module Log
 
                 Log.init(Base.Filesystem.pwd() * "/_.log", CSV, [Log.TIMESTAMP, Log.DATESTAMP, Log.THREADID])
 
-                Test.@test Base.Filesystem.isfile(Log.detail._stream)
-                Test.@test isopen(Log.detail._stream)
+                Test.@test Base.Filesystem.isfile(Log._stream)
+                Test.@test isopen(Log._stream)
 
                 Log.write("test line")
                 Log.quit()
-                Test.@test !isopen(Log.detail._stream)
+                Test.@test !isopen(Log._stream)
 
                 file = open(Base.Filesystem.pwd() * "/_.log", read=true)
 
                 Test.@test occursin(_csv_header, readline(file, keep=true))
-                Test.@test occursin(Log.detail._initialization_message, readline(file))
+                Test.@test occursin(Log._initialization_message, readline(file))
                 Test.@test occursin("test line", readline(file))
 
                 finally Base.Filesystem.rm(Base.Filesystem.pwd() * "/_.log") end
@@ -336,7 +336,7 @@ module Log
             return nothing
         end
 
-        detail.append(type, prod(string.([xs...])))
+        append(type, prod(string.([xs...])))
         yield()
     end
     export write
@@ -364,53 +364,53 @@ module Log
         options::Vector{FormattingOptions} = (path == "" ? [LABEL] : [LABEL, DATESTAMP, TIMESTAMP])
     ) ::Bool
 
-        @lock detail._init_lock begin
+        @lock _init_lock begin
 
             if path != ""
-                detail.eval(:(_stream = open($path, append=true, truncate=true)))
+                eval(:(_stream = open($path, append=true, truncate=true)))
             else
-                detail.eval(:(_stream = stdout))
+                eval(:(_stream = stdout))
             end
 
-            detail.eval(:(_mode = $mode))
-            detail.eval(:(_options = $options))
+            eval(:(_mode = $mode))
+            eval(:(_options = $options))
 
             if mode == CSV
 
                 csv_header = ""
 
                 if LABEL in options
-                    csv_header *= "type" * detail._csv_delimiter
+                    csv_header *= "type" * _csv_delimiter
                 end
 
                 if DATESTAMP in options
-                   csv_header *= "day" * detail._csv_delimiter
-                   csv_header *= "month" * detail._csv_delimiter
+                   csv_header *= "day" * _csv_delimiter
+                   csv_header *= "month" * _csv_delimiter
                 end
 
                 if TIMESTAMP in options
-                    csv_header *= "time" * detail._csv_delimiter
+                    csv_header *= "time" * _csv_delimiter
                 end
 
                 if THREADID in options
-                    csv_header *= "thread_id" * detail._csv_delimiter
+                    csv_header *= "thread_id" * _csv_delimiter
                 end
 
                 csv_header *= "message" * "\n"
 
-                detail.eval(:(_csv_header = $csv_header))
+                eval(:(_csv_header = $csv_header))
             end
         end
 
-        out = isopen(detail._stream)
+        out = isopen(_stream)
 
         if !out
            Log.write("in Log.init(" * path * ") : initialization failed.")
         else
             if mode == CSV
-                Base.write(detail._stream, detail._csv_header)
+                Base.write(_stream, _csv_header)
             end
-            Log.write(detail._initialization_message)
+            Log.write(_initialization_message)
         end
         return out
     end
@@ -426,23 +426,23 @@ module Log
     """
     function quit() ::Bool
 
-        for task in detail._task_storage
+        for task in _task_storage
             wait(task)
         end
-        Log.write(detail._shutdown_message)
+        Log.write(_shutdown_message)
 
         try
-            lock(detail._task_storage_lock)
-            lock(detail._init_lock)
+            lock(_task_storage_lock)
+            lock(_init_lock)
 
-            for task in detail._task_storage
+            for task in _task_storage
                 wait(task)
             end
 
-            empty!(detail._task_storage)
+            empty!(_task_storage)
 
-            if detail._stream isa IOStream
-                close(detail._stream)
+            if _stream isa IOStream
+                close(_stream)
             end
 
             return true
@@ -459,14 +459,14 @@ module Log
     """
     function set_debug_enabled(value::Bool)
 
-        lock(detail._init_lock)
+        lock(_init_lock)
         if value
             Log.write("Debug logging enabled", type=LOG)
         else
             Log.write("Debug loggin disabled", type=LOG)
         end
-        detail.eval(:(global _debug_enabled = $value))
-        unlock(detail._init_lock)
+        eval(:(global _debug_enabled = $value))
+        unlock(_init_lock)
         return nothing
     end
 
