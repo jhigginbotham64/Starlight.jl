@@ -477,7 +477,7 @@ module Log
     convert any arguments to strings, then print as log message
     """
     macro log(xs)
-        Log.write(__module__.eval(xs), type=Log.LOG)
+        return :(Log.write($(xs)))
     end
     export log
 
@@ -487,7 +487,7 @@ module Log
     convert any arguments to strings, then print as warning message
     """
     macro warning(xs)
-        Log.write(__module__.eval(xs), type=Log.WARNING)
+        return :(Log.write($(xs), type=Log.WARNING))
     end
     export warning
 
@@ -498,7 +498,7 @@ module Log
     if `Log.set_debug_enabled(true)` was called before
     """
     macro debug(xs)
-        Log.write(__module__.eval(xs), type=Log.DEBUG)
+        return :(Log.write($(xs), type=Log.DEBUG))
     end
     export debug
 
@@ -508,6 +508,6 @@ module Log
     write to the log and print stacktrace, does not actually raise an exception
     """
     macro error(xs)
-        Log.write(__module__.eval(xs), type=Log.EXCEPTION)
+        return :(Log.write($(xs), type=Log.EXCEPTION))
     end
 end
