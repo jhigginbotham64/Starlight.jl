@@ -177,7 +177,7 @@ function Base.iterate(l::Level, state::ECSIteratorState=ECSIteratorState())
 end
 
 function handleMessage!(e::ECS, m::TICK)
-  @debug "ECS tick"
+  Log.@debug "ECS tick"
   try
     map((ent) -> update!(ent, m.Δ), Level()) # TODO investigate parallelization
   catch
@@ -186,14 +186,14 @@ function handleMessage!(e::ECS, m::TICK)
 end
 
 function awake!(e::ECS)
-  @debug "ECS awake!"
+  Log.@debug "ECS awake!"
   e.awoken = true
   map(awake!, Level())
   listenFor(e, TICK)
 end
 
 function shutdown!(e::ECS)
-  @debug "ECS shutdown!"
+  Log.@debug "ECS shutdown!"
   unlistenFrom(e, TICK)
   map(shutdown!, Level())
   e.awoken = false
@@ -277,18 +277,18 @@ function Base.iterate(s::Scene, state::ECSIteratorState=ECSIteratorState())
 end
 
 function awake!(s::Scene)
-  @debug "Scene awake!"
+  Log.@debug "Scene awake!"
   listenFor(s, TICK)
 end
 
 function shutdown!(s::Scene)
-  @debug "Scene shutdown!"
+  Log.@debug "Scene shutdown!"
   unlistenFrom(s, TICK)
 end
 
 function handleMessage!(s::Scene, m::TICK)
   # sort just once per tick rather than every time we iterate
-  @debug "Scene tick"
+  Log.@debug "Scene tick"
   try
     sort!(ecs().df, [order(POSITION, rev=true, by=(pos)->pos.z)])
   catch

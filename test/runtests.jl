@@ -1,4 +1,5 @@
 using Starlight
+using Starlight.Log
 using Test
 
 # the namespace in front of the method name is important, apparently
@@ -20,6 +21,9 @@ Starlight.update!(t::TestEntity, Δ::AbstractFloat) = t.updated = true
 
   # all systems should be running
   @test on(a)
+
+  # test logging
+  Log.test()
 
   # close
   shutdown!(a)

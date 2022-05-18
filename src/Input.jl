@@ -3,7 +3,8 @@ export Input
 mutable struct Input end
 
 function handleMessage!(i::Input, m::TICK)
-  @debug "Input tick"
+
+  Log.@debug "Input tick"
   evt_ref = Ref{SDL_Event}()
   while Bool(SDL_PollEvent(evt_ref))
     evt = evt_ref[]
@@ -61,11 +62,11 @@ function handleMessage!(i::Input, m::TICK)
 end
 
 function awake!(i::Input)
-  @debug "Input awake!"
+  Log.@debug "Input awake!"
   listenFor(i, TICK)
 end
 
 function shutdown!(i::Input)
-  @debug "Input shutdown!"
+  Log.@debug "Input shutdown!"
   unlistenFrom(i, TICK)
 end
