@@ -109,10 +109,9 @@ module Log
     """
     internal implementation details, end-users should not interact with anything in this module
     """
-    module detail
+    #module detail
 
         using Dates
-        using Log
         using Test
         using DataStructures
 
@@ -319,7 +318,7 @@ module Log
             return nothing
         end
         # no export
-    end
+    #end
 
     """
     `write(xs::Any...; [message_type::MessageType]) -> Nothing`
