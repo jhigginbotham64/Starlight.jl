@@ -112,7 +112,7 @@ module Log
     module detail
 
         using Dates
-        using Main.Log
+        using Log
         using Test
         using DataStructures
 
